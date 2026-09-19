@@ -1,0 +1,129 @@
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { api } from "../api/client";
+import { ApiError, type DashboardData } from "../types";
+
+function formatDue(iso: string): string {
+  const due = new Date(iso);
+  const now = new Date();
+  const startToday = new Date(now);
+  startToday.setHours(0, 0, 0, 0);
+  const startDue = new Date(due);
+  startDue.setHours(0, 0, 0, 0);
+  const diff = Math.round((startDue.getTime() - startToday.getTime()) / 86400000);
+  if (diff <= 0) return "Due today";
+  if (diff === 1) return "Tomorrow";
+  return `In ${diff} days`;
+}
+
+export function DashboardPage() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [mock, setMock] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all([api.dashboard(), api.health()])
+      .then(([dashboard, health]) => {
+        if (cancelled) return;
+        setData(dashboard);
+        setMock(health.mockLlm);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof ApiError ? err.message : "Could not load dashboard");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (error) {
+    return (
+      <div className="card error">
+        <p>{error}</p>
+        <p className="muted">Start MongoDB (`docker compose up -d`) and `npm run dev`.</p>
+      </div>
+    );
+  }
+
+  if (!data) return <p className="muted">Loading dashboard…</p>;
+
+  return (
+    <div>
+      <section className="hero">
+        <h1>Retrieval over time spent</h1>
+        <p className="muted">
+          Study a topic, then recall it immediately. Mastery is demonstrated retrieval, not
+          minutes on a page.
+          {mock ? " Evaluator is in mock mode (no LLM key)." : " Live evaluator is connected."}
+        </p>
+      </section>
+      <div className="grid grid-2">
+        <article className="card">
+          <h2>Today's Recall</h2>
+          {data.todayDue.length === 0 ? (
+            <p className="muted">Nothing due. Study a topic to generate an immediate recall.</p>
+          ) : (
+            <div className="list">
+              {data.todayDue.map((item) => (
+                <Link className="row" key={item.recallId} to={`/recall/${item.recallId}`}>
+                  <strong>{item.conceptName}</strong>
+                  <span className="badge due">Due today</span>
+                </Link>
+              ))}
+            </div>
+          )}
+        </article>
+        <article className="card">
+          <h2>Upcoming</h2>
+          {data.upcoming.length === 0 ? (
+            <p className="muted">No future reviews scheduled yet.</p>
+          ) : (
+            <div className="list">
+              {data.upcoming.map((item) => (
+                <div className="row" key={item.conceptId}>
+                  <strong>{item.conceptName}</strong>
+                  <span className="badge">{formatDue(item.dueAt)}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </article>
+        <article className="card">
+          <h2>Recently studied</h2>
+          {data.recentlyStudied.length === 0 ? (
+            <p className="muted">No sessions yet.</p>
+          ) : (
+            data.recentlyStudied.map((session) => (
+              <Link className="row" key={session.id} to={`/study/${session.id}`}>
+                <span>{session.title}</span>
+                <span className="badge">{session.status.replace("_", " ")}</span>
+              </Link>
+            ))
+          )}
+        </article>
+        <article className="card">
+          <h2>Recall attempts</h2>
+          <p className="stat">{data.recallAttemptCount}</p>
+          <p className="muted">
+            {data.submittedRecallCount} submitted · {data.pendingRecallCount} pending
+          </p>
+        </article>
+      </div>
+      <article className="card" style={{ marginTop: 16 }}>
+        <h2>Mastery by concept</h2>
+        {data.masteryByConcept.length === 0 ? (
+          <p className="muted">Mastery appears after the first evaluated recall.</p>
+        ) : (
+          data.masteryByConcept.map((c) => (
+            <Link className="row" key={c.id} to={`/study/${c.studySessionId}`}>
+              <span>{c.name}</span>
+              <span className="badge good">{Math.round(c.mastery * 100)}%</span>
+            </Link>
+          ))
+        )}
+      </article>
+    </div>
+  );
+}
