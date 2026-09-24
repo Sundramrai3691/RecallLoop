@@ -52,7 +52,11 @@ export const api = {
   },
 
   getStudySession(id: string) {
-    return request<{ session: StudySession; concepts: Concept[] }>(`/api/study-sessions/${id}`);
+    return request<{
+      session: StudySession;
+      concepts: Concept[];
+      pendingRecalls: RecallAttempt[];
+    }>(`/api/study-sessions/${id}`);
   },
 
   completeStudySession(id: string) {

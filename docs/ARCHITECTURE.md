@@ -41,7 +41,7 @@ Later due reviews: dashboard/list-due calls `ensureDueRecallAttempts()`, which o
 
 Live path: temperature 0, JSON object response, Zod validation, **one retry** on invalid output, `evaluatorVersion` stored on every evaluation.
 
-Coverage is a function of knowledge-point statuses (`correct=1`, `partial=0.5`, `missing=0`), not a free-form 1–10 score.
+Coverage is a function of knowledge-point statuses (`correct=1`, `partial=0.5`, `missing=0`). The parser **overwrites** any LLM `overallCoverage` with `deriveCoverage()`. Live evaluations also remap results onto the concept’s required knowledge points.
 
 ## 6. Scheduler flow
 
@@ -69,7 +69,7 @@ Coverage bands → `again | hard | good | easy`, then interval policy:
 |--------|------|---------|
 | GET | `/api/health` | Liveness + mock flag |
 | POST | `/api/study-sessions` | Create session + concepts |
-| GET | `/api/study-sessions/:id` | Session + concepts |
+| GET | `/api/study-sessions/:id` | Session + concepts + pending recalls |
 | POST | `/api/study-sessions/:id/complete` | Complete + immediate recalls |
 | GET | `/api/recalls/due` | Pending due attempts |
 | GET | `/api/recalls/:id` | One attempt |

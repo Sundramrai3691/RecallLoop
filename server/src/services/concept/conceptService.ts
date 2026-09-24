@@ -1,6 +1,8 @@
 import { Types } from "mongoose";
 import { Concept } from "../../models/Concept.js";
+import { AppError } from "../../utils/errors.js";
 import { getEvaluator } from "../evaluator/index.js";
+import { extractedConceptSchema } from "../evaluator/schemas.js";
 
 export async function createConceptsForSession(input: {
   studySessionId: string;
@@ -13,8 +15,24 @@ export async function createConceptsForSession(input: {
     rawMaterial: input.rawMaterial,
   });
 
+  const validated = extracted.map((concept, index) => {
+    const parsed = extractedConceptSchema.safeParse(concept);
+    if (!parsed.success) {
+      throw new AppError(
+        `Extracted concept ${index + 1} failed validation and was not stored`,
+        502,
+        "INVALID_AI_JSON",
+      );
+    }
+    return parsed.data;
+  });
+
+  if (validated.length === 0) {
+    throw new AppError("No valid concepts were extracted", 502, "INVALID_AI_JSON");
+  }
+
   const docs = await Concept.insertMany(
-    extracted.map((c) => ({
+    validated.map((c) => ({
       studySessionId: new Types.ObjectId(input.studySessionId),
       name: c.name.trim(),
       description: c.description.trim(),

@@ -1,13 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { ApiError, type Concept, type StudySession } from "../types";
+import { ApiError, type Concept, type RecallAttempt, type StudySession } from "../types";
 
 export function StudySessionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [session, setSession] = useState<StudySession | null>(null);
   const [concepts, setConcepts] = useState<Concept[]>([]);
+  const [pendingRecalls, setPendingRecalls] = useState<RecallAttempt[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -18,6 +19,7 @@ export function StudySessionPage() {
       .then((data) => {
         setSession(data.session);
         setConcepts(data.concepts);
+        setPendingRecalls(data.pendingRecalls ?? []);
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Session not found"));
   }, [id]);
@@ -71,8 +73,18 @@ export function StudySessionPage() {
             {busy ? "Creating recall…" : "Mark complete and start recall"}
           </button>
         </div>
+      ) : pendingRecalls[0] ? (
+        <div className="actions">
+          <button
+            className="btn btn-primary"
+            type="button"
+            onClick={() => navigate(`/recall/${pendingRecalls[0].id}`)}
+          >
+            Continue pending recall
+          </button>
+        </div>
       ) : (
-        <p className="muted">Session completed. Immediate recall has been created.</p>
+        <p className="muted">Session completed. Immediate recalls for this session are submitted.</p>
       )}
     </div>
   );

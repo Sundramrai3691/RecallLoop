@@ -1,7 +1,5 @@
-import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api } from "../api/client";
-import { ApiError, type DashboardData } from "../types";
+import { useDashboard } from "../hooks/useDashboard";
 
 function formatDue(iso: string): string {
   const due = new Date(iso);
@@ -17,26 +15,7 @@ function formatDue(iso: string): string {
 }
 
 export function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [mock, setMock] = useState<boolean | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    Promise.all([api.dashboard(), api.health()])
-      .then(([dashboard, health]) => {
-        if (cancelled) return;
-        setData(dashboard);
-        setMock(health.mockLlm);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err instanceof ApiError ? err.message : "Could not load dashboard");
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { data, mock, error } = useDashboard();
 
   if (error) {
     return (

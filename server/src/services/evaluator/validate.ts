@@ -8,7 +8,12 @@ import {
 
 export function parseEvaluationJson(raw: string): ParsedEvaluation {
   const parsed = parseJsonObject(raw);
-  return recallEvaluationSchema.parse(parsed);
+  const data = recallEvaluationSchema.parse(parsed);
+  // Coverage is a function of knowledge-point statuses, never a free-form LLM score.
+  return {
+    ...data,
+    overallCoverage: deriveCoverage(data.knowledgePointResults),
+  };
 }
 
 export function parseConceptExtractionJson(raw: string): ParsedConceptExtraction {

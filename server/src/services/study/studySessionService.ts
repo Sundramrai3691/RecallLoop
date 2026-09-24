@@ -2,6 +2,7 @@ import { DEFAULT_USER_ID } from "../../config/env.js";
 import { StudySession, type SourceType } from "../../models/StudySession.js";
 import { AppError, notFound } from "../../utils/errors.js";
 import { createConceptsForSession, listConceptsForSession } from "../concept/conceptService.js";
+import { RecallAttempt } from "../../models/RecallAttempt.js";
 import { createImmediateRecalls } from "../recall/recallService.js";
 
 const SOURCE_TYPES: SourceType[] = ["manual", "notes", "url", "file"];
@@ -43,7 +44,11 @@ export async function getStudySession(id: string) {
   const session = await StudySession.findById(id);
   if (!session) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
   const concepts = await listConceptsForSession(id);
-  return { session, concepts };
+  const pendingRecalls = await RecallAttempt.find({
+    studySessionId: session._id,
+    submittedAt: { $exists: false },
+  }).sort({ createdAt: 1 });
+  return { session, concepts, pendingRecalls };
 }
 
 export async function completeStudySession(id: string) {

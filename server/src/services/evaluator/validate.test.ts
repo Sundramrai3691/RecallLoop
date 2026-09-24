@@ -23,6 +23,22 @@ describe("parseEvaluationJson", () => {
     expect(parsed.knowledgePointResults[0].status).toBe("correct");
   });
 
+  it("derives coverage from knowledge-point statuses instead of the LLM number", () => {
+    const parsed = parseEvaluationJson(`{
+      "knowledgePointResults": [
+        { "point": "A", "status": "correct", "evidence": "", "feedback": "ok" },
+        { "point": "B", "status": "missing", "evidence": "", "feedback": "no" }
+      ],
+      "missingConcepts": ["B"],
+      "mistakes": [],
+      "strengths": ["A"],
+      "overallCoverage": 0.99,
+      "feedback": "inflated",
+      "suggestedRecallType": "explain"
+    }`);
+    expect(parsed.overallCoverage).toBe(0.5);
+  });
+
   it("strips markdown fences", () => {
     const parsed = parseEvaluationJson(`\`\`\`json
       {"knowledgePointResults":[{"point":"A","status":"missing","evidence":"","feedback":"x"}],"missingConcepts":["A"],"mistakes":[],"strengths":[],"overallCoverage":0,"feedback":"none","suggestedRecallType":"explain"}

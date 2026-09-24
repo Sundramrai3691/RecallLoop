@@ -145,6 +145,15 @@ describe("study → recall vertical slice", () => {
     expect(await RecallAttempt.countDocuments()).toBe(first.body.recalls.length);
   });
 
+  it("returns pending recalls on GET study session after complete", async () => {
+    const created = await request(app).post("/api/study-sessions").send({ title: "Pending" }).expect(201);
+    const id = created.body.session.id;
+    await request(app).post(`/api/study-sessions/${id}/complete`).expect(200);
+    const loaded = await request(app).get(`/api/study-sessions/${id}`).expect(200);
+    expect(loaded.body.pendingRecalls.length).toBeGreaterThan(0);
+    expect(loaded.body.pendingRecalls[0].answer).toBeNull();
+  });
+
   it("exposes due recalls on the dashboard", async () => {
     const created = await request(app).post("/api/study-sessions").send({ title: "Dashboard topic" }).expect(201);
     await request(app).post(`/api/study-sessions/${created.body.session.id}/complete`).expect(200);

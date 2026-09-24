@@ -28,10 +28,11 @@ export async function getStudySessionHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts } = await getStudySession(req.params.id);
+    const { session, concepts, pendingRecalls } = await getStudySession(req.params.id);
     res.json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),
+      pendingRecalls: pendingRecalls.map(serializeAttempt),
     });
   } catch (err) {
     next(err);

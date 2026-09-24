@@ -1,70 +1,87 @@
 # Project Audit — RecallLoop
 
-Date: 2026-09-19
+Date: 2026-09-24
 
 ## Current architecture
 
-The repository was empty at audit time: a Git working tree with no application source, no `package.json`, no frontend, no backend, and no database layer.
+RecallLoop is already a two-package npm workspace. This audit inspected the live tree rather than assuming a blank project.
 
-Because there is no meaningful existing architecture, the MVP is implemented as a two-package npm workspace using the requested default stack:
-
-- **Frontend:** React, TypeScript, Vite, React Router, hand-written CSS
-- **Backend:** Node.js, Express, TypeScript
+- **Frontend:** React 19, TypeScript, Vite, React Router, hand-written CSS (`client/`)
+- **Backend:** Node.js, Express, TypeScript (`server/`)
 - **Database:** MongoDB + Mongoose
-- **AI:** Provider interface with mock fallback when no API key is present
-- **Package manager:** npm workspaces
+- **AI:** `LlmProvider` interface with OpenAI-compatible HTTP and mock fallback
+- **Package manager:** npm workspaces (root `package.json`)
+- **Tests:** Vitest + Supertest + mongodb-memory-server
+
+```
+Browser → Vite :5173 (/api proxy) → Express :3001 → MongoDB
+                                 ↘ evaluator (mock | LLM)
+                                 ↘ scheduler (deterministic IntervalScheduler)
+```
 
 ## Important existing files
 
-At audit time:
+| Path | Role |
+|------|------|
+| `package.json` | Workspace scripts: `dev`, `test`, `build` |
+| `.env.example` | `MONGODB_URI`, `PORT`, `LLM_*` |
+| `docker-compose.yml` | Local MongoDB 7 |
+| `server/src/index.ts` | API process entry |
+| `server/src/app.ts` | Express factory |
+| `server/src/routes/index.ts` | `/api` routers |
+| `client/src/main.tsx` | Frontend entry |
+| `client/src/App.tsx` | Routes for dashboard / study / recall |
+| `client/src/api/client.ts` | Central HTTP client |
+| `server/src/db/connect.ts` | Mongoose connection |
+| `server/src/config/env.ts` | Env + mock-LLM detection |
+| `server/src/models/*` | StudySession, Concept, RecallAttempt, ReviewState |
+| `server/src/services/{study,concept,recall,evaluator,scheduler,dashboard,question}` | Domain logic |
+| `client/src/pages/*` | UI flow |
+| `client/src/hooks/useDashboard.ts` | Dashboard fetch (no business logic) |
 
-| Path | Status |
-|------|--------|
-| `.git/` | Present (empty project history aside from git metadata) |
-| Application source | **Missing** |
-| `package.json` | **Missing** |
-| `.env` / `.env.example` | **Missing** |
-| Tests | **Missing** |
-| Docs | **Missing** |
+**Authentication:** none. Sessions default `userId` to `local-user`.
+
+**Existing routes:** `GET /api/health`, study-sessions CRUD-complete, recalls due/get/submit, concepts list/get, dashboard.
 
 ## Existing data flow
 
-None. No HTTP routes, API client, or persistence existed.
+1. `POST /api/study-sessions` creates a session and extracts concepts.
+2. `POST /api/study-sessions/:id/complete` marks complete and creates immediate explain recalls + `ReviewState(dueAt=now)`.
+3. `POST /api/recalls/:id/submit` evaluates, stores rubric, updates mastery, schedules next review.
+4. `GET /api/dashboard` lists due/upcoming/recent/mastery.
+
+Frontend pages call only `client/src/api/client.ts`.
 
 ## Reusable components
 
-Nothing to reuse. All MVP modules are new and intentionally small.
+Everything listed above was reused. Controllers stay thin. Evaluator and scheduler are already isolated. CSS/layout (`Layout`, `index.css`) was kept.
 
-## Missing components (needed for MVP)
+## Missing components (before this pass)
 
-1. Domain models: StudySession, Concept, RecallAttempt, ReviewState
-2. REST API for study, recall, concepts, dashboard
-3. Concept extraction (LLM + mock) with JSON validation
-4. Immediate recall generation on session complete
-5. Rubric evaluator (LLM + mock) with retry/validation
-6. Isolated deterministic scheduler (not FSRS)
-7. Dashboard UI and study/recall pages
-8. Central frontend API client
-9. Environment handling and `.env.example`
-10. Tests for completion, concepts, recall, evaluation parse, scheduler, duplicate submit
-11. Architecture / implementation documentation
+The vertical slice was already present. Gaps closed in this pass:
+
+1. Coverage could follow an LLM-supplied number instead of knowledge-point statuses.
+2. Extracted concepts were stored without a second validation gate.
+3. Completed study pages had no path back into pending recalls.
+4. Dashboard fetch lived in the page instead of a hook.
+5. Audit docs still described an empty repository.
+
+Not missing (intentionally out of MVP): auth, FSRS, queues, Redis, social, notifications.
 
 ## Implementation plan
 
-1. Scaffold `server/` and `client/` workspaces; add MongoDB via docker-compose for local runs.
-2. Implement Mongoose models matching the specified domain.
-3. Implement services (`study`, `concept`, `recall`, `evaluator`, `scheduler`) with thin Express controllers.
-4. Wire REST routes listed in the product spec.
-5. Build the page flow: `/dashboard` → `/study/new` → `/study/:id` → `/recall/:id` → `/recall/:id/result`.
-6. Default to mock LLM so the full loop works without keys.
-7. Add Vitest unit + integration tests (MongoDB memory server for API flow).
-8. Document architecture, runbook, and implementation report.
+1. Keep existing stack; do not rewrite.
+2. Derive coverage from rubric statuses; align LLM points to required points.
+3. Validate extracted concepts with Zod before insert.
+4. Return `pendingRecalls` on `GET /api/study-sessions/:id`.
+5. Wire study page “Continue pending recall”; extract `useDashboard`.
+6. Refresh docs; run Vitest.
 
 ## Risks / assumptions
 
-- **No auth:** `userId` is optional; MVP uses a local default user id (`local-user`).
-- **MongoDB required** to run the app (not for scheduler unit tests). `docker compose up -d` is the supported local database.
-- **MVP scheduler is not FSRS.** Interval policy is a placeholder behind `services/scheduler/`.
-- **Mock mode is keyword/heuristic based**, not pedagogically equivalent to a real evaluator.
-- **Immediate recall is synchronous** (no queues). Fine for MVP; not for high-volume extraction later.
-- **Single-user local product** until authentication is added.
+- **No auth:** single local user.
+- **MongoDB required** to run the app (memory server for tests).
+- **MVP scheduler is not FSRS.** Documented at `services/scheduler/`.
+- **Mock evaluation is lexical overlap**, not pedagogically equivalent to a live model.
+- **URL/file sources** are labels; material is still pasted text.
+- **Immediate extraction is synchronous.**

@@ -7,7 +7,33 @@ import {
   type ExtractedConcept,
   type Evaluator,
 } from "./types.js";
-import { parseConceptExtractionJson, parseEvaluationJson } from "./validate.js";
+import { deriveCoverage, parseConceptExtractionJson, parseEvaluationJson } from "./validate.js";
+import { tokenOverlap } from "../../lib/llm/json.js";
+import type { KnowledgePointResult } from "../../models/RecallAttempt.js";
+
+function alignKnowledgePoints(
+  required: string[],
+  results: KnowledgePointResult[],
+): KnowledgePointResult[] {
+  const unused = [...results];
+  return required.map((point) => {
+    const exact = unused.findIndex((r) => r.point.trim().toLowerCase() === point.trim().toLowerCase());
+    const idx =
+      exact >= 0
+        ? exact
+        : unused.findIndex((r) => tokenOverlap(r.point, point) >= 0.5);
+    if (idx < 0) {
+      return {
+        point,
+        status: "missing" as const,
+        evidence: "",
+        feedback: "This required knowledge point was not scored.",
+      };
+    }
+    const [match] = unused.splice(idx, 1);
+    return { ...match, point };
+  });
+}
 
 function evaluationPrompt(input: EvaluateAnswerInput): string {
   return `Evaluate the learner's free-recall answer against the required knowledge points.
@@ -77,7 +103,18 @@ export class LlmEvaluator implements Evaluator {
   }
 
   async evaluate(input: EvaluateAnswerInput) {
-    return this.completeWithRetry(evaluationPrompt(input), (text) => parseEvaluationJson(text));
+    const parsed = await this.completeWithRetry(evaluationPrompt(input), (text) =>
+      parseEvaluationJson(text),
+    );
+    const knowledgePointResults = alignKnowledgePoints(
+      input.requiredKnowledgePoints,
+      parsed.knowledgePointResults,
+    );
+    return {
+      ...parsed,
+      knowledgePointResults,
+      overallCoverage: deriveCoverage(knowledgePointResults),
+    };
   }
 
   private async completeWithRetry<T>(prompt: string, parse: (text: string) => T): Promise<T> {
