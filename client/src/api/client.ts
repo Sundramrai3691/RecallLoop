@@ -2,15 +2,22 @@ import {
   ApiError,
   type Concept,
   type DashboardData,
+  type Goal,
+  type LearnerSummary,
+  type PlanTask,
   type RecallAttempt,
   type ReviewState,
+  type Skill,
   type StudySession,
+  type User,
 } from "../types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const token = localStorage.getItem("recallloop_token");
   const res = await fetch(path, {
     headers: {
       "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers ?? {}),
     },
     ...options,
@@ -36,6 +43,62 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export const api = {
+  register(input: { name: string; email: string; password: string }) {
+    return request<{ user: User; token: string }>("/api/auth/register", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  login(input: { email: string; password: string }) {
+    return request<{ user: User; token: string }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  me() {
+    return request<{ user: User }>("/api/auth/me");
+  },
+
+  listGoals() {
+    return request<{ goals: Goal[] }>("/api/goals");
+  },
+
+  createGoal(input: { title: string; description: string; goalType: string; weeklyTimeBudgetMinutes: number }) {
+    return request<{ goal: Goal }>("/api/goals", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  listSkills(goalId: string) {
+    return request<{ skills: Skill[] }>(`/api/goals/${goalId}/skills`);
+  },
+
+  createSkill(goalId: string, input: { name: string; description: string; priority: number }) {
+    return request<{ skill: Skill }>(`/api/goals/${goalId}/skills`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
+  generatePlan(goalId: string) {
+    return request<{ tasks: PlanTask[] }>(`/api/goals/${goalId}/plan/generate`, {
+      method: "POST",
+    });
+  },
+
+  todayPlan() {
+    return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[] }>(
+      "/api/plan/today",
+    );
+  },
+
+  learnerSummary() {
+    return request<LearnerSummary>("/api/learner/summary");
+  },
+
   health() {
     return request<{ ok: boolean; mockLlm: boolean }>("/api/health");
   },

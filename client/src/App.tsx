@@ -5,17 +5,30 @@ import { NewStudyPage } from "./pages/NewStudyPage";
 import { RecallPage } from "./pages/RecallPage";
 import { RecallResultPage } from "./pages/RecallResultPage";
 import { StudySessionPage } from "./pages/StudySessionPage";
+import { LoginPage } from "./pages/LoginPage";
+import { RegisterPage } from "./pages/RegisterPage";
+import { GoalsPage } from "./pages/GoalsPage";
+import { PlanPage } from "./pages/PlanPage";
+import { LearnerPage } from "./pages/LearnerPage";
 
 export function App() {
   return (
     <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
       <Route element={<Layout />}>
         <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
         <Route path="/study/new" element={<NewStudyPage />} />
         <Route path="/study/:id" element={<StudySessionPage />} />
         <Route path="/recall/:attemptId" element={<RecallPage />} />
-        <Route path="/recall/:attemptId/result" element={<RecallResultPage />} />
+        <Route
+          path="/recall/:attemptId/result"
+          element={<RecallResultPage />}
+        />
+        <Route path="/goals" element={<GoalsPage />} />
+        <Route path="/plan" element={<PlanPage />} />
+        <Route path="/learner" element={<LearnerPage />} />
       </Route>
     </Routes>
   );

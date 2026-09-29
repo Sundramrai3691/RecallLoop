@@ -3,6 +3,65 @@ export type SessionStatus = "in_progress" | "completed";
 export type QuestionType = "explain" | "compare" | "application" | "coding";
 export type KnowledgePointStatus = "correct" | "partial" | "missing";
 
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Goal {
+  id: string;
+  title: string;
+  description: string;
+  goalType: string;
+  targetDate: string | null;
+  weeklyTimeBudgetMinutes: number;
+  status: string;
+}
+
+export interface Skill {
+  id: string;
+  goalId: string;
+  name: string;
+  description: string;
+  priority: number;
+  targetMastery: number;
+  currentMastery: number;
+}
+
+export interface PlanTask {
+  id: string;
+  taskType: "recall" | "learn" | "practice" | "remediation";
+  title: string;
+  description: string;
+  priority: number;
+  estimatedMinutes: number;
+  scheduledFor: string;
+  status: string;
+  source: string;
+  reason: string;
+  conceptId: string | null;
+  recallAttemptId: string | null;
+}
+
+export interface LearnerSummary {
+  totalConcepts: number;
+  averageMastery: number;
+  dueConcepts: number;
+  weakConceptCount: number;
+  weakSkills: Array<Skill & { skillId: string; status: string }>;
+  weakConcepts: Array<{
+    conceptId: string;
+    conceptName: string;
+    mastery: number;
+    status: string;
+    mistakeCount: number;
+  }>;
+  recentMistakes: Array<{ conceptId: string; mistakes: string[]; submittedAt?: string }>;
+}
+
 export interface StudySession {
   id: string;
   userId?: string;
