@@ -1,7 +1,8 @@
 import bcrypt from "bcryptjs";
-import { User } from "../../models/User.js";
 import { signToken } from "../../lib/auth.js";
 import { AppError, conflict } from "../../utils/errors.js";
+import { userRepository } from "../../repositories/postgresRepositories.js";
+import type { UserRecord } from "../../repositories/types.js";
 
 export interface RegisterInput {
   name: string;
@@ -14,9 +15,9 @@ export interface LoginInput {
   password: string;
 }
 
-export function serializeUser(user: InstanceType<typeof User>) {
+export function serializeUser(user: UserRecord) {
   return {
-    id: String(user._id),
+    id: user.id,
     name: user.name,
     email: user.email,
     createdAt: user.createdAt,
@@ -39,17 +40,17 @@ export async function registerUser(input: RegisterInput) {
     throw new AppError("Password must be at least 8 characters long", 400, "VALIDATION_ERROR");
   }
 
-  const existing = await User.findOne({ email });
+  const existing = await userRepository.findByEmail(email);
   if (existing) {
     throw conflict("A user with that email already exists", "EMAIL_TAKEN");
   }
 
   const passwordHash = await bcrypt.hash(password, 12);
-  const user = await User.create({ name, email, passwordHash });
+  const user = await userRepository.create({ name, email, passwordHash });
 
   return {
     user: serializeUser(user),
-    token: signToken({ id: String(user._id), email: user.email, name: user.name }),
+    token: signToken({ id: user.id, email: user.email, name: user.name }),
   };
 }
 
@@ -61,7 +62,7 @@ export async function loginUser(input: LoginInput) {
     throw new AppError("Email and password are required", 400, "VALIDATION_ERROR");
   }
 
-  const user = await User.findOne({ email });
+  const user = await userRepository.findByEmail(email);
   if (!user) {
     throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
@@ -73,12 +74,12 @@ export async function loginUser(input: LoginInput) {
 
   return {
     user: serializeUser(user),
-    token: signToken({ id: String(user._id), email: user.email, name: user.name }),
+    token: signToken({ id: user.id, email: user.email, name: user.name }),
   };
 }
 
 export async function getCurrentUser(userId: string) {
-  const user = await User.findById(userId);
+  const user = await userRepository.findById(userId);
   if (!user) {
     throw new AppError("User not found", 404, "USER_NOT_FOUND");
   }

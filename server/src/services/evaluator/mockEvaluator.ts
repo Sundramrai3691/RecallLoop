@@ -1,5 +1,5 @@
 import { tokenOverlap } from "../../lib/llm/json.js";
-import type { KnowledgePointResult, QuestionType } from "../../models/RecallAttempt.js";
+import type { KnowledgePointResult, QuestionType } from "../../domain/recallTypes.js";
 import { deriveCoverage } from "./validate.js";
 import {
   MOCK_EVALUATOR_VERSION,

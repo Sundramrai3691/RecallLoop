@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { QUESTION_TYPES } from "../../models/RecallAttempt.js";
+import { QUESTION_TYPES } from "../../domain/recallTypes.js";
 
 export const knowledgePointResultSchema = z.object({
   point: z.string().min(1),

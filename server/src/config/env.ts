@@ -8,7 +8,6 @@ dotenv.config();
 
 export const env = {
   port: Number(process.env.PORT ?? 3001),
-  mongoUri: process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/recallloop",
   databaseUrl: process.env.DATABASE_URL ?? "postgres://recallloop:recallloop@127.0.0.1:5432/recallloop",
   clientOrigin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
   llmProvider: (process.env.LLM_PROVIDER ?? "mock").toLowerCase(),
@@ -18,8 +17,6 @@ export const env = {
   jwtSecret: process.env.JWT_SECRET ?? "recallloop-dev-secret-change-me",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
 };
-
-export const DEFAULT_USER_ID = "local-user";
 
 export function isMockLlm(): boolean {
   if (env.llmProvider === "mock") return true;

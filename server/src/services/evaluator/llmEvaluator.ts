@@ -9,7 +9,7 @@ import {
 } from "./types.js";
 import { deriveCoverage, parseConceptExtractionJson, parseEvaluationJson } from "./validate.js";
 import { tokenOverlap } from "../../lib/llm/json.js";
-import type { KnowledgePointResult } from "../../models/RecallAttempt.js";
+import type { KnowledgePointResult } from "../../domain/recallTypes.js";
 
 function alignKnowledgePoints(
   required: string[],

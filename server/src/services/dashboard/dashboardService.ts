@@ -1,101 +1,14 @@
-import { Concept } from "../../models/Concept.js";
-import { RecallAttempt } from "../../models/RecallAttempt.js";
-import { ReviewState } from "../../models/ReviewState.js";
-import { StudySession } from "../../models/StudySession.js";
-import { ensureDueRecallAttempts } from "../recall/recallService.js";
+import { query } from "../../db/postgres.js";
 
-function startOfToday(now = new Date()): Date {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  return d;
-}
-
-function endOfToday(now = new Date()): Date {
-  const d = new Date(now);
-  d.setHours(23, 59, 59, 999);
-  return d;
-}
+function startOfToday(now = new Date()) { const date = new Date(now); date.setHours(0,0,0,0); return date; }
+function endOfToday(now = new Date()) { const date = new Date(now); date.setHours(23,59,59,999); return date; }
 
 export async function getDashboard(userId: string) {
-  await ensureDueRecallAttempts(userId);
-  const now = new Date();
-  const todayStart = startOfToday(now);
-  const todayEnd = endOfToday(now);
-
-  const pendingAttempts = await RecallAttempt.find({ userId, submittedAt: { $exists: false } }).sort({
-    createdAt: 1,
-  });
-  const pendingConceptIds = pendingAttempts.map((a) => a.conceptId);
-  const pendingConcepts = await Concept.find({ _id: { $in: pendingConceptIds }, userId });
-  const conceptById = new Map(pendingConcepts.map((c) => [String(c._id), c]));
-  const reviews = await ReviewState.find({ userId, conceptId: { $in: pendingConceptIds } });
-  const reviewByConcept = new Map(reviews.map((r) => [String(r.conceptId), r]));
-
-  const todayDue = pendingAttempts.map((attempt) => {
-    const concept = conceptById.get(String(attempt.conceptId));
-    const review = reviewByConcept.get(String(attempt.conceptId));
-    return {
-      recallId: String(attempt._id),
-      conceptId: String(attempt.conceptId),
-      conceptName: concept?.name ?? "Unknown concept",
-      question: attempt.question,
-      dueAt: review?.dueAt ?? now,
-    };
-  });
-
-  const upcomingReviews = await ReviewState.find({ userId,
-    dueAt: { $gt: todayEnd },
-  })
-    .sort({ dueAt: 1 })
-    .limit(20);
-
-  const upcomingConcepts = await Concept.find({ userId,
-    _id: { $in: upcomingReviews.map((r) => r.conceptId) },
-  });
-  const upcomingById = new Map(upcomingConcepts.map((c) => [String(c._id), c]));
-  const upcoming = upcomingReviews.map((review) => ({
-    conceptId: String(review.conceptId),
-    conceptName: upcomingById.get(String(review.conceptId))?.name ?? "Unknown concept",
-    dueAt: review.dueAt,
-    intervalDays: review.intervalDays,
-  }));
-
-  const recentSessions = await StudySession.find({ userId })
-    .sort({ updatedAt: -1 })
-    .limit(8)
-    .lean();
-
-  const mastery = await Concept.find({ userId })
-    .sort({ mastery: -1, updatedAt: -1 })
-    .limit(40)
-    .select("name mastery difficulty studySessionId");
-
-  const recallAttemptCount = await RecallAttempt.countDocuments({ userId });
-  const submittedCount = await RecallAttempt.countDocuments({ userId,
-    submittedAt: { $exists: true },
-  });
-
-  return {
-    generatedAt: now.toISOString(),
-    todayDue,
-    upcoming,
-    recentlyStudied: recentSessions.map((s) => ({
-      id: String(s._id),
-      title: s.title,
-      status: s.status,
-      startedAt: s.startedAt,
-      completedAt: s.completedAt,
-    })),
-    masteryByConcept: mastery.map((c) => ({
-      id: String(c._id),
-      name: c.name,
-      mastery: c.mastery,
-      difficulty: c.difficulty,
-      studySessionId: String(c.studySessionId),
-    })),
-    recallAttemptCount,
-    submittedRecallCount: submittedCount,
-    pendingRecallCount: todayDue.length,
-    todayWindow: { start: todayStart, end: todayEnd },
-  };
+  const now = new Date(); const todayStart = startOfToday(now); const todayEnd = endOfToday(now);
+  const today = await query<any>(`SELECT r.id AS "recallId", r.concept_id AS "conceptId", c.name AS "conceptName", r.question, rs.due_at AS "dueAt" FROM recall_attempts r JOIN personal_concepts c ON c.id=r.concept_id JOIN review_states rs ON rs.user_id=r.user_id AND rs.concept_id=r.concept_id WHERE r.user_id=$1 AND r.submitted_at IS NULL AND rs.due_at <= $2 ORDER BY rs.due_at`, [userId, todayEnd]);
+  const upcoming = await query<any>(`SELECT rs.concept_id AS "conceptId", c.name AS "conceptName", rs.due_at AS "dueAt", rs.interval_days AS "intervalDays" FROM review_states rs JOIN personal_concepts c ON c.id=rs.concept_id WHERE rs.user_id=$1 AND rs.due_at > $2 ORDER BY rs.due_at LIMIT 20`, [userId,todayEnd]);
+  const sessions = await query<any>(`SELECT id,title,status,started_at AS "startedAt",completed_at AS "completedAt" FROM study_sessions WHERE user_id=$1 ORDER BY updated_at DESC LIMIT 8`, [userId]);
+  const mastery = await query<any>(`SELECT id,name,mastery,difficulty,study_session_id AS "studySessionId" FROM personal_concepts WHERE user_id=$1 ORDER BY mastery DESC,updated_at DESC LIMIT 40`, [userId]);
+  const counts = await query<any>(`SELECT count(*)::int AS total, count(*) FILTER (WHERE submitted_at IS NOT NULL)::int AS submitted FROM recall_attempts WHERE user_id=$1`, [userId]);
+  return { generatedAt: now.toISOString(), todayDue: today.rows, upcoming: upcoming.rows, recentlyStudied: sessions.rows, masteryByConcept: mastery.rows.map((row) => ({ ...row, mastery: Number(row.mastery), studySessionId: String(row.studySessionId) })), recallAttemptCount: counts.rows[0].total, submittedRecallCount: counts.rows[0].submitted, pendingRecallCount: today.rows.length, todayWindow: { start: todayStart, end: todayEnd } };
 }

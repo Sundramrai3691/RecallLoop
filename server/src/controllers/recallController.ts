@@ -39,7 +39,7 @@ export async function getRecallHandler(
     res.json({
       recall: serializeAttempt(attempt),
       concept: {
-        id: String(concept._id),
+        id: String(concept.id),
         name: concept.name,
         studySessionId: String(concept.studySessionId),
         mastery: concept.mastery,
@@ -60,7 +60,7 @@ export async function submitRecallHandler(
     const { attempt, concept, review } = await submitRecall(req.params.id, {
       answer: req.body?.answer,
       confidence: req.body?.confidence,
-      userId: req.user?.id,
+      userId: req.user!.id,
     });
     res.json({
       recall: serializeAttempt(attempt),

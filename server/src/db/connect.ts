@@ -1,11 +1,9 @@
-import mongoose from "mongoose";
-import { env } from "../config/env.js";
+import { postgres } from "./postgres.js";
 
-export async function connectDatabase(uri = env.mongoUri): Promise<void> {
-  mongoose.set("strictQuery", true);
-  await mongoose.connect(uri);
+export async function connectDatabase(): Promise<void> {
+  await postgres.query("SELECT 1");
 }
 
 export async function disconnectDatabase(): Promise<void> {
-  await mongoose.disconnect();
+  await postgres.end();
 }

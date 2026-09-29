@@ -1,4 +1,4 @@
-import type { QuestionType, RecallEvaluation } from "../../models/RecallAttempt.js";
+import type { QuestionType, RecallEvaluation } from "../../domain/recallTypes.js";
 
 export const MOCK_EVALUATOR_VERSION = "recallloop-mock-eval-1.0.0";
 export const LLM_EVALUATOR_VERSION = "recallloop-llm-eval-1.0.0";

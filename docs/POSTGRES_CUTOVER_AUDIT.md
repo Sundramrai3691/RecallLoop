@@ -13,32 +13,32 @@ This is a migration gap, not an intended dual-write design. The final cutover mu
 
 ## Mongo dependencies found
 
-| Dependency | Current use | Replacement |
-|---|---|---|
-| `server/src/db/connect.ts` | `mongoose.connect`, disconnect, strict query setup | `server/src/db/postgres.ts` pool and explicit shutdown |
-| `server/src/models/User.ts` | Mongoose User model | `UserRepository` over `users` |
-| `server/src/models/Goal.ts` | Goal documents and ObjectId goal relationships | `GoalRepository` over `goals` |
-| `server/src/models/Skill.ts` | Learner skills and goal ObjectIds | `SkillRepository` over `learner_skills` |
-| `server/src/models/Plan.ts` | Plan upsert and lookup | `PlanRepository` over `plans` |
-| `server/src/models/PlanTask.ts` | Task creation, status updates, due lookup | `PlanTaskRepository` over `plan_tasks` |
-| `server/src/models/StudySession.ts` | Study lifecycle | `StudySessionRepository` over `study_sessions` |
-| `server/src/models/Concept.ts` | Personal concepts and mastery | `ConceptRepository` over `personal_concepts` |
-| `server/src/models/RecallAttempt.ts` | Attempts and embedded evaluation | `RecallAttemptRepository` plus `recall_evaluations` and result rows |
-| `server/src/models/ReviewState.ts` | Scheduler state | `ReviewStateRepository` over `review_states` |
-| `server/src/models/LearningEvent.ts` | Append-only history | `LearningEventRepository` over `learning_events` |
-| `server/src/services/auth/authService.ts` | `User.findOne`, `findById`, `create` | User repository |
-| `server/src/services/goal/goalService.ts` | Goal/skill/plan/task queries and writes | Goal, skill, plan, task repositories |
-| `server/src/services/study/studySessionService.ts` | Session reads/writes and recall queries | Study session, concept, recall, review repositories in transactions |
-| `server/src/services/concept/conceptService.ts` | Concept insert/list/mastery updates | Concept repository |
-| `server/src/services/recall/recallService.ts` | Attempt/review/concept queries and updates | Recall, concept, review, event repositories |
-| `server/src/services/learner/learnerModelService.ts` | Aggregation over concepts, attempts, reviews, skills | Learner query repository/read model |
-| `server/src/services/dashboard/dashboardService.ts` | Dashboard aggregation and due creation | Dashboard read repository plus recall/review repositories |
-| `server/src/services/events/learningEventService.ts` | `LearningEvent.create` | Learning event repository |
-| `server/tests/flow.test.ts` | `mongodb-memory-server`, Mongoose cleanup | PostgreSQL integration database |
-| `server/tests/auth-goal-plan.test.ts` | `mongodb-memory-server`, Mongoose cleanup | PostgreSQL integration database |
-| `server/package.json` | `mongoose`, `mongodb-memory-server` | Remove after cutover; retain `pg` |
-| `docker-compose.yml` | `mongo` service and volume | Remove Mongo; retain PostgreSQL |
-| `.env.example` and `server/src/config/env.ts` | `MONGODB_URI` | Remove after `DATABASE_URL` cutover |
+| Dependency                                           | Current use                                          | Replacement                                                         |
+| ---------------------------------------------------- | ---------------------------------------------------- | ------------------------------------------------------------------- |
+| `server/src/db/connect.ts`                           | `mongoose.connect`, disconnect, strict query setup   | `server/src/db/postgres.ts` pool and explicit shutdown              |
+| `server/src/models/User.ts`                          | Mongoose User model                                  | `UserRepository` over `users`                                       |
+| `server/src/models/Goal.ts`                          | Goal documents and ObjectId goal relationships       | `GoalRepository` over `goals`                                       |
+| `server/src/models/Skill.ts`                         | Learner skills and goal ObjectIds                    | `SkillRepository` over `learner_skills`                             |
+| `server/src/models/Plan.ts`                          | Plan upsert and lookup                               | `PlanRepository` over `plans`                                       |
+| `server/src/models/PlanTask.ts`                      | Task creation, status updates, due lookup            | `PlanTaskRepository` over `plan_tasks`                              |
+| `server/src/models/StudySession.ts`                  | Study lifecycle                                      | `StudySessionRepository` over `study_sessions`                      |
+| `server/src/models/Concept.ts`                       | Personal concepts and mastery                        | `ConceptRepository` over `personal_concepts`                        |
+| `server/src/models/RecallAttempt.ts`                 | Attempts and embedded evaluation                     | `RecallAttemptRepository` plus `recall_evaluations` and result rows |
+| `server/src/models/ReviewState.ts`                   | Scheduler state                                      | `ReviewStateRepository` over `review_states`                        |
+| `server/src/models/LearningEvent.ts`                 | Append-only history                                  | `LearningEventRepository` over `learning_events`                    |
+| `server/src/services/auth/authService.ts`            | `User.findOne`, `findById`, `create`                 | User repository                                                     |
+| `server/src/services/goal/goalService.ts`            | Goal/skill/plan/task queries and writes              | Goal, skill, plan, task repositories                                |
+| `server/src/services/study/studySessionService.ts`   | Session reads/writes and recall queries              | Study session, concept, recall, review repositories in transactions |
+| `server/src/services/concept/conceptService.ts`      | Concept insert/list/mastery updates                  | Concept repository                                                  |
+| `server/src/services/recall/recallService.ts`        | Attempt/review/concept queries and updates           | Recall, concept, review, event repositories                         |
+| `server/src/services/learner/learnerModelService.ts` | Aggregation over concepts, attempts, reviews, skills | Learner query repository/read model                                 |
+| `server/src/services/dashboard/dashboardService.ts`  | Dashboard aggregation and due creation               | Dashboard read repository plus recall/review repositories           |
+| `server/src/services/events/learningEventService.ts` | `LearningEvent.create`                               | Learning event repository                                           |
+| `server/tests/flow.test.ts`                          | `mongodb-memory-server`, Mongoose cleanup            | PostgreSQL integration database                                     |
+| `server/tests/auth-goal-plan.test.ts`                | `mongodb-memory-server`, Mongoose cleanup            | PostgreSQL integration database                                     |
+| `server/package.json`                                | `mongoose`, `mongodb-memory-server`                  | Remove after cutover; retain `pg`                                   |
+| `docker-compose.yml`                                 | `mongo` service and volume                           | Remove Mongo; retain PostgreSQL                                     |
+| `.env.example` and `server/src/config/env.ts`        | `MONGODB_URI`                                        | Remove after `DATABASE_URL` cutover                                 |
 
 ## Mongo operation inventory
 

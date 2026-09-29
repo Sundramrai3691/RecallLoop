@@ -1,5 +1,4 @@
 import type { NextFunction, Request, Response } from "express";
-import { Error as MongooseError } from "mongoose";
 import { AppError } from "../utils/errors.js";
 
 export function errorHandler(
@@ -13,20 +12,14 @@ export function errorHandler(
     return;
   }
 
-  if (err instanceof MongooseError.CastError) {
-    res.status(404).json({ error: "Invalid id", code: "NOT_FOUND" });
-    return;
-  }
-
   const message = err instanceof Error ? err.message : "Unexpected error";
-  const isMongo =
-    typeof message === "string" &&
-    /mongo|econnrefused|failed to connect/i.test(message);
+  const databaseError = err as { code?: string };
+  const isDatabaseFailure = databaseError.code === "ECONNREFUSED" || ["22P02", "23503", "23505"].includes(databaseError.code ?? "");
 
-  res.status(isMongo ? 503 : 500).json({
-    error: isMongo
-      ? "Database is unavailable. Start MongoDB (docker compose up -d) and retry."
+  res.status(isDatabaseFailure ? 503 : 500).json({
+    error: isDatabaseFailure
+      ? "Database is unavailable. Start PostgreSQL and retry."
       : "Internal server error",
-    code: isMongo ? "DATABASE_FAILURE" : "INTERNAL_ERROR",
+    code: isDatabaseFailure ? "DATABASE_FAILURE" : "INTERNAL_ERROR",
   });
 }

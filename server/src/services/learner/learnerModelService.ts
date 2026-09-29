@@ -1,107 +1,13 @@
-import { Concept } from "../../models/Concept.js";
-import { RecallAttempt } from "../../models/RecallAttempt.js";
-import { ReviewState } from "../../models/ReviewState.js";
-import { Skill } from "../../models/Skill.js";
+import { query } from "../../db/postgres.js";
 
 export async function getConceptState(userId: string, conceptId: string) {
-  const concept = await Concept.findOne({ _id: conceptId, userId });
-  if (!concept) return null;
-
-  const review = await ReviewState.findOne({ conceptId: concept._id });
-  const recalls = await RecallAttempt.find({ conceptId: concept._id, userId }).sort({ createdAt: -1 }).limit(20);
-  const successRate = recalls.length
-    ? recalls.filter((r) => r.evaluation && r.evaluation.overallCoverage >= 0.75).length / recalls.length
-    : 0;
-  const mistakeCount = recalls.reduce((count, r) => count + (r.evaluation?.mistakes?.length ?? 0), 0);
-
-  return {
-    conceptId: String(concept._id),
-    conceptName: concept.name,
-    mastery: concept.mastery,
-    confidence: recalls[0]?.confidence ?? 0,
-    recallSuccessRate: successRate,
-    mistakeCount,
-    lastRecallAt: recalls[0]?.submittedAt ?? null,
-    nextReviewAt: review?.dueAt ?? null,
-    status:
-      concept.mastery < 0.35
-        ? "needs_review"
-        : concept.mastery < 0.6
-          ? "weak"
-          : concept.mastery < 0.8
-            ? "learning"
-            : "stable",
-  };
+  const result = await query<any>(`SELECT c.id,c.name,c.mastery,rs.due_at AS "nextReviewAt", max(r.submitted_at) AS "lastRecallAt", COALESCE(avg(r.confidence)/10,0) AS confidence, COALESCE(avg(e.overall_coverage),0) AS "recallSuccessRate", COALESCE(sum(array_length(e.mistakes,1)),0)::int AS "mistakeCount" FROM personal_concepts c LEFT JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id LEFT JOIN recall_evaluations e ON e.recall_attempt_id=r.id LEFT JOIN review_states rs ON rs.concept_id=c.id AND rs.user_id=c.user_id WHERE c.id=$1 AND c.user_id=$2 GROUP BY c.id,rs.due_at`, [conceptId,userId]);
+  const row = result.rows[0]; if (!row) return null; const mastery = Number(row.mastery);
+  return { conceptId: row.id, conceptName: row.name, mastery, confidence: Number(row.confidence), recallSuccessRate: Number(row.recallSuccessRate), mistakeCount: row.mistakeCount, lastRecallAt: row.lastRecallAt, nextReviewAt: row.nextReviewAt, status: mastery < 0.35 ? "needs_review" : mastery < 0.6 ? "weak" : mastery < 0.8 ? "learning" : "stable" };
 }
-
-export async function getWeakConcepts(userId: string, limit = 10) {
-  const concepts = await Concept.find({ userId }).sort({ mastery: 1, updatedAt: -1 }).limit(limit * 2);
-  const weak = [] as any[];
-
-  for (const concept of concepts) {
-    const state = await getConceptState(userId, String(concept._id));
-    if (state && (state.mastery < 0.7 || state.status === "weak" || state.status === "needs_review")) {
-      weak.push(state);
-    }
-    if (weak.length >= limit) break;
-  }
-
-  return weak;
-}
-
-export async function getWeakSkills(userId: string) {
-  const skills = await Skill.find({ userId }).sort({ currentMastery: 1, priority: -1 });
-  return skills.map((skill) => ({
-    skillId: String(skill._id),
-    name: skill.name,
-    priority: skill.priority,
-    targetMastery: skill.targetMastery,
-    currentMastery: skill.currentMastery,
-    status: skill.currentMastery < 0.6 ? "weak" : skill.currentMastery < 0.8 ? "learning" : "stable",
-  }));
-}
-
+export async function getWeakConcepts(userId: string, limit = 10) { const result = await query<any>(`SELECT id FROM personal_concepts WHERE user_id=$1 AND mastery < 0.7 ORDER BY mastery,updated_at DESC LIMIT $2`, [userId,limit]); const rows=[]; for (const row of result.rows) { const state=await getConceptState(userId,row.id); if(state) rows.push(state); } return rows; }
+export async function getWeakSkills(userId: string) { const result=await query<any>(`SELECT id AS "skillId",name,priority,target_mastery AS "targetMastery",current_mastery AS "currentMastery" FROM learner_skills WHERE user_id=$1 ORDER BY current_mastery,priority DESC`, [userId]); return result.rows.map((row) => ({ ...row, targetMastery:Number(row.targetMastery), currentMastery:Number(row.currentMastery), status:Number(row.currentMastery)<0.6?"weak":Number(row.currentMastery)<0.8?"learning":"stable" })); }
 export async function getLearnerSummary(userId: string) {
-  const concepts = await Concept.find({ userId });
-  const weakConcepts = await getWeakConcepts(userId, 10);
-  const weakSkills = await getWeakSkills(userId);
-  const dueReviews = await ReviewState.find({ dueAt: { $lte: new Date() } }).populate("conceptId");
-  const dueCount = dueReviews.filter((review) => {
-    const concept = review.conceptId as any;
-    return concept && concept.userId === userId;
-  }).length;
-
-  const masteryValues = concepts.map((concept) => concept.mastery || 0);
-  const averageMastery = masteryValues.length
-    ? masteryValues.reduce((sum, value) => sum + value, 0) / masteryValues.length
-    : 0;
-
-  const recentMistakes = await RecallAttempt.find({ userId, "evaluation.mistakes.0": { $exists: true } })
-    .sort({ submittedAt: -1 })
-    .limit(10)
-    .lean();
-
-  return {
-    totalConcepts: concepts.length,
-    averageMastery,
-    dueConcepts: dueCount,
-    weakConceptCount: weakConcepts.length,
-    weakSkills,
-    weakConcepts,
-    recentMistakes: recentMistakes.map((attempt) => ({
-      conceptId: String(attempt.conceptId),
-      mistakes: attempt.evaluation?.mistakes ?? [],
-      submittedAt: attempt.submittedAt,
-    })),
-    derivedFrom: [
-      "concept mastery",
-      "recall coverage",
-      "review due dates",
-      "confidence and mistake history",
-    ],
-    heuristics: [
-      "weak concepts are those below 0.7 mastery or marked weak by review state",
-      "status is derived with deterministic thresholds",
-    ],
-  };
+  const concepts=await query<any>(`SELECT mastery FROM personal_concepts WHERE user_id=$1`,[userId]); const weakConcepts=await getWeakConcepts(userId,10); const weakSkills=await getWeakSkills(userId); const due=await query(`SELECT count(*)::int AS count FROM review_states WHERE user_id=$1 AND due_at <= now()`,[userId]); const mistakes=await query<any>(`SELECT r.concept_id AS "conceptId",e.mistakes,r.submitted_at AS "submittedAt" FROM recall_attempts r JOIN recall_evaluations e ON e.recall_attempt_id=r.id WHERE r.user_id=$1 AND cardinality(e.mistakes)>0 ORDER BY r.submitted_at DESC LIMIT 10`,[userId]); const average=concepts.rows.length?concepts.rows.reduce((sum,row)=>sum+Number(row.mastery),0)/concepts.rows.length:0;
+  return { totalConcepts:concepts.rows.length, averageMastery:average, dueConcepts:due.rows[0].count, weakConceptCount:weakConcepts.length, weakSkills, weakConcepts, recentMistakes:mistakes.rows, derivedFrom:["concept mastery","recall coverage","review due dates","confidence and mistake history"], heuristics:["weak concepts are below 0.7 mastery","status uses deterministic thresholds"] };
 }

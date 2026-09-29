@@ -1,235 +1,44 @@
-import { Types } from "mongoose";
-import { Concept, type ConceptDoc } from "../../models/Concept.js";
-import { RecallAttempt } from "../../models/RecallAttempt.js";
-import { ReviewState } from "../../models/ReviewState.js";
-import type { QuestionType } from "../../models/RecallAttempt.js";
 import { AppError, conflict, notFound } from "../../utils/errors.js";
-import { updateConceptMastery } from "../concept/conceptService.js";
 import { getEvaluator } from "../evaluator/index.js";
-import { buildRecallQuestion } from "../question/questionService.js";
 import { getScheduler, type ReviewStateSnapshot } from "../scheduler/index.js";
+import { getAttempt, getConcept, getReview, submitAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import { recordLearningEvent } from "../events/learningEventService.js";
+import type { QuestionType } from "../../domain/recallTypes.js";
 
-type ConceptLike = Pick<
-  ConceptDoc,
-  "name" | "description" | "requiredKnowledgePoints" | "difficulty"
-> & { _id: Types.ObjectId };
-
-export async function createImmediateRecalls(input: {
-  studySessionId: string;
-  concepts: ConceptLike[];
-  userId?: string;
-}) {
-  const created = [];
-  const now = new Date();
-
-  for (const concept of input.concepts) {
-    const existingPending = await RecallAttempt.findOne({
-      conceptId: concept._id,
-      userId: input.userId,
-      submittedAt: { $exists: false },
-    });
-    if (existingPending) {
-      created.push(existingPending);
-      continue;
-    }
-
-    const attempt = await RecallAttempt.create({
-      userId: input.userId ?? "local-user",
-      conceptId: concept._id,
-      studySessionId: new Types.ObjectId(input.studySessionId),
-      questionType: "explain",
-      question: buildRecallQuestion(concept.name, "explain"),
-    });
-    created.push(attempt);
-
-    const review = await ReviewState.findOne({ conceptId: concept._id, userId: input.userId });
-    if (!review) {
-      await ReviewState.create({
-        userId: input.userId ?? "local-user",
-        conceptId: concept._id,
-        state: "new",
-        dueAt: now,
-        intervalDays: 0,
-        stability: 0,
-        difficulty: (concept.difficulty ?? 3) / 5,
-        consecutiveSuccesses: 0,
-      });
-    } else if (review.dueAt > now) {
-      review.dueAt = now;
-      await review.save();
-    }
-  }
-
-  return created;
-}
-
-export async function getRecall(id: string, userId?: string) {
-  const attempt = await RecallAttempt.findOne({ _id: id, ...(userId ? { userId } : {}) });
+export async function getRecall(id: string, userId: string) {
+  const attempt = await getAttempt(id, userId);
   if (!attempt) throw notFound("Recall attempt not found", "RECALL_NOT_FOUND");
-  const concept = await Concept.findOne({ _id: attempt.conceptId, ...(userId ? { userId } : {}) });
+  const concept = await getConcept(attempt.conceptId, userId);
   if (!concept) throw notFound("Concept missing for this recall", "MISSING_CONCEPT");
   return { attempt, concept };
 }
 
-export async function submitRecall(
-  id: string,
-  input: { answer: string; confidence: number; userId?: string },
-) {
+export async function submitRecall(id: string, input: { answer: string; confidence: number; userId: string }) {
   const answer = input.answer?.trim();
-  if (!answer) {
-    throw new AppError("Answer cannot be empty", 400, "EMPTY_ANSWER");
-  }
+  if (!answer) throw new AppError("Answer cannot be empty", 400, "EMPTY_ANSWER");
   const confidence = Number(input.confidence);
-  if (!Number.isFinite(confidence) || confidence < 1 || confidence > 10) {
-    throw new AppError("Confidence must be a number from 1 to 10", 400, "VALIDATION_ERROR");
-  }
-
-  const attempt = await RecallAttempt.findById(id);
-  if (!attempt) throw notFound("Recall attempt not found", "RECALL_NOT_FOUND");
-  if (input.userId && attempt.userId && input.userId !== attempt.userId) {
-    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
-  }
-  if (attempt.submittedAt) {
-    throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
-  }
-
-  const concept = await Concept.findById(attempt.conceptId);
-  if (!concept) throw notFound("Concept missing for this recall", "MISSING_CONCEPT");
-  if (input.userId && concept.userId && input.userId !== concept.userId) {
-    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
-  }
-  if (!concept.requiredKnowledgePoints?.length) {
-    throw new AppError("Concept has no knowledge points to evaluate", 400, "MISSING_CONCEPT");
-  }
-
+  if (!Number.isFinite(confidence) || confidence < 1 || confidence > 10) throw new AppError("Confidence must be a number from 1 to 10", 400, "VALIDATION_ERROR");
+  const { attempt, concept } = await getRecall(id, input.userId);
+  if (attempt.submittedAt) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   const evaluator = getEvaluator();
-  const evaluationBody = await evaluator.evaluate({
-    conceptName: concept.name,
-    conceptDescription: concept.description,
-    requiredKnowledgePoints: concept.requiredKnowledgePoints,
-    answer,
-    questionType: attempt.questionType,
-  });
-
-  const evaluation = {
-    ...evaluationBody,
-    evaluatorVersion: evaluator.version,
-  };
-
-  attempt.userId = input.userId ?? attempt.userId ?? concept.userId ?? "local-user";
-  attempt.answer = answer;
-  attempt.confidence = confidence;
-  attempt.evaluation = evaluation;
-  attempt.submittedAt = new Date();
-  await attempt.save();
-
-  await recordLearningEvent({
-    userId: input.userId ?? attempt.userId,
-    type: "RECALL_SUBMITTED",
-    entityType: "RecallAttempt",
-    entityId: attempt._id,
-    payload: { confidence, overallCoverage: evaluation.overallCoverage },
-  });
-
-  const updatedConcept =
-    (await updateConceptMastery(String(concept._id), evaluation.overallCoverage, input.userId)) ?? concept;
-
-  const previousDoc = await ReviewState.findOne({ conceptId: concept._id, userId: input.userId });
-  const previous: ReviewStateSnapshot | null = previousDoc
-    ? {
-        conceptId: String(previousDoc.conceptId),
-        state: previousDoc.state,
-        dueAt: previousDoc.dueAt,
-        intervalDays: previousDoc.intervalDays,
-        stability: previousDoc.stability,
-        difficulty: previousDoc.difficulty,
-        lastRecallAt: previousDoc.lastRecallAt,
-        lastOutcome: previousDoc.lastOutcome,
-        consecutiveSuccesses: previousDoc.consecutiveSuccesses,
-        updatedAt: previousDoc.updatedAt,
-      }
-    : null;
-
-  const scheduled = getScheduler().scheduleNextReview({
-    conceptId: String(concept._id),
-    coverage: evaluation.overallCoverage,
-    now: new Date(),
-    previous,
-    conceptDifficulty: updatedConcept.difficulty,
-  });
-
-  const review = await ReviewState.findOneAndUpdate(
-    { conceptId: concept._id, userId: input.userId },
-    {
-      userId: String(concept.userId ?? "local-user"),
-      conceptId: concept._id,
-      state: scheduled.state,
-      dueAt: scheduled.dueAt,
-      intervalDays: scheduled.intervalDays,
-      stability: scheduled.stability,
-      difficulty: scheduled.difficulty,
-      lastRecallAt: scheduled.lastRecallAt,
-      lastOutcome: scheduled.lastOutcome,
-      consecutiveSuccesses: scheduled.consecutiveSuccesses,
-    },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
-  );
-
-  await recordLearningEvent({
-    userId: String(concept.userId ?? input.userId ?? "local-user"),
-    type: "EVALUATION_COMPLETED",
-    entityType: "Concept",
-    entityId: concept._id,
-    payload: { overallCoverage: evaluation.overallCoverage, mistakes: evaluation.mistakes },
-  });
-  await recordLearningEvent({
-    userId: String(concept.userId ?? input.userId ?? "local-user"),
-    type: "REVIEW_SCHEDULED",
-    entityType: "ReviewState",
-    entityId: review?._id,
-    payload: { dueAt: scheduled.dueAt, outcome: scheduled.lastOutcome },
-  });
-
-  return { attempt, concept: updatedConcept, review };
+  const evaluationBody = await evaluator.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: concept.requiredKnowledgePoints, answer, questionType: attempt.questionType as QuestionType });
+  const evaluation = { ...evaluationBody, evaluatorVersion: evaluator.version };
+  const previous = await getReview(input.userId, concept.id);
+  const previousSnapshot: ReviewStateSnapshot | null = previous ? { conceptId: concept.id, state: previous.state, dueAt: previous.dueAt, intervalDays: previous.intervalDays, stability: previous.stability, difficulty: previous.difficulty, lastRecallAt: previous.lastRecallAt, lastOutcome: previous.lastOutcome, consecutiveSuccesses: previous.consecutiveSuccesses, updatedAt: previous.updatedAt } : null;
+  const mastery = Number((Number(concept.mastery) * 0.4 + evaluation.overallCoverage * 0.6).toFixed(4));
+  const scheduled = getScheduler().scheduleNextReview({ conceptId: concept.id, coverage: evaluation.overallCoverage, now: new Date(), previous: previousSnapshot, conceptDifficulty: concept.difficulty });
+  const updated = await submitAttempt(input.userId, id, answer, confidence, evaluation, scheduled, concept.id, mastery);
+  if (!updated) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
+  await recordLearningEvent({ userId: input.userId, type: "RECALL_SUBMITTED", entityType: "RecallAttempt", entityId: id, payload: { confidence, overallCoverage: evaluation.overallCoverage } });
+  await recordLearningEvent({ userId: input.userId, type: "EVALUATION_COMPLETED", entityType: "RecallAttempt", entityId: id, payload: { mistakes: evaluation.mistakes } });
+  await recordLearningEvent({ userId: input.userId, type: "REVIEW_SCHEDULED", entityType: "ReviewState", entityId: concept.id, payload: { dueAt: scheduled.dueAt, outcome: scheduled.lastOutcome } });
+  const refreshed = await getRecall(id, input.userId);
+  return { attempt: refreshed.attempt, concept: refreshed.concept, review: await getReview(input.userId, concept.id) };
 }
 
-export async function ensureDueRecallAttempts(userId?: string): Promise<void> {
-  const now = new Date();
-  const due = await ReviewState.find({ dueAt: { $lte: now }, ...(userId ? { userId } : {}) });
-  for (const review of due) {
-    const pending = await RecallAttempt.findOne({
-      conceptId: review.conceptId,
-      submittedAt: { $exists: false },
-    });
-    if (pending) continue;
-    const concept = await Concept.findById(review.conceptId);
-    if (!concept) continue;
-    const last = await RecallAttempt.findOne({
-      conceptId: concept._id,
-      submittedAt: { $exists: true },
-    }).sort({ submittedAt: -1 });
-    const questionType: QuestionType = last?.evaluation?.suggestedRecallType ?? "explain";
-    await RecallAttempt.create({
-      userId: review.userId,
-      conceptId: concept._id,
-      studySessionId: concept.studySessionId,
-      questionType,
-      question: buildRecallQuestion(concept.name, questionType),
-    });
-  }
-}
-
-export async function listDueRecalls(userId?: string) {
-  await ensureDueRecallAttempts(userId);
-  const attempts = await RecallAttempt.find({ submittedAt: { $exists: false }, ...(userId ? { userId } : {}) }).sort({
-    createdAt: 1,
-  });
-  const conceptIds = attempts.map((a) => a.conceptId);
-  const concepts = await Concept.find({ _id: { $in: conceptIds }, ...(userId ? { userId } : {}) });
-  const byId = new Map(concepts.map((c) => [String(c._id), c]));
-  return attempts.map((attempt) => ({
-    attempt,
-    concept: byId.get(String(attempt.conceptId)) ?? null,
-  }));
+export async function listDueRecalls(userId: string) {
+  const result = await (await import("../../db/postgres.js")).query<any>(`SELECT r.id FROM recall_attempts r JOIN review_states rs ON rs.user_id=r.user_id AND rs.concept_id=r.concept_id WHERE r.user_id=$1 AND r.submitted_at IS NULL AND rs.due_at <= now() ORDER BY rs.due_at`, [userId]);
+  const rows = [];
+  for (const row of result.rows) rows.push(await getRecall(row.id, userId));
+  return rows.map((row) => ({ attempt: row.attempt, concept: row.concept }));
 }

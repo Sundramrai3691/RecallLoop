@@ -1,4 +1,4 @@
-import type { QuestionType } from "../../models/RecallAttempt.js";
+import type { QuestionType } from "../../domain/recallTypes.js";
 
 export function buildRecallQuestion(
   conceptName: string,

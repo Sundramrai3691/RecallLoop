@@ -8,6 +8,7 @@
     "start": "node dist/index.js",
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
+    "test:integration": "vitest run tests/integration --reporter=verbose",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -17,7 +18,7 @@
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.3",
-    "mongoose": "^8.13.0",
+    "pg": "^8.23.0",
     "zod": "^3.24.2"
   },
   "devDependencies": {
@@ -28,7 +29,6 @@
     "@types/node": "^22.13.10",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.2",
-    "mongodb-memory-server": "^10.1.4",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",

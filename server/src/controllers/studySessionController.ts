@@ -15,7 +15,7 @@ export async function createStudySessionHandler(
   try {
     const { session, concepts } = await createStudySession({
       ...(req.body ?? {}),
-      userId: req.user?.id,
+      userId: req.user!.id,
     });
     res.status(201).json({
       session: serializeSession(session),
@@ -32,7 +32,7 @@ export async function getStudySessionHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts, pendingRecalls } = await getStudySession(req.params.id, req.user?.id);
+    const { session, concepts, pendingRecalls } = await getStudySession(req.params.id, req.user!.id);
     res.json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),
@@ -49,7 +49,7 @@ export async function completeStudySessionHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts, recalls } = await completeStudySession(req.params.id, req.user?.id);
+    const { session, concepts, recalls } = await completeStudySession(req.params.id, req.user!.id);
     res.json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),
