@@ -1,7 +1,7 @@
 import { AppError, notFound } from "../../utils/errors.js";
-import { createSession, getSession, completeSession, listConceptsForSession, createConcepts, listPending, createAttempt, createInitialReview } from "../../repositories/legacyPostgresRepositories.js";
+import { createSession, getSession, listConceptsForSession, listPending } from "../../repositories/legacyPostgresRepositories.js";
+import { completeStudyWrites } from "../../repositories/postgresRepositories.js";
 import { createConceptsForSession } from "../concept/conceptService.js";
-import { buildRecallQuestion } from "../question/questionService.js";
 import { recordLearningEvent } from "../events/learningEventService.js";
 
 const SOURCE_TYPES = ["manual", "notes", "url", "file"];
@@ -28,15 +28,13 @@ export async function completeStudySession(id: string, userId: string) {
   if (!existing) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
   let concepts = await listConceptsForSession(id, userId);
   if (!concepts.length) concepts = await createConceptsForSession({ studySessionId: id, title: existing.title, rawMaterial: existing.rawMaterial, userId });
-  const session = existing.status === "completed" ? existing : completeSession(id, userId);
-  const completed = await session;
-  if (!completed) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
+  const written = await completeStudyWrites(userId, id, concepts);
+  if (!written) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
   const recalls = [];
-  for (const concept of concepts) {
-    const attempt = await createAttempt(userId, id, concept, "explain", buildRecallQuestion(concept.name, "explain"));
+  for (const attemptId of written.attempts) {
+    const pending = await listPending(id, userId);
+    const attempt = pending.find((item: any) => item.id === attemptId);
     if (attempt) recalls.push(attempt);
-    await createInitialReview(userId, concept.id, concept.difficulty);
   }
-  await recordLearningEvent({ userId, type: "STUDY_COMPLETED", entityType: "StudySession", entityId: id, payload: { conceptCount: concepts.length } });
-  return { session: completed, concepts, recalls };
+  return { session: written.session, concepts, recalls };
 }

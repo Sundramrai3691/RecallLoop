@@ -1,149 +1,80 @@
-# Architecture — RecallLoop
+# RecallLoop Architecture
 
-## 1. System architecture
-
-RecallLoop is a two-package npm workspace:
-
-- `client/` — React + TypeScript + Vite + React Router
-- `server/` — Express + TypeScript + Mongoose
-
-MongoDB holds all durable state. There is no Redis, no queue, and no microservice split.
-
-```
-Browser  →  Vite (5173)  →  /api proxy  →  Express (3001)  →  MongoDB
-                                      ↘  evaluator (mock or LLM)
-                                      ↘  scheduler (deterministic)
-```
-
-## 2. Frontend → backend → database flow
-
-Pages call `client/src/api/client.ts` only. The client never computes mastery, coverage, or due dates. Express controllers call services; services read/write Mongoose models.
-
-## 3. Study session flow
-
-1. `POST /api/study-sessions` creates a `StudySession` (`in_progress`).
-2. `conceptService.createConceptsForSession` asks the evaluator to extract structured concepts.
-3. Validated concepts are inserted into `concepts`.
-4. `POST /api/study-sessions/:id/complete` marks the session completed and creates immediate recalls.
-
-## 4. Recall flow
-
-1. On complete, each concept gets a pending `RecallAttempt` with an **explain** question.
-2. A `ReviewState` row is created with `dueAt = now` so the item appears on today's dashboard.
-3. The learner answers at `/recall/:attemptId` (question only; no expected answer).
-4. `POST /api/recalls/:id/submit` evaluates, stores the rubric, updates mastery, and schedules.
-
-Later due reviews: dashboard/list-due calls `ensureDueRecallAttempts()`, which opens a new attempt using `suggestedRecallType` from the last evaluation.
-
-## 5. Evaluation flow
-
-`getEvaluator()` returns `MockEvaluator` or `LlmEvaluator`.
-
-Live path: temperature 0, JSON object response, Zod validation, **one retry** on invalid output, `evaluatorVersion` stored on every evaluation.
-
-Coverage is a function of knowledge-point statuses (`correct=1`, `partial=0.5`, `missing=0`). The parser **overwrites** any LLM `overallCoverage` with `deriveCoverage()`. Live evaluations also remap results onto the concept’s required knowledge points.
-
-## 6. Scheduler flow
-
-`services/scheduler/IntervalScheduler.scheduleNextReview(input) → ReviewStateSnapshot`
-
-Coverage bands → `again | hard | good | easy`, then interval policy:
-
-- again: 1 day
-- hard: max(1, previous × 1.5)
-- good: max(2, previous × 2)
-- easy: max(4, previous × 3)
-
-**This is an MVP scheduler and is not the final learning-science implementation.** Swap via `setScheduler()` / `Scheduler` interface. FSRS should replace `IntervalScheduler` only.
-
-## 7. Data model
-
-- `studysessions` — topic, material, status
-- `concepts` — knowledge points, mastery
-- `recallattempts` — question, answer, embedded evaluation
-- `reviewstates` — scheduler fields isolated per concept
-
-## 8. API map
-
-| Method | Path                               | Purpose                              |
-| ------ | ---------------------------------- | ------------------------------------ |
-| GET    | `/api/health`                      | Liveness + mock flag                 |
-| POST   | `/api/study-sessions`              | Create session + concepts            |
-| GET    | `/api/study-sessions/:id`          | Session + concepts + pending recalls |
-| POST   | `/api/study-sessions/:id/complete` | Complete + immediate recalls         |
-| GET    | `/api/recalls/due`                 | Pending due attempts                 |
-| GET    | `/api/recalls/:id`                 | One attempt                          |
-| POST   | `/api/recalls/:id/submit`          | Evaluate + schedule                  |
-| GET    | `/api/concepts`                    | Concept list                         |
-| GET    | `/api/concepts/:id`                | Concept + review state               |
-| GET    | `/api/dashboard`                   | Due, upcoming, mastery, counts       |
-
-## 9. Where the LLM is used
-
-- Concept extraction (structured JSON)
-- Rubric evaluation (structured JSON)
-
-Question text in MVP is template-based (`questionService`) so mock mode stays deterministic. A live provider can later generate questions through the same evaluator interface.
-
-## 10. What is deterministic
-
-- HTTP routing, validation, persistence
-- Mock extraction and mock overlap scoring
-- Coverage derivation from statuses
-- Outcome mapping and interval math
-- Duplicate-submit guards
-- Due-attempt creation
-
-## 11. Current limitations
-
-- JWT authentication is required for user-owned APIs; OAuth/social login is not included
-- Mock evaluation is lexical overlap
-- Scheduler is not FSRS
-- No notifications, no multi-device sync
-- Immediate extraction is synchronous
-
-## 12. Future FSRS replacement point
-
-Replace `server/src/services/scheduler/intervalScheduler.ts` with an FSRS adapter that implements `Scheduler.scheduleNextReview`. Keep `ReviewState` as the persistence boundary. Do not put FSRS inside the evaluator or React tree.
-
-## 13. Goal-aware adaptive flow
+## Runtime
 
 ```mermaid
 flowchart TD
-    Goal --> Planner
-    Planner --> Study
-    Study --> Recall
-    Recall --> Evaluation
-    Evaluation --> LearnerModel[Learner Model]
-    LearnerModel --> Scheduler
-    Scheduler --> ReviewState[ReviewState]
-    ReviewState --> Planner
+  React --> Express
+  Express --> Controllers
+  Controllers --> Services
+  Services --> Repositories[Repositories / Data Access]
+  Repositories --> Pool[pg Pool]
+  Pool --> PostgreSQL
+  LLM --> Validation[Schema and domain validation]
+  Validation --> Services
 ```
 
-The planner is deterministic and consumes authoritative domain state. It does not call the LLM. A `PlanTask` records its source and reason, while `ReviewState` remains authoritative for recall timing. `LearningEvent` is append-only history for auditability and future analytics.
+The application uses one PostgreSQL pool. Controllers remain thin, services own domain decisions, repositories own SQL, and PostgreSQL owns durable state. There is no MongoDB runtime, Redis, queue, microservice, or second database.
 
-## 14. Goal and learner ownership
-
-JWT bearer authentication identifies the learner. Every new goal, skill, plan, task, study session, concept, recall attempt, review state, dashboard query, and learner-model query is scoped by `req.user.id`; clients cannot supply ownership IDs. Controllers remain thin and services own persistence and state transitions.
-
-Missed planned tasks are marked `missed` when a learner opens a later day. The planner keeps due recall work first and admits lower-priority work only while the daily budget allows it, so missed work is not dumped wholesale onto the next day.
-
-## 15. Phase 3 knowledge intelligence flow
+## Domain flow
 
 ```mermaid
 flowchart TD
-    User --> Goal
-    Goal --> CanonicalKnowledge[Canonical Knowledge]
-    CanonicalKnowledge --> Baseline
-    Baseline --> LearnerModel[Learner Model]
-    LearnerModel --> Planner
-    Planner --> Study
-    Study --> Recall
-    Recall --> Evaluation
-    Evaluation --> LearnerModel
-    LearnerModel --> PlanUpdate[Plan Update]
+  Goal --> Knowledge[Canonical Knowledge]
+  Knowledge --> Baseline
+  Baseline --> Learner[Learner Model]
+  Learner --> Planner
+  Planner --> Study
+  Study --> Recall
+  Recall --> Evaluation
+  Evaluation --> Learner
+  Learner --> Scheduler
+  Scheduler --> ReviewState
+  ReviewState --> Planner
 ```
 
-Canonical knowledge is stored in relational PostgreSQL tables and is separate from personal learner state. The existing evaluator remains the only rubric evaluator; baseline and normal recall both feed it. Deterministic starting-point and resource ranking services sit outside the LLM.
+Canonical knowledge answers what a role may require. Personal concepts, recall history, confidence, mistakes, mastery, and review state answer what a learner has demonstrated. Canonical skills and learner skills are separate tables; canonical concepts and personal concepts are separate tables.
 
-Phase 3 adds a PostgreSQL migration foundation and curated seed through `server/migrations/001_phase3.sql`, `server/migrations/002_seed_knowledge.sql`, and `npm run db:migrate -w server`. The existing MVP persistence cutover still requires the one-time import and removal sequence documented in `docs/PHASE3_MIGRATION_PLAN.md`; Mongo and PostgreSQL must not be dual-written during that final cutover.
+## Persistence boundary
+
+- `authService -> userRepository -> app_users`
+- `goalService -> goalRepository / learnerSkillRepository / planRepository / planTaskRepository -> goals / learner_skills / plans / plan_tasks`
+- `studySessionService -> study/concept repositories -> study_sessions / personal_concepts`
+- `recallService -> recall repositories -> recall_attempts / recall_evaluations / recall_knowledge_point_results / review_states`
+- `learnerModelService -> SQL read queries -> personal concepts, evaluations, reviews, learner skills`
+- `dashboardService -> SQL joins and aggregates -> user-scoped dashboard data`
+- `learningEventService -> event repository -> learning_events`
+- `knowledgeService -> PostgreSQL queries -> canonical knowledge and provenance tables`
+- `baselineService -> PostgreSQL queries -> baseline assessments, questions, and learner states`
+- `resourceRecommendationService -> PostgreSQL queries -> resources and resource coverage`
+
+Ownership is derived from `req.user.id`. Clients never provide an authoritative `user_id`.
+
+## Evaluation and transactions
+
+The LLM is used only for concept extraction and rubric evaluation. Structured output is schema validated, then domain services persist it. LLM numeric `overallCoverage` is ignored; coverage is derived from knowledge-point statuses: correct = 1, partial = 0.5, missing = 0.
+
+Recall submission loads and validates the attempt, performs evaluation outside the database transaction, then must atomically persist the attempt answer, normalized evaluation rows, concept mastery, review state, and learning events. Study completion must atomically update the session, create immediate recalls/reviews, and append its event. Plan replacement and baseline submission have the same focused transaction requirement.
+
+## Scheduling and planning
+
+`ReviewState` is the authority for recall timing. The deterministic interval scheduler computes the next review from coverage and prior state. The planner consumes due reviews, weakness signals, canonical goal requirements, baseline starting point, and time budget to create `PlanTask` rows. It does not create a second recall scheduler and does not call the LLM.
+
+## Startup and shutdown
+
+1. Load `DATABASE_URL` and application configuration.
+2. Verify PostgreSQL connectivity through the single pool.
+3. Start Express.
+4. On SIGINT/SIGTERM, stop the HTTP server and close the pool.
+
+Run migrations and curated seed before startup:
+
+```bash
+npm run db:migrate -w server
+npm run db:seed -w server
+npm run dev
+```
+
+## Verification boundary
+
+Unit tests run without a database. PostgreSQL integration tests run with `npm run test:integration -w server` and require a running PostgreSQL instance. The current environment has no Docker executable and no PostgreSQL listener, so those tests are reported as blocked rather than replaced with an in-memory fake.

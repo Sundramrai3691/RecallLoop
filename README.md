@@ -1,84 +1,69 @@
 # RecallLoop
 
-RecallLoop is an adaptive **active-recall** system. You study a topic, the app extracts concepts, then it immediately forces retrieval. Answers are scored with a **knowledge-point rubric**, not an arbitrary 1–10 AI grade. A **deterministic scheduler** (not FSRS yet) sets the next review. The dashboard shows what is due.
-
-The product optimizes for **demonstrated retrieval**, not time spent studying. Learners can now create an identity, define goals and skills, generate a deterministic daily plan, and inspect the learner signals that shape remediation.
+RecallLoop is an adaptive active-recall system. Learners study a topic, retrieve it from memory, receive rubric-based evaluation, and get deterministic review planning. The current foundation also includes authenticated goals, canonical knowledge, baseline assessment, learner state, and resource recommendations.
 
 ## Setup
 
-Requires Node.js 20+ and MongoDB.
+Requires Node.js 20+ and PostgreSQL 16+.
 
 ```bash
-cp .env.example .env
-docker compose up -d
+copy .env.example .env
+docker compose up -d postgres
 npm install
+npm run db:migrate -w server
 npm run dev
 ```
 
 - UI: http://localhost:5173
 - API: http://localhost:3001/api/health
 
-## Environment variables
+## Environment
 
-See `.env.example`:
+`DATABASE_URL` configures PostgreSQL. `LLM_PROVIDER=mock` with an empty `LLM_API_KEY` runs deterministic extraction and evaluation without a vendor account. See [.env.example](.env.example).
 
-| Variable        | Purpose                      |
-| --------------- | ---------------------------- |
-| `MONGODB_URI`   | MongoDB connection string    |
-| `PORT`          | API port (default `3001`)    |
-| `CLIENT_ORIGIN` | CORS origin for the Vite app |
-| `LLM_PROVIDER`  | `mock` (default) or `openai` |
-| `LLM_API_KEY`   | Empty → mock mode            |
-| `LLM_MODEL`     | Chat model id                |
-| `LLM_BASE_URL`  | OpenAI-compatible base URL   |
-
-## Run commands
+## Commands
 
 ```bash
-npm run dev          # API + Vite together
-npm run test         # server unit + integration tests
-npm run build        # compile server and client
-```
-
-## Architecture summary
-
-React (Vite) talks only to the Express REST API. Controllers stay thin. Domain logic lives in `server/src/services/`. MongoDB stores sessions, concepts, recall attempts, and isolated `ReviewState` documents. The LLM is used only for concept extraction, question wording (via templates in mock mode), and rubric evaluation. Scheduling is a separate module and never calls the LLM.
-
-Details: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-
-## MVP flow
-
-1. `/study/new` — topic + optional notes
-2. Concepts extracted and stored
-3. Mark session complete
-4. Immediate **explain** recall per concept
-5. Submit answer + confidence
-6. Rubric evaluation stored
-7. Mastery updated; next review scheduled
-8. `/dashboard` shows due / upcoming / mastery
-
-## Mock LLM mode
-
-If `LLM_API_KEY` is empty or `LLM_PROVIDER=mock`, concept extraction splits notes deterministically, and evaluation uses token overlap against required knowledge points. The full study → recall → schedule loop works without a vendor account.
-
-## Tests
-
-```bash
+npm run dev
 npm test
+npm run test:integration -w server
+npm run build
+npm run db:migrate -w server
+npm run db:seed -w server
 ```
 
-## Goal-aware foundation
+`npm test` runs database-independent unit tests. `npm run test:integration -w server` requires PostgreSQL and applies the relational integration checks.
 
-Register or sign in at `/register` or `/login`, then use `/goals` to create a learning goal. Generate a plan from a goal to combine learning and recall work, and open `/learner` to inspect deterministic mastery and weakness summaries. The API uses JWT bearer tokens for these new user-scoped routes.
+## Architecture
 
-## Knowledge intelligence
+```mermaid
+flowchart TD
+  React --> Express
+  Express --> Controllers
+  Controllers --> Services
+  Services --> Repositories[Repositories / Data Access]
+  Repositories --> PostgreSQL
+  LLM --> Validation[Schema and domain validation]
+  Validation --> Services
+```
 
-Phase 3 adds a curated PostgreSQL knowledge map, baseline assessment, starting-point decisions, and time-bounded resource recommendations. Start PostgreSQL with `docker compose up -d postgres`, apply the schema and seed with `npm run db:migrate -w server`, then browse `/knowledge` or begin from a goal detail page. Mongo-to-PostgreSQL field mappings and the final clean cutover sequence are documented in [docs/PHASE3_MIGRATION_PLAN.md](docs/PHASE3_MIGRATION_PLAN.md).
+Controllers remain thin. Domain services own business rules. PostgreSQL owns durable state. The LLM only produces structured extraction/evaluation candidates; validated domain services own persistence, ownership, scheduling, and transactions.
 
-Covers session completion, concept creation, immediate recall, rubric JSON parsing, scheduler intervals, and duplicate-submit rejection.
+## Product flow
 
-## Docs
+`Goal -> Canonical Knowledge -> Baseline -> Learner Model -> Planner -> Study -> Recall -> Evaluation -> Learner Model -> Plan update`
 
-- [docs/PROJECT_AUDIT.md](docs/PROJECT_AUDIT.md)
+- `/goals` manages learner goals.
+- `/knowledge` browses curated role and skill requirements.
+- Goal detail supports new, familiar, advanced, and Trust Me starting paths.
+- `/baseline/:id/result` shows observed versus self-declared knowledge and focused resources.
+- `/plan/today` shows deterministic work and reasons.
+- `/learner` shows personal learner signals.
+
+## Documentation
+
 - [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
-- [docs/IMPLEMENTATION_REPORT.md](docs/IMPLEMENTATION_REPORT.md)
+- [docs/LEARNING_MODEL.md](docs/LEARNING_MODEL.md)
+- [docs/POSTGRES_RUNTIME_MIGRATION_STATUS.md](docs/POSTGRES_RUNTIME_MIGRATION_STATUS.md)
+- [docs/POSTGRES_CUTOVER_REPORT.md](docs/POSTGRES_CUTOVER_REPORT.md)
+- [docs/POSTGRES_CUTOVER_AUDIT.md](docs/POSTGRES_CUTOVER_AUDIT.md)

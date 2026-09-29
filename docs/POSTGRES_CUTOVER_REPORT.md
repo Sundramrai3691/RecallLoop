@@ -18,7 +18,7 @@ Users own goals, learner skills, plans, sessions, personal concepts, attempts, r
 
 ## 5. Repository/data-access architecture
 
-The target boundary is repository interfaces consumed by domain services and implemented with parameterized PostgreSQL queries. The current repository still contains direct Mongoose imports in the legacy MVP services; replacing those imports is the remaining runtime cutover task.
+The target boundary is repository interfaces consumed by domain services and implemented with parameterized PostgreSQL queries. Authentication, goals/plans, study/concepts, recall/review, learner, dashboard, events, canonical knowledge, baseline, and resources now use PostgreSQL data-access modules.
 
 ## 6. Transaction boundaries
 
@@ -82,12 +82,12 @@ The current migration command applies schema and seed together. A separate seed 
 
 ## 18. Known limitations
 
-The application runtime still initializes MongoDB and legacy services still import Mongoose models. The new PostgreSQL knowledge/baseline services are not yet the sole runtime authority. This is the remaining work, not a dual-write strategy to retain.
+The application runtime now verifies PostgreSQL through the single pool. The remaining limitation is live database verification in this environment, not a Mongo fallback.
 
 ## 19. Remaining infrastructure work
 
-Implement repository interfaces and PostgreSQL implementations for all existing domain entities, rewrite services to depend on those repositories, replace Mongo integration fixtures with PostgreSQL integration fixtures, add rollback/failure tests, switch startup to one PostgreSQL pool, then remove Mongoose, Mongo, memory-server, Mongo configuration, and old model files.
+Run the PostgreSQL integration suite, add rollback/failure assertions, and validate seed idempotency against a live isolated database.
 
 ## 20. Next phase
 
-Complete the repository cutover in dependency order: auth and ownership, goals/plans/tasks, study/concepts, recall/evaluation/review transactions, learner/dashboard reads, migration utility, PostgreSQL integration tests, and finally Mongo removal. Only after that should the Phase 3 knowledge flow be considered production-ready.
+Complete live PostgreSQL verification, migration utility validation, rollback assertions, and seed idempotency checks before production deployment.

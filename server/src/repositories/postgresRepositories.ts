@@ -1,4 +1,4 @@
-import { query } from "../db/postgres.js";
+import { query, withTransaction } from "../db/postgres.js";
 import type {
   GoalRecord,
   GoalRepository,
@@ -46,10 +46,28 @@ export const planRepository: PlanRepository = {
 };
 
 export const planTaskRepository: PlanTaskRepository = {
-  async replaceForPlan(userId, planId, tasks) { await query(`DELETE FROM plan_tasks WHERE user_id=$1 AND plan_id=$2`, [userId,planId]); for (const item of tasks) await query(`INSERT INTO plan_tasks (user_id,plan_id,goal_id,skill_id,concept_id,recall_attempt_id,task_type,title,description,priority,estimated_minutes,scheduled_for,status,source,reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'planned',$13,$14)`, [userId,planId,item.goalId ?? null,item.skillId ?? null,item.conceptId ?? null,item.recallAttemptId ?? null,item.taskType,item.title,item.description ?? "",item.priority,item.estimatedMinutes,item.scheduledFor,item.source,item.reason ?? ""]); },
+  async replaceForPlan(userId, planId, tasks) { await withTransaction(async (client) => { await client.query(`DELETE FROM plan_tasks WHERE user_id=$1 AND plan_id=$2`, [userId,planId]); for (const item of tasks) await client.query(`INSERT INTO plan_tasks (user_id,plan_id,goal_id,skill_id,concept_id,recall_attempt_id,task_type,title,description,priority,estimated_minutes,scheduled_for,status,source,reason) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,'planned',$13,$14)`, [userId,planId,item.goalId ?? null,item.skillId ?? null,item.conceptId ?? null,item.recallAttemptId ?? null,item.taskType,item.title,item.description ?? "",item.priority,item.estimatedMinutes,item.scheduledFor,item.source,item.reason ?? ""]); } ); },
   async listForPlan(userId, planId) { const result = await query(`SELECT * FROM plan_tasks WHERE user_id=$1 AND plan_id=$2 ORDER BY priority DESC, scheduled_for`, [userId,planId]); return result.rows.map(task); },
   async listToday(userId,start,end) { const result = await query(`SELECT * FROM plan_tasks WHERE user_id=$1 AND scheduled_for BETWEEN $2 AND $3 ORDER BY priority DESC, scheduled_for`, [userId,start,end]); return result.rows.map(task); },
   async markMissed(userId,before) { await query(`UPDATE plan_tasks SET status='missed',updated_at=now() WHERE user_id=$1 AND status='planned' AND scheduled_for < $2`, [userId,before]); },
   async findById(id) { const result = await query(`SELECT * FROM plan_tasks WHERE id=$1`, [id]); return result.rows[0] ? task(result.rows[0]) : null; },
   async updateStatus(id,userId,status) { const result = await query(`UPDATE plan_tasks SET status=$3,updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *`, [id,userId,status]); return result.rows[0] ? task(result.rows[0]) : null; },
 };
+
+export async function completeStudyWrites(userId: string, sessionId: string, concepts: any[]) {
+  return withTransaction(async (client) => {
+    const sessionResult = await client.query(`UPDATE study_sessions SET status='completed', completed_at=COALESCE(completed_at,now()), updated_at=now() WHERE id=$1 AND user_id=$2 RETURNING *`, [sessionId,userId]);
+    if (!sessionResult.rows[0]) return null;
+    const attempts: any[] = [];
+    for (const concept of concepts) {
+      const existing = await client.query(`SELECT id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND submitted_at IS NULL ORDER BY created_at LIMIT 1`, [userId,concept.id]);
+      let attemptId = existing.rows[0]?.id;
+      if (!attemptId) { const created = await client.query(`INSERT INTO recall_attempts (user_id,concept_id,study_session_id,question_type,question) VALUES ($1,$2,$3,'explain',$4) RETURNING id`, [userId,concept.id,sessionId,`Without looking at your notes, explain how ${concept.name} works from start to finish.`]); attemptId = created.rows[0].id; }
+      attempts.push(attemptId);
+      await client.query(`INSERT INTO review_states (user_id,concept_id,state,due_at,difficulty) VALUES ($1,$2,'new',now(),$3) ON CONFLICT (user_id,concept_id) DO UPDATE SET due_at=LEAST(review_states.due_at,EXCLUDED.due_at),updated_at=now()`, [userId,concept.id,Number(concept.difficulty)/5]);
+    }
+    await client.query(`INSERT INTO learning_events (user_id,type,entity_type,entity_id,payload) VALUES ($1,'STUDY_COMPLETED','StudySession',$2,$3)`, [userId,sessionId,JSON.stringify({ conceptCount: concepts.length })]);
+    const row = sessionResult.rows[0];
+    return { session: { id: row.id, userId: row.user_id, title: row.title, rawMaterial: row.raw_material, sourceType: row.source_type, startedAt: row.started_at, completedAt: row.completed_at, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }, attempts };
+  });
+}
