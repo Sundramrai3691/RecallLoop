@@ -42,7 +42,8 @@ export function DashboardPage() {
       <div className="card error">
         <p>{error}</p>
         <p className="muted">
-          Start PostgreSQL (`docker compose up -d postgres`), run migrations, and `npm run dev`.
+          Start PostgreSQL (`docker compose up -d postgres`), run migrations,
+          and `npm run dev`.
         </p>
       </div>
     );

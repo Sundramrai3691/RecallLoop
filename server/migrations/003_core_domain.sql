@@ -161,3 +161,12 @@ CREATE TABLE IF NOT EXISTS learning_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS idx_learning_events_user_created ON learning_events(user_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS legacy_id_map (
+  source_collection text NOT NULL,
+  source_id text NOT NULL,
+  target_table text NOT NULL,
+  target_id uuid NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (source_collection, source_id)
+);
