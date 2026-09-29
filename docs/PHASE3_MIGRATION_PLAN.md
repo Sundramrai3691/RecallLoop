@@ -6,18 +6,18 @@ Phase 3 introduces PostgreSQL with the `pg` pooled query layer in `server/src/db
 
 ## Current Mongo collections to target tables
 
-| Mongo collection | PostgreSQL target | Mapping and ownership |
-|---|---|---|
-| `users` | `users` | `email`, `password_hash`, `name`, timestamps; unique email |
-| `goals` | `goals` | `user_id` FK, title, type, target date, weekly budget, status |
-| `skills` | `learner_skills` | `user_id`, `goal_id`, mastery and priority; separate from canonical skills |
-| `plans` | `plans` | `user_id`, `goal_id`, date window, status |
-| `plantasks` | `plan_tasks` | relational task references, status, source, reason, schedule |
-| `studysessions` | `study_sessions` | `user_id`, lifecycle fields, source metadata |
-| `concepts` | `personal_concepts` | `user_id`, study session, mastery; separate from `canonical_concepts` |
-| `recallattempts` | `recall_attempts` and `recall_evaluations` | one attempt row plus normalized evaluation/knowledge-point results |
-| `reviewstates` | `review_states` | unique `(user_id, concept_id)`; authoritative timing |
-| `learningevents` | `learning_events` | append-only user-owned audit rows |
+| Mongo collection | PostgreSQL target                          | Mapping and ownership                                                      |
+| ---------------- | ------------------------------------------ | -------------------------------------------------------------------------- |
+| `users`          | `users`                                    | `email`, `password_hash`, `name`, timestamps; unique email                 |
+| `goals`          | `goals`                                    | `user_id` FK, title, type, target date, weekly budget, status              |
+| `skills`         | `learner_skills`                           | `user_id`, `goal_id`, mastery and priority; separate from canonical skills |
+| `plans`          | `plans`                                    | `user_id`, `goal_id`, date window, status                                  |
+| `plantasks`      | `plan_tasks`                               | relational task references, status, source, reason, schedule               |
+| `studysessions`  | `study_sessions`                           | `user_id`, lifecycle fields, source metadata                               |
+| `concepts`       | `personal_concepts`                        | `user_id`, study session, mastery; separate from `canonical_concepts`      |
+| `recallattempts` | `recall_attempts` and `recall_evaluations` | one attempt row plus normalized evaluation/knowledge-point results         |
+| `reviewstates`   | `review_states`                            | unique `(user_id, concept_id)`; authoritative timing                       |
+| `learningevents` | `learning_events`                          | append-only user-owned audit rows                                          |
 
 The Phase 3 migration schema additionally creates `knowledge_domains`, `roles`, `canonical_skills`, `topics`, `canonical_concepts`, `knowledge_points`, `concept_prerequisites`, `knowledge_sources`, `concept_sources`, `role_skills`, `resources`, `resource_coverage`, `baseline_assessments`, `baseline_questions`, and `learner_knowledge_states`.
 

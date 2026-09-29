@@ -12,7 +12,9 @@ export function GoalDetailPage() {
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(50);
   const [error, setError] = useState<string | null>(null);
-  const [canonicalSkills, setCanonicalSkills] = useState<Array<{ id: string; name: string }>>([]);
+  const [canonicalSkills, setCanonicalSkills] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
   const [canonicalSkillId, setCanonicalSkillId] = useState("");
   const [level, setLevel] = useState("new");
   const [trustMe, setTrustMe] = useState(false);
@@ -36,7 +38,12 @@ export function GoalDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    api.knowledgeRoles().then((result) => setCanonicalSkills(result.roles.flatMap((role) => role.skills))).catch(() => undefined);
+    api
+      .knowledgeRoles()
+      .then((result) =>
+        setCanonicalSkills(result.roles.flatMap((role) => role.skills)),
+      )
+      .catch(() => undefined);
   }, []);
 
   async function addSkill(event: FormEvent) {
@@ -56,10 +63,19 @@ export function GoalDetailPage() {
     event.preventDefault();
     if (!id || !canonicalSkillId) return;
     try {
-      const result = await api.createBaseline({ goalId: id, skillId: canonicalSkillId, level, trustMe });
-      navigate(`/baseline/${result.baseline.assessment.id}${result.baseline.questions.length ? "" : "/result"}`);
+      const result = await api.createBaseline({
+        goalId: id,
+        skillId: canonicalSkillId,
+        level,
+        trustMe,
+      });
+      navigate(
+        `/baseline/${result.baseline.assessment.id}${result.baseline.questions.length ? "" : "/result"}`,
+      );
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not start baseline");
+      setError(
+        err instanceof ApiError ? err.message : "Could not start baseline",
+      );
     }
   }
 
@@ -81,11 +97,40 @@ export function GoalDetailPage() {
       <form className="card" style={{ marginTop: 16 }} onSubmit={startBaseline}>
         <h2>What do you already know?</h2>
         <label htmlFor="canonical-skill">Canonical skill</label>
-        <select id="canonical-skill" required value={canonicalSkillId} onChange={(event) => setCanonicalSkillId(event.target.value)}><option value="">Choose a skill</option>{canonicalSkills.map((skill) => <option key={skill.id} value={skill.id}>{skill.name}</option>)}</select>
+        <select
+          id="canonical-skill"
+          required
+          value={canonicalSkillId}
+          onChange={(event) => setCanonicalSkillId(event.target.value)}
+        >
+          <option value="">Choose a skill</option>
+          {canonicalSkills.map((skill) => (
+            <option key={skill.id} value={skill.id}>
+              {skill.name}
+            </option>
+          ))}
+        </select>
         <label htmlFor="level">Starting level</label>
-        <select id="level" value={level} onChange={(event) => setLevel(event.target.value)}><option value="new">New to it</option><option value="familiar">Familiar</option><option value="advanced">Advanced</option></select>
-        <label><input type="checkbox" checked={trustMe} onChange={(event) => setTrustMe(event.target.checked)} /> Trust me, continue without assessment</label>
-        <button className="btn btn-primary" type="submit">Choose starting point</button>
+        <select
+          id="level"
+          value={level}
+          onChange={(event) => setLevel(event.target.value)}
+        >
+          <option value="new">New to it</option>
+          <option value="familiar">Familiar</option>
+          <option value="advanced">Advanced</option>
+        </select>
+        <label>
+          <input
+            type="checkbox"
+            checked={trustMe}
+            onChange={(event) => setTrustMe(event.target.checked)}
+          />{" "}
+          Trust me, continue without assessment
+        </label>
+        <button className="btn btn-primary" type="submit">
+          Choose starting point
+        </button>
       </form>
       {error ? <p className="error">{error}</p> : null}
       <form className="card" onSubmit={addSkill}>

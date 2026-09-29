@@ -42,7 +42,8 @@ CREATE TABLE IF NOT EXISTS canonical_concepts (
   status text NOT NULL DEFAULT 'active',
   version integer NOT NULL DEFAULT 1,
   created_at timestamptz NOT NULL DEFAULT now(),
-  updated_at timestamptz NOT NULL DEFAULT now()
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE(topic_id, name)
 );
 
 CREATE TABLE IF NOT EXISTS knowledge_points (
@@ -109,8 +110,8 @@ CREATE TABLE IF NOT EXISTS resource_coverage (
 
 CREATE TABLE IF NOT EXISTS baseline_assessments (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id text NOT NULL,
-  goal_id text NOT NULL,
+  user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
+  goal_id uuid NOT NULL REFERENCES goals(id) ON DELETE CASCADE,
   skill_id uuid REFERENCES canonical_skills(id),
   selected_level text NOT NULL CHECK (selected_level IN ('new','familiar','advanced')),
   baseline_source text NOT NULL CHECK (baseline_source IN ('assessed','self_declared','skipped')),
@@ -142,7 +143,7 @@ CREATE INDEX IF NOT EXISTS idx_resource_coverage_concept ON resource_coverage(co
 CREATE INDEX IF NOT EXISTS idx_concept_topic ON canonical_concepts(topic_id);
 
 CREATE TABLE IF NOT EXISTS learner_knowledge_states (
-  user_id text NOT NULL,
+  user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   canonical_concept_id uuid NOT NULL REFERENCES canonical_concepts(id) ON DELETE CASCADE,
   observed_mastery numeric(4,3) NOT NULL DEFAULT 0 CHECK (observed_mastery BETWEEN 0 AND 1),
   self_declared_mastery numeric(4,3) NOT NULL DEFAULT 0 CHECK (self_declared_mastery BETWEEN 0 AND 1),
