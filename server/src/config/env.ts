@@ -9,6 +9,7 @@ dotenv.config();
 export const env = {
   port: Number(process.env.PORT ?? 3001),
   mongoUri: process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/recallloop",
+  databaseUrl: process.env.DATABASE_URL ?? "postgres://recallloop:recallloop@127.0.0.1:5432/recallloop",
   clientOrigin: process.env.CLIENT_ORIGIN ?? "http://localhost:5173",
   llmProvider: (process.env.LLM_PROVIDER ?? "mock").toLowerCase(),
   llmApiKey: process.env.LLM_API_KEY ?? "",

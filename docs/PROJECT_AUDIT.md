@@ -39,7 +39,7 @@ Browser → Vite :5173 (/api proxy) → Express :3001 → MongoDB
 | `client/src/pages/*`                                                                | UI flow                                           |
 | `client/src/hooks/useDashboard.ts`                                                  | Dashboard fetch (no business logic)               |
 
-**Authentication:** JWT bearer authentication is available through `/api/auth/register`, `/api/auth/login`, and `/api/auth/me`. All study, recall, concept, dashboard, goal, plan, and learner routes require an authenticated learner and scope data by `req.user.id`.
+**Authentication:** JWT bearer authentication is available through `/api/auth/register`, `/api/auth/login`, and `/api/auth/me`. Goal, plan, and learner routes require an authenticated learner. The original study/recall MVP routes remain compatible with the legacy local-user flow.
 
 **Existing routes:** health, auth, goals/skills, today plan, learner summary, study sessions, recalls, concepts, and dashboard.
 
@@ -82,9 +82,16 @@ Not included in this foundation: FSRS, queues, Redis, social, and notifications.
 
 ## Risks / assumptions
 
-- **JWT access tokens are required for all user-owned APIs.**
+- **The legacy study/recall endpoints still use their existing local-user compatibility path; new goal/plan/learner endpoints are user-scoped.**
 - **MongoDB required** to run the app (memory server for tests).
 - **MVP scheduler is not FSRS.** Documented at `services/scheduler/`.
 - **Mock evaluation is lexical overlap**, not pedagogically equivalent to a live model.
 - **URL/file sources** are labels; material is still pasted text.
 - **Immediate extraction is synchronous.**
+
+## Phase 3 additions
+
+- PostgreSQL schema and curated seed for canonical roles, skills, topics, concepts, knowledge points, provenance, and resources.
+- Baseline assessment tables distinguish assessed evidence from self-declared knowledge.
+- Deterministic starting-point and resource recommendation services respect learner time.
+- The final Mongo runtime removal requires the explicit import/cutover sequence in `docs/PHASE3_MIGRATION_PLAN.md`; no dual-write implementation is intended.

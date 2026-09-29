@@ -225,3 +225,22 @@ Swap `IntervalScheduler` for FSRS behind the existing `Scheduler` interface. Add
 ### Service authority map
 
 `authService` owns credentials and token issuance. `goalService` owns goal, skill, plan, and task persistence. `studySessionService` owns study lifecycle and concept extraction orchestration. `recallService` owns attempts, evaluation persistence, mastery updates, and scheduler calls. `learnerModelService` owns derived learner views. `dashboardService` owns dashboard aggregation. `LearningEvent` is append-only audit history, not an alternative authority for timing or mastery.
+
+## Phase 3 knowledge intelligence report
+
+- **A. Implemented:** PostgreSQL schema/seed foundation, canonical role-to-skill-to-topic-to-concept model, source provenance, resource metadata/coverage, baseline assessment, observed versus self-declared learner state, deterministic starting-point decisions, and bounded resource recommendations.
+- **B. PostgreSQL architecture:** pooled `pg` access in `server/src/db/postgres.ts`, ordered SQL migrations, foreign keys, check constraints, uniqueness constraints, and relational join tables. `npm run db:migrate -w server` applies schema and curated seed.
+- **C. Mongo mapping:** see `docs/PHASE3_MIGRATION_PLAN.md` for collection-to-table mappings, ObjectId-to-UUID risks, ownership constraints, indexes, and the clean import/cutover sequence. The current MVP services still require the final one-time persistence cutover before Mongo can be removed from runtime.
+- **D. Canonical knowledge:** `KnowledgeDomain -> Role -> canonical_skill -> Topic -> CanonicalConcept -> KnowledgePoint`, with prerequisite and source relationships.
+- **E. Baseline architecture:** deterministic L1-L5 question blueprints are persisted in `baseline_assessments` and `baseline_questions`; submissions call the existing evaluator and store coverage/results.
+- **F. Self-declared versus observed:** self-declared priors are bounded and labeled; submitted rubric coverage becomes observed mastery and updates `learner_knowledge_states`.
+- **G. Resources:** `ResourceRecommendationService` ranks curated metadata by trust, difficulty, coverage, mastery gap, and available minutes, returning at most four resources with reasons.
+- **H. Planner integration:** the existing planner remains deterministic; canonical and baseline state are now available to starting-point/resource APIs and can be consumed before plan generation. Review timing remains owned by `ReviewState`.
+- **I. API changes:** knowledge role/skill/concept/resource reads, baseline create/read/submit/result, resource recommendations, and goal starting-point routes were added.
+- **J. Frontend changes:** `/knowledge`, `/knowledge/roles/:id`, `/baseline/:id`, and `/baseline/:id/result`; goal detail now supports canonical skill selection, level selection, and “Trust me” continuation.
+- **K. Database schema:** see `server/migrations/001_phase3.sql` and `002_seed_knowledge.sql`; resource content is never copied, only metadata and URLs are stored.
+- **L. Tests:** existing authenticated MVP tests remain green; the new PostgreSQL service boundaries compile and are covered next by database-backed migration/knowledge tests once the Postgres test harness is enabled.
+- **M. Test status:** the repository build passes after this slice; full Phase 3 database integration tests require a running PostgreSQL test database and are intentionally separated from the existing Mongo test fixture during migration.
+- **N. Known limitations:** the final clean Mongo removal/import is not yet complete; canonical learner state and baseline services are PostgreSQL-facing while legacy MVP persistence remains on Mongo until cutover; resource seed is intentionally small.
+- **O. Not built:** FSRS, RAG, embeddings, pgvector, Redis, queues, agents, MCP, OAuth, social features, and autonomous curriculum generation.
+- **P. Next phase:** complete the one-time Mongo export/import into relational `users`, `goals`, `learner_skills`, `plans`, `plan_tasks`, `study_sessions`, `personal_concepts`, `recall_attempts`, `review_states`, and `learning_events`; switch all services/tests to PostgreSQL; then add database-backed Phase 3 integration tests.

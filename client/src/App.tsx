@@ -12,6 +12,10 @@ import { PlanPage } from "./pages/PlanPage";
 import { LearnerPage } from "./pages/LearnerPage";
 import { NewGoalPage } from "./pages/NewGoalPage";
 import { GoalDetailPage } from "./pages/GoalDetailPage";
+import { KnowledgePage } from "./pages/KnowledgePage";
+import { KnowledgeRolePage } from "./pages/KnowledgeRolePage";
+import { BaselinePage } from "./pages/BaselinePage";
+import { BaselineResultPage } from "./pages/BaselineResultPage";
 
 export function App() {
   return (
@@ -34,6 +38,10 @@ export function App() {
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/plan/today" element={<PlanPage />} />
         <Route path="/learner" element={<LearnerPage />} />
+        <Route path="/knowledge" element={<KnowledgePage />} />
+        <Route path="/knowledge/roles/:id" element={<KnowledgeRolePage />} />
+        <Route path="/baseline/:id" element={<BaselinePage />} />
+        <Route path="/baseline/:id/result" element={<BaselineResultPage />} />
       </Route>
     </Routes>
   );

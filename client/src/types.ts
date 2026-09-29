@@ -62,6 +62,39 @@ export interface LearnerSummary {
   recentMistakes: Array<{ conceptId: string; mistakes: string[]; submittedAt?: string }>;
 }
 
+export interface KnowledgeRole {
+  id: string;
+  name: string;
+  description: string;
+  domainName: string;
+  skills: Array<{ id: string; name: string; priority: number; targetMastery: number }>;
+}
+
+export interface BaselineQuestion {
+  id: string;
+  conceptId: string;
+  level: string;
+  question: string;
+  answer: string | null;
+  coverage: number | null;
+  confidence: number | null;
+  submittedAt: string | null;
+}
+
+export interface ResourceRecommendation {
+  id: string;
+  title: string;
+  url: string;
+  provider: string;
+  estimatedMinutes: number;
+  difficulty: number;
+  description: string;
+  trustTier: number;
+  conceptName: string;
+  reason: string;
+  conceptsCovered: string[];
+}
+
 export interface StudySession {
   id: string;
   userId?: string;

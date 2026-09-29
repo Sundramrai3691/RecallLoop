@@ -4,12 +4,15 @@ import {
   type DashboardData,
   type Goal,
   type LearnerSummary,
+  type BaselineQuestion,
+  type KnowledgeRole,
   type PlanTask,
   type RecallAttempt,
   type ReviewState,
   type Skill,
   type StudySession,
   type User,
+  type ResourceRecommendation,
 } from "../types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -108,6 +111,31 @@ export const api = {
 
   learnerSummary() {
     return request<LearnerSummary>("/api/learner/summary");
+  },
+
+  knowledgeRoles() {
+    return request<{ roles: KnowledgeRole[] }>("/api/knowledge/roles");
+  },
+
+  createBaseline(input: { goalId: string; skillId: string; level: string; trustMe?: boolean }) {
+    return request<{ baseline: { assessment: { id: string }; questions: BaselineQuestion[] } }>("/api/baseline", { method: "POST", body: JSON.stringify(input) });
+  },
+
+  getBaseline(id: string) {
+    return request<{ baseline: { assessment: any; questions: BaselineQuestion[] } }>(`/api/baseline/${id}`);
+  },
+
+  submitBaselineQuestion(id: string, input: { questionId: string; answer: string; confidence: number }) {
+    return request<{ baseline: { assessment: any; questions: BaselineQuestion[] } }>(`/api/baseline/${id}/submit`, { method: "POST", body: JSON.stringify(input) });
+  },
+
+  getStartingPoint(goalId: string) {
+    return request<{ startingConcept: { id: string; name: string } | null; conceptsToSkip: any[]; conceptsToReview: any[]; resources: ResourceRecommendation[] }>(`/api/goals/${goalId}/starting-point`);
+  },
+
+  recommendedResources(conceptId?: string) {
+    const query = conceptId ? `?conceptId=${encodeURIComponent(conceptId)}` : "";
+    return request<{ resources: ResourceRecommendation[] }>(`/api/resources/recommendations${query}`);
   },
 
   health() {

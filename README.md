@@ -71,6 +71,10 @@ npm test
 
 Register or sign in at `/register` or `/login`, then use `/goals` to create a learning goal. Generate a plan from a goal to combine learning and recall work, and open `/learner` to inspect deterministic mastery and weakness summaries. The API uses JWT bearer tokens for these new user-scoped routes.
 
+## Knowledge intelligence
+
+Phase 3 adds a curated PostgreSQL knowledge map, baseline assessment, starting-point decisions, and time-bounded resource recommendations. Start PostgreSQL with `docker compose up -d postgres`, apply the schema and seed with `npm run db:migrate -w server`, then browse `/knowledge` or begin from a goal detail page. Mongo-to-PostgreSQL field mappings and the final clean cutover sequence are documented in [docs/PHASE3_MIGRATION_PLAN.md](docs/PHASE3_MIGRATION_PLAN.md).
+
 Covers session completion, concept creation, immediate recall, rubric JSON parsing, scheduler intervals, and duplicate-submit rejection.
 
 ## Docs

@@ -127,3 +127,23 @@ The planner is deterministic and consumes authoritative domain state. It does no
 JWT bearer authentication identifies the learner. Every new goal, skill, plan, task, study session, concept, recall attempt, review state, dashboard query, and learner-model query is scoped by `req.user.id`; clients cannot supply ownership IDs. Controllers remain thin and services own persistence and state transitions.
 
 Missed planned tasks are marked `missed` when a learner opens a later day. The planner keeps due recall work first and admits lower-priority work only while the daily budget allows it, so missed work is not dumped wholesale onto the next day.
+
+## 15. Phase 3 knowledge intelligence flow
+
+```mermaid
+flowchart TD
+    User --> Goal
+    Goal --> CanonicalKnowledge[Canonical Knowledge]
+    CanonicalKnowledge --> Baseline
+    Baseline --> LearnerModel[Learner Model]
+    LearnerModel --> Planner
+    Planner --> Study
+    Study --> Recall
+    Recall --> Evaluation
+    Evaluation --> LearnerModel
+    LearnerModel --> PlanUpdate[Plan Update]
+```
+
+Canonical knowledge is stored in relational PostgreSQL tables and is separate from personal learner state. The existing evaluator remains the only rubric evaluator; baseline and normal recall both feed it. Deterministic starting-point and resource ranking services sit outside the LLM.
+
+Phase 3 adds a PostgreSQL migration foundation and curated seed through `server/migrations/001_phase3.sql`, `server/migrations/002_seed_knowledge.sql`, and `npm run db:migrate -w server`. The existing MVP persistence cutover still requires the one-time import and removal sequence documented in `docs/PHASE3_MIGRATION_PLAN.md`; Mongo and PostgreSQL must not be dual-written during that final cutover.
