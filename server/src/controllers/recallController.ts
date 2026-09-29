@@ -1,4 +1,4 @@
-import type { NextFunction, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 import type { AuthenticatedRequest } from "../lib/auth.js";
 import {
   getRecall,

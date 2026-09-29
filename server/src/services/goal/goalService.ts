@@ -48,14 +48,16 @@ export async function listGoals(userId: string) {
 }
 
 export async function getGoal(userId: string, goalId: string) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
   return serializeGoal(goal);
 }
 
 export async function updateGoal(userId: string, goalId: string, input: Partial<GoalDoc>) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   if (typeof input.title === "string") goal.title = input.title.trim();
   if (typeof input.description === "string") goal.description = input.description;
@@ -69,8 +71,9 @@ export async function updateGoal(userId: string, goalId: string, input: Partial<
 }
 
 export async function deleteGoal(userId: string, goalId: string) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   await Skill.deleteMany({ userId, goalId: goal._id });
   await Plan.deleteMany({ userId, goalId: goal._id });
@@ -80,8 +83,9 @@ export async function deleteGoal(userId: string, goalId: string) {
 }
 
 export async function createSkill(userId: string, goalId: string, input: Partial<SkillDoc>) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   const name = input.name?.trim();
   if (!name) throw new AppError("Skill name is required", 400, "VALIDATION_ERROR");
@@ -113,8 +117,9 @@ export async function createSkill(userId: string, goalId: string, input: Partial
 }
 
 export async function listSkills(userId: string, goalId: string) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   const skills = await Skill.find({ userId, goalId: goal._id }).sort({ priority: -1, createdAt: 1 });
   return skills.map((skill) => ({
@@ -237,10 +242,36 @@ export async function generateGoalPlan(userId: string, goalId: string) {
   const goal = await Goal.findOne({ _id: goalId, userId });
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
 
+  const dueRecallTasks = await getDueRecallTasksForGoal(userId, goalId);
+  const weakConceptTasks = await getWeakConceptTasksForGoal(userId, goalId);
+  const learningTasks = await getSkillLearningTasksForGoal(userId, goalId);
+  const fallbackRecall = learningTasks.length > 0
+    ? [{
+        title: `Recall ${learningTasks[0].title.replace(/^Learn\s+/, "")}`,
+        description: "Review the relevant skill and check your recall before advancing.",
+        taskType: "recall",
+        priority: 95,
+        estimatedMinutes: 20,
+        scheduledFor: new Date(),
+        source: "planner",
+        reason: "Plan requires a recall task alongside learning work for the current goal.",
+      }]
+    : [{
+        title: "Review your active goal",
+        description: "Recall the key ideas behind your goal before moving to new learning tasks.",
+        taskType: "recall",
+        priority: 95,
+        estimatedMinutes: 20,
+        scheduledFor: new Date(),
+        source: "planner",
+        reason: "Deterministic planner needs at least one recall task to keep retrieval practice active.",
+      }];
+
   const tasks: any[] = [
-    ...(await getDueRecallTasksForGoal(userId, goalId)),
-    ...(await getWeakConceptTasksForGoal(userId, goalId)),
-    ...(await getSkillLearningTasksForGoal(userId, goalId)),
+    ...dueRecallTasks,
+    ...fallbackRecall,
+    ...weakConceptTasks,
+    ...learningTasks,
   ];
 
   const timeBudget = Math.max(goal.weeklyTimeBudgetMinutes, 60);
@@ -314,8 +345,9 @@ export async function generateGoalPlan(userId: string, goalId: string) {
 }
 
 export async function getGoalPlan(userId: string, goalId: string) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   const plan = await Plan.findOne({ userId, goalId: goal._id }).sort({ createdAt: -1 });
   if (!plan) {

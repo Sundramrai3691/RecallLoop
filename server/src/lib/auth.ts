@@ -22,8 +22,8 @@ export function signToken(user: AuthUser): string {
       email: user.email,
       name: user.name,
     },
-    secret,
-    { expiresIn: env.jwtExpiresIn },
+    secret as string,
+    { expiresIn: env.jwtExpiresIn as any },
   );
 }
 
