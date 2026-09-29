@@ -51,16 +51,16 @@ export async function listConceptsForSession(studySessionId: string, userId?: st
   return Concept.find({ studySessionId, ...(userId ? { userId } : {}) }).sort({ createdAt: 1 });
 }
 
-export async function getConceptById(id: string) {
-  return Concept.findById(id);
+export async function getConceptById(id: string, userId?: string) {
+  return Concept.findOne({ _id: id, ...(userId ? { userId } : {}) });
 }
 
-export async function listConcepts() {
-  return Concept.find().sort({ updatedAt: -1 }).limit(200);
+export async function listConcepts(userId?: string) {
+  return Concept.find(userId ? { userId } : {}).sort({ updatedAt: -1 }).limit(200);
 }
 
-export async function updateConceptMastery(conceptId: string, coverage: number) {
-  const existing = await Concept.findById(conceptId);
+export async function updateConceptMastery(conceptId: string, coverage: number, userId?: string) {
+  const existing = await Concept.findOne({ _id: conceptId, ...(userId ? { userId } : {}) });
   if (!existing) return null;
   const previous = existing.mastery ?? 0;
   const mastery = Number((previous * 0.4 + coverage * 0.6).toFixed(4));

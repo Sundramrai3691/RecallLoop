@@ -8,6 +8,11 @@ import { PlanTask } from "../src/models/PlanTask.js";
 import { Skill } from "../src/models/Skill.js";
 import { User } from "../src/models/User.js";
 import { Plan } from "../src/models/Plan.js";
+import { StudySession } from "../src/models/StudySession.js";
+import { Concept } from "../src/models/Concept.js";
+import { RecallAttempt } from "../src/models/RecallAttempt.js";
+import { ReviewState } from "../src/models/ReviewState.js";
+import { LearningEvent } from "../src/models/LearningEvent.js";
 
 const app = createApp();
 let mongo: MongoMemoryServer;
@@ -29,6 +34,11 @@ beforeEach(async () => {
     Skill.deleteMany({}),
     Plan.deleteMany({}),
     PlanTask.deleteMany({}),
+    StudySession.deleteMany({}),
+    Concept.deleteMany({}),
+    RecallAttempt.deleteMany({}),
+    ReviewState.deleteMany({}),
+    LearningEvent.deleteMany({}),
   ]);
 });
 
@@ -63,6 +73,8 @@ describe("auth, goals, plans, learner model", () => {
       .expect(200);
 
     expect(me.body.user.email).toBe("ada@example.com");
+
+    await request(app).get("/api/study-sessions").expect(401);
   });
 
   it("rejects duplicate emails and invalid credentials", async () => {
@@ -162,5 +174,35 @@ describe("auth, goals, plans, learner model", () => {
       .get(`/api/goals/${goal.body.goal.id}`)
       .set("Authorization", `Bearer ${second.body.token}`)
       .expect(403);
+
+    await request(app)
+      .get(`/api/goals/${goal.body.goal.id}/plan`)
+      .set("Authorization", `Bearer ${second.body.token}`)
+      .expect(403);
+  });
+
+  it("runs the authenticated goal to recall to learner to updated plan flow", async () => {
+    const registered = await request(app)
+      .post("/api/auth/register")
+      .send({ name: "Ada", email: "ada@example.com", password: "StrongPass123!" })
+      .expect(201);
+    const auth = { Authorization: `Bearer ${registered.body.token}` };
+    const goal = await request(app).post("/api/goals").set(auth).send({ title: "Backend mastery" }).expect(201);
+    await request(app).post(`/api/goals/${goal.body.goal.id}/skills`).set(auth).send({ name: "HTTP", priority: 90 }).expect(201);
+
+    const session = await request(app).post("/api/study-sessions").set(auth).send({ title: "HTTP caching", rawMaterial: "Cache headers control freshness." }).expect(201);
+    const completed = await request(app).post(`/api/study-sessions/${session.body.session.id}/complete`).set(auth).expect(200);
+    const recall = await request(app).post(`/api/recalls/${completed.body.recalls[0].id}/submit`).set(auth).send({ answer: "Cache headers control freshness.", confidence: 4 }).expect(200);
+    expect(recall.body.review.lastOutcome).toBeTruthy();
+
+    const learner = await request(app).get("/api/learner/summary").set(auth).expect(200);
+    expect(learner.body.totalConcepts).toBe(1);
+    expect(learner.body.recentMistakes).toBeDefined();
+
+    const plan = await request(app).post(`/api/goals/${goal.body.goal.id}/plan/generate`).set(auth).expect(201);
+    const task = plan.body.tasks[0];
+    await request(app).patch(`/api/plan/tasks/${task.id}`).set(auth).send({ status: "completed" }).expect(200);
+    const today = await request(app).get("/api/plan/today").set(auth).expect(200);
+    expect(today.body.tasks.some((item: any) => item.status === "completed")).toBe(true);
   });
 });

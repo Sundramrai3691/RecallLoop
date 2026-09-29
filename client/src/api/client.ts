@@ -65,7 +65,11 @@ export const api = {
     return request<{ goals: Goal[] }>("/api/goals");
   },
 
-  createGoal(input: { title: string; description: string; goalType: string; weeklyTimeBudgetMinutes: number }) {
+  getGoal(id: string) {
+    return request<{ goal: Goal }>(`/api/goals/${id}`);
+  },
+
+  createGoal(input: { title: string; description: string; goalType: string; targetDate?: string; weeklyTimeBudgetMinutes: number }) {
     return request<{ goal: Goal }>("/api/goals", {
       method: "POST",
       body: JSON.stringify(input),
@@ -93,6 +97,13 @@ export const api = {
     return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[] }>(
       "/api/plan/today",
     );
+  },
+
+  updatePlanTask(id: string, status: "planned" | "in_progress" | "completed" | "missed") {
+    return request<{ task: { id: string; status: string } }>(`/api/plan/tasks/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    });
   },
 
   learnerSummary() {

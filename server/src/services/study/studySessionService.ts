@@ -4,6 +4,7 @@ import { AppError, notFound } from "../../utils/errors.js";
 import { createConceptsForSession, listConceptsForSession } from "../concept/conceptService.js";
 import { RecallAttempt } from "../../models/RecallAttempt.js";
 import { createImmediateRecalls } from "../recall/recallService.js";
+import { recordLearningEvent } from "../events/learningEventService.js";
 
 const SOURCE_TYPES: SourceType[] = ["manual", "notes", "url", "file"];
 
@@ -39,6 +40,14 @@ export async function createStudySession(input: {
     userId,
   });
 
+  await recordLearningEvent({
+    userId,
+    type: "STUDY_STARTED",
+    entityType: "StudySession",
+    entityId: session._id,
+    payload: { title: session.title },
+  });
+
   return { session, concepts };
 }
 
@@ -51,7 +60,7 @@ export async function getStudySession(id: string, userId?: string) {
   const concepts = await listConceptsForSession(id, userId);
   const pendingRecalls = await RecallAttempt.find({
     studySessionId: session._id,
-    userId: userId ?? session.userId,
+    userId: userId ?? session.userId ?? "local-user",
     submittedAt: { $exists: false },
   }).sort({ createdAt: 1 });
   return { session, concepts, pendingRecalls };
@@ -87,6 +96,14 @@ export async function completeStudySession(id: string, userId?: string) {
   session.status = "completed";
   session.completedAt = new Date();
   await session.save();
+
+  await recordLearningEvent({
+    userId: userId ?? session.userId ?? "local-user",
+    type: "STUDY_COMPLETED",
+    entityType: "StudySession",
+    entityId: session._id,
+    payload: { conceptCount: concepts.length },
+  });
 
   const recalls = await createImmediateRecalls({
     studySessionId: id,

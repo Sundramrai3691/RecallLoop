@@ -8,6 +8,7 @@ import { updateConceptMastery } from "../concept/conceptService.js";
 import { getEvaluator } from "../evaluator/index.js";
 import { buildRecallQuestion } from "../question/questionService.js";
 import { getScheduler, type ReviewStateSnapshot } from "../scheduler/index.js";
+import { recordLearningEvent } from "../events/learningEventService.js";
 
 type ConceptLike = Pick<
   ConceptDoc,
@@ -25,6 +26,7 @@ export async function createImmediateRecalls(input: {
   for (const concept of input.concepts) {
     const existingPending = await RecallAttempt.findOne({
       conceptId: concept._id,
+      userId: input.userId,
       submittedAt: { $exists: false },
     });
     if (existingPending) {
@@ -41,7 +43,7 @@ export async function createImmediateRecalls(input: {
     });
     created.push(attempt);
 
-    const review = await ReviewState.findOne({ conceptId: concept._id });
+    const review = await ReviewState.findOne({ conceptId: concept._id, userId: input.userId });
     if (!review) {
       await ReviewState.create({
         userId: input.userId ?? "local-user",
@@ -62,10 +64,10 @@ export async function createImmediateRecalls(input: {
   return created;
 }
 
-export async function getRecall(id: string) {
-  const attempt = await RecallAttempt.findById(id);
+export async function getRecall(id: string, userId?: string) {
+  const attempt = await RecallAttempt.findOne({ _id: id, ...(userId ? { userId } : {}) });
   if (!attempt) throw notFound("Recall attempt not found", "RECALL_NOT_FOUND");
-  const concept = await Concept.findById(attempt.conceptId);
+  const concept = await Concept.findOne({ _id: attempt.conceptId, ...(userId ? { userId } : {}) });
   if (!concept) throw notFound("Concept missing for this recall", "MISSING_CONCEPT");
   return { attempt, concept };
 }
@@ -122,10 +124,18 @@ export async function submitRecall(
   attempt.submittedAt = new Date();
   await attempt.save();
 
-  const updatedConcept =
-    (await updateConceptMastery(String(concept._id), evaluation.overallCoverage)) ?? concept;
+  await recordLearningEvent({
+    userId: input.userId ?? attempt.userId,
+    type: "RECALL_SUBMITTED",
+    entityType: "RecallAttempt",
+    entityId: attempt._id,
+    payload: { confidence, overallCoverage: evaluation.overallCoverage },
+  });
 
-  const previousDoc = await ReviewState.findOne({ conceptId: concept._id });
+  const updatedConcept =
+    (await updateConceptMastery(String(concept._id), evaluation.overallCoverage, input.userId)) ?? concept;
+
+  const previousDoc = await ReviewState.findOne({ conceptId: concept._id, userId: input.userId });
   const previous: ReviewStateSnapshot | null = previousDoc
     ? {
         conceptId: String(previousDoc.conceptId),
@@ -150,7 +160,7 @@ export async function submitRecall(
   });
 
   const review = await ReviewState.findOneAndUpdate(
-    { conceptId: concept._id },
+    { conceptId: concept._id, userId: input.userId },
     {
       userId: String(concept.userId ?? "local-user"),
       conceptId: concept._id,
@@ -166,12 +176,27 @@ export async function submitRecall(
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
 
+  await recordLearningEvent({
+    userId: String(concept.userId ?? input.userId ?? "local-user"),
+    type: "EVALUATION_COMPLETED",
+    entityType: "Concept",
+    entityId: concept._id,
+    payload: { overallCoverage: evaluation.overallCoverage, mistakes: evaluation.mistakes },
+  });
+  await recordLearningEvent({
+    userId: String(concept.userId ?? input.userId ?? "local-user"),
+    type: "REVIEW_SCHEDULED",
+    entityType: "ReviewState",
+    entityId: review?._id,
+    payload: { dueAt: scheduled.dueAt, outcome: scheduled.lastOutcome },
+  });
+
   return { attempt, concept: updatedConcept, review };
 }
 
-export async function ensureDueRecallAttempts(): Promise<void> {
+export async function ensureDueRecallAttempts(userId?: string): Promise<void> {
   const now = new Date();
-  const due = await ReviewState.find({ dueAt: { $lte: now } });
+  const due = await ReviewState.find({ dueAt: { $lte: now }, ...(userId ? { userId } : {}) });
   for (const review of due) {
     const pending = await RecallAttempt.findOne({
       conceptId: review.conceptId,
@@ -186,6 +211,7 @@ export async function ensureDueRecallAttempts(): Promise<void> {
     }).sort({ submittedAt: -1 });
     const questionType: QuestionType = last?.evaluation?.suggestedRecallType ?? "explain";
     await RecallAttempt.create({
+      userId: review.userId,
       conceptId: concept._id,
       studySessionId: concept.studySessionId,
       questionType,
@@ -194,13 +220,13 @@ export async function ensureDueRecallAttempts(): Promise<void> {
   }
 }
 
-export async function listDueRecalls() {
-  await ensureDueRecallAttempts();
-  const attempts = await RecallAttempt.find({ submittedAt: { $exists: false } }).sort({
+export async function listDueRecalls(userId?: string) {
+  await ensureDueRecallAttempts(userId);
+  const attempts = await RecallAttempt.find({ submittedAt: { $exists: false }, ...(userId ? { userId } : {}) }).sort({
     createdAt: 1,
   });
   const conceptIds = attempts.map((a) => a.conceptId);
-  const concepts = await Concept.find({ _id: { $in: conceptIds } });
+  const concepts = await Concept.find({ _id: { $in: conceptIds }, ...(userId ? { userId } : {}) });
   const byId = new Map(concepts.map((c) => [String(c._id), c]));
   return attempts.map((attempt) => ({
     attempt,

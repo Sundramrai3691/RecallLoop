@@ -2,7 +2,7 @@
 
 ## 1. What I changed
 
-The workspace already contained the study → immediate recall → evaluation → schedule → dashboard slice. This pass reused that stack and closed gaps: coverage is now derived from knowledge-point statuses (LLM scores are ignored), extracted concepts are Zod-validated before insert, `GET /api/study-sessions/:id` returns pending recalls, the study page can continue a pending recall, dashboard fetching lives in `useDashboard`, docs were rewritten from the empty-repo audit, and tests were extended.
+The workspace already contained the study → immediate recall → evaluation → schedule → dashboard slice. This pass reused that stack and closed gaps: coverage is now derived from knowledge-point statuses (LLM scores are ignored), extracted concepts are Zod-validated before insert, `GET /api/study-sessions/:id` returns pending recalls, the study page can continue a pending recall, dashboard fetching lives in `useDashboard`, and the foundation now includes JWT identity, user-scoped goals and skills, deterministic plans, learner summaries, and client routes for auth, goals, plans, and learner state.
 
 ## 2. Files created
 
@@ -57,14 +57,14 @@ Routes live in `server/src/routes/`.
 
 ## 8. Service → database wiring
 
-| Service | Models |
-|---------|--------|
-| study | StudySession, Concept (via conceptService), RecallAttempt |
-| concept | Concept |
-| recall | RecallAttempt, Concept, ReviewState |
-| dashboard | StudySession, Concept, RecallAttempt, ReviewState |
-| scheduler | none (pure function; recallService persists) |
-| evaluator | none (pure / HTTP to LLM) |
+| Service   | Models                                                    |
+| --------- | --------------------------------------------------------- |
+| study     | StudySession, Concept (via conceptService), RecallAttempt |
+| concept   | Concept                                                   |
+| recall    | RecallAttempt, Concept, ReviewState                       |
+| dashboard | StudySession, Concept, RecallAttempt, ReviewState         |
+| scheduler | none (pure function; recallService persists)              |
+| evaluator | none (pure / HTTP to LLM)                                 |
 
 ## 9. Where the LLM is called
 
@@ -135,15 +135,24 @@ Open http://localhost:5173
 
 ```json
 {
-  "session": { "id": "...", "status": "in_progress", "title": "Cache Aside Pattern" },
-  "concepts": [{ "id": "...", "name": "...", "requiredKnowledgePoints": ["..."] }]
+  "session": {
+    "id": "...",
+    "status": "in_progress",
+    "title": "Cache Aside Pattern"
+  },
+  "concepts": [
+    { "id": "...", "name": "...", "requiredKnowledgePoints": ["..."] }
+  ]
 }
 ```
 
 `POST /api/recalls/:id/submit`
 
 ```json
-{ "answer": "The app checks cache first, then the database on miss...", "confidence": 7 }
+{
+  "answer": "The app checks cache first, then the database on miss...",
+  "confidence": 7
+}
 ```
 
 200 includes `recall.evaluation.knowledgePointResults`, `review.dueAt`, `review.lastOutcome`.
@@ -156,7 +165,7 @@ Open http://localhost:5173
 
 ## 18. Known limitations
 
-No auth; mock scoring is lexical; scheduler is not FSRS; no notifications; URL/file source types are labeled only; question generation is templated; single local user.
+Mock scoring is lexical; scheduler is not FSRS; no notifications; URL/file source types are labeled only; question generation is templated; OAuth/social login is intentionally absent.
 
 ## 19. What I intentionally did NOT build
 
@@ -164,7 +173,7 @@ Social features, profiles, challenges, leaderboards, gamification, browser exten
 
 ## 20. Recommended next implementation step
 
-Add real user authentication and bind `userId` on all collections so review state is per learner. After that, swap `IntervalScheduler` for FSRS behind the existing `Scheduler` interface.
+Swap `IntervalScheduler` for FSRS behind the existing `Scheduler` interface. Add richer task rescheduling and analytics after the current deterministic policy has real usage data.
 
 ---
 
@@ -191,3 +200,28 @@ Add real user authentication and bind `userId` on all collections so review stat
 **`client/src/api/client.ts`** — central fetch wrapper. Called by pages/hooks. In: UI actions. Out: typed API payloads / `ApiError`.
 
 **`client/src/hooks/useDashboard.ts`** — load dashboard + health. Called by `DashboardPage`. Calls `api`. Out: `{ data, mock, error }`.
+
+## Phase 2 completion summary
+
+### A-P. Delivered foundation
+
+- **A. Implemented:** JWT identity, password hashing, authenticated ownership, goals, skills, plans, bounded daily tasks, learner summaries, append-only learning events, authenticated frontend routes, dashboard summaries, and deterministic missed-task handling.
+- **B. Files created:** `server/src/models/{User,Goal,Skill,Plan,PlanTask,LearningEvent}.ts`, `server/src/lib/auth.ts`, auth/goal/learner routes and controllers, `server/src/services/{auth,goal,learner,events}`, client auth/goal/plan/learner pages, and `docs/LEARNING_MODEL.md`.
+- **C. Files modified:** legacy models and services now carry authenticated ownership; client API/navigation/dashboard were extended; tests and documentation were updated.
+- **D. Authentication architecture:** registration hashes passwords with bcryptjs; login issues a JWT; bearer middleware derives `req.user`; controllers never accept client ownership IDs; resource services return 401/403 as appropriate.
+- **E. Goal/Skill/Plan architecture:** a user owns goals; goals own skills; generated plans own bounded tasks. Task sources and reasons explain why work exists.
+- **F. Learner model architecture:** `LearnerModelService` derives concept state, weak concepts, weak skills, due concepts, confidence, success rate, and mistake history from stored domain records.
+- **G. End-to-end flow:** `Goal -> Plan -> StudySession -> Concept -> RecallAttempt -> Evaluation -> Concept mastery/LearnerModel -> ReviewState -> PlanTask`.
+- **H. New API endpoints:** auth endpoints; goal and skill CRUD; goal plan generation/read; today plan; plan-task status; learner summary/weak concepts/weak skills.
+- **I. Database models:** `User`, `Goal`, `Skill`, `Plan`, `PlanTask`, and `LearningEvent` were added; existing study, concept, recall, and review models are user-scoped.
+- **J. Recall-to-planning:** evaluation updates mastery and `ReviewState`; the planner consumes due reviews and weakness summaries, preserves authoritative recall references, and records task reasons.
+- **K. Missed tasks:** planned tasks older than today become `missed`; due recall work is prioritized and lower-priority work is excluded when the daily budget is full.
+- **L. Tests added:** auth protection and ownership, authenticated vertical flow, learner update, plan regeneration, task completion, and event-backed study/recall behavior.
+- **M. Test results:** `npm test -- --run` passes all tests; `npm run build` passes server TypeScript and client Vite production build.
+- **N. Known limitations:** interval scheduling is not FSRS; mock evaluation is lexical; URL/file sources remain labels; task redistribution is deterministic rather than optimized.
+- **O. Intentionally not built:** OAuth, social login, PostgreSQL, Redis, queues, Kafka, microservices, GraphQL, vector search, RAG, agents, and autonomous AI planning.
+- **P. Recommended next phase:** observe real task outcomes, add richer task completion history and analytics, then replace the scheduler behind its existing interface with a tested FSRS adapter.
+
+### Service authority map
+
+`authService` owns credentials and token issuance. `goalService` owns goal, skill, plan, and task persistence. `studySessionService` owns study lifecycle and concept extraction orchestration. `recallService` owns attempts, evaluation persistence, mastery updates, and scheduler calls. `learnerModelService` owns derived learner views. `dashboardService` owns dashboard aggregation. `LearningEvent` is append-only audit history, not an alternative authority for timing or mastery.

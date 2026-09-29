@@ -87,6 +87,11 @@ export function GoalsPage() {
           Create goal
         </button>
       </form>
+      <p className="actions">
+        <Link className="btn" to="/goals/new">
+          Use the full goal form
+        </Link>
+      </p>
       <div className="grid grid-2" style={{ marginTop: 16 }}>
         {goals.map((goal) => (
           <article className="card" key={goal.id}>
@@ -112,9 +117,14 @@ export function GoalsPage() {
                 Add skills through the API to make this goal plan-specific.
               </p>
             )}
-            <Link className="btn btn-primary" to={`/plan?goalId=${goal.id}`}>
-              View plan
-            </Link>
+            <div className="actions">
+              <Link className="btn" to={`/goals/${goal.id}`}>
+                Open goal
+              </Link>
+              <Link className="btn btn-primary" to={`/plan?goalId=${goal.id}`}>
+                View plan
+              </Link>
+            </div>
           </article>
         ))}
       </div>

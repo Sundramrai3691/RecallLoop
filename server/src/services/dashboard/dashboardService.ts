@@ -16,19 +16,19 @@ function endOfToday(now = new Date()): Date {
   return d;
 }
 
-export async function getDashboard() {
-  await ensureDueRecallAttempts();
+export async function getDashboard(userId: string) {
+  await ensureDueRecallAttempts(userId);
   const now = new Date();
   const todayStart = startOfToday(now);
   const todayEnd = endOfToday(now);
 
-  const pendingAttempts = await RecallAttempt.find({ submittedAt: { $exists: false } }).sort({
+  const pendingAttempts = await RecallAttempt.find({ userId, submittedAt: { $exists: false } }).sort({
     createdAt: 1,
   });
   const pendingConceptIds = pendingAttempts.map((a) => a.conceptId);
-  const pendingConcepts = await Concept.find({ _id: { $in: pendingConceptIds } });
+  const pendingConcepts = await Concept.find({ _id: { $in: pendingConceptIds }, userId });
   const conceptById = new Map(pendingConcepts.map((c) => [String(c._id), c]));
-  const reviews = await ReviewState.find({ conceptId: { $in: pendingConceptIds } });
+  const reviews = await ReviewState.find({ userId, conceptId: { $in: pendingConceptIds } });
   const reviewByConcept = new Map(reviews.map((r) => [String(r.conceptId), r]));
 
   const todayDue = pendingAttempts.map((attempt) => {
@@ -43,13 +43,13 @@ export async function getDashboard() {
     };
   });
 
-  const upcomingReviews = await ReviewState.find({
+  const upcomingReviews = await ReviewState.find({ userId,
     dueAt: { $gt: todayEnd },
   })
     .sort({ dueAt: 1 })
     .limit(20);
 
-  const upcomingConcepts = await Concept.find({
+  const upcomingConcepts = await Concept.find({ userId,
     _id: { $in: upcomingReviews.map((r) => r.conceptId) },
   });
   const upcomingById = new Map(upcomingConcepts.map((c) => [String(c._id), c]));
@@ -60,18 +60,18 @@ export async function getDashboard() {
     intervalDays: review.intervalDays,
   }));
 
-  const recentSessions = await StudySession.find()
+  const recentSessions = await StudySession.find({ userId })
     .sort({ updatedAt: -1 })
     .limit(8)
     .lean();
 
-  const mastery = await Concept.find()
+  const mastery = await Concept.find({ userId })
     .sort({ mastery: -1, updatedAt: -1 })
     .limit(40)
     .select("name mastery difficulty studySessionId");
 
-  const recallAttemptCount = await RecallAttempt.countDocuments();
-  const submittedCount = await RecallAttempt.countDocuments({
+  const recallAttemptCount = await RecallAttempt.countDocuments({ userId });
+  const submittedCount = await RecallAttempt.countDocuments({ userId,
     submittedAt: { $exists: true },
   });
 

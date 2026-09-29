@@ -1,15 +1,29 @@
 import mongoose from "mongoose";
 import { MongoMemoryServer } from "mongodb-memory-server";
-import request from "supertest";
+import supertest from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/app.js";
 import { Concept } from "../src/models/Concept.js";
 import { RecallAttempt } from "../src/models/RecallAttempt.js";
 import { ReviewState } from "../src/models/ReviewState.js";
 import { StudySession } from "../src/models/StudySession.js";
+import { User } from "../src/models/User.js";
 
 const app = createApp();
 let mongo: MongoMemoryServer;
+let token = "";
+
+function request(app: any) {
+  const agent = supertest(app);
+  return {
+    get(path: string) {
+      return agent.get(path).set("Authorization", `Bearer ${token}`);
+    },
+    post(path: string) {
+      return agent.post(path).set("Authorization", `Bearer ${token}`);
+    },
+  };
+}
 
 beforeAll(async () => {
   mongo = await MongoMemoryServer.create();
@@ -27,7 +41,14 @@ beforeEach(async () => {
     Concept.deleteMany({}),
     RecallAttempt.deleteMany({}),
     ReviewState.deleteMany({}),
+    User.deleteMany({}),
   ]);
+  const registered = await supertest(app).post("/api/auth/register").send({
+    name: "Flow Learner",
+    email: "flow@example.com",
+    password: "StrongPass123!",
+  });
+  token = registered.body.token;
 });
 
 describe("study → recall vertical slice", () => {

@@ -1,4 +1,4 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../lib/auth.js";
 import {
   getRecall,
@@ -12,12 +12,12 @@ import {
 } from "../lib/serialize.js";
 
 export async function listDueRecallsHandler(
-  _req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const due = await listDueRecalls();
+    const due = await listDueRecalls(req.user!.id);
     res.json({
       recalls: due.map((row) => ({
         ...serializeAttempt(row.attempt),
@@ -35,7 +35,7 @@ export async function getRecallHandler(
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { attempt, concept } = await getRecall(req.params.id);
+    const { attempt, concept } = await getRecall(req.params.id, req.user!.id);
     res.json({
       recall: serializeAttempt(attempt),
       concept: {

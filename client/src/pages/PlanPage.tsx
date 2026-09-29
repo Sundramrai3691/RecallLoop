@@ -41,6 +41,11 @@ export function PlanPage() {
     }
   }
 
+  async function completeTask(taskId: string) {
+    await api.updatePlanTask(taskId, "completed");
+    await load();
+  }
+
   return (
     <div>
       <section className="hero">
@@ -64,6 +69,13 @@ export function PlanPage() {
           Open a goal and choose View plan to generate goal-specific work.
         </p>
       )}
+      <p className="muted">
+        Estimated time:{" "}
+        {tasks.reduce((total, task) => total + task.estimatedMinutes, 0)}{" "}
+        minutes · Completed:{" "}
+        {tasks.filter((task) => task.status === "completed").length} ·
+        Remaining: {tasks.filter((task) => task.status !== "completed").length}
+      </p>
       <div className="grid" style={{ marginTop: 16 }}>
         {tasks.length ? (
           tasks.map((task) => (
@@ -77,6 +89,17 @@ export function PlanPage() {
               <p className="muted">
                 Priority {task.priority} · {task.reason}
               </p>
+              {task.status !== "completed" ? (
+                <button
+                  className="btn"
+                  onClick={() => void completeTask(task.id)}
+                  type="button"
+                >
+                  Mark complete
+                </button>
+              ) : (
+                <span className="badge good">Completed</span>
+              )}
             </article>
           ))
         ) : (

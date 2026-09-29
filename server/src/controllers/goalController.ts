@@ -12,8 +12,10 @@ import {
   listGoals,
   listSkills,
   updateGoal,
+  updatePlanTask,
   updateSkill,
 } from "../services/goal/goalService.js";
+import { AppError } from "../utils/errors.js";
 
 export async function createGoalHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
@@ -118,6 +120,19 @@ export async function getTodayPlanHandler(req: AuthenticatedRequest, res: Respon
   try {
     const result = await getTodayPlan(req.user!.id);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updatePlanTaskHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    const status = req.body?.status;
+    if (!["planned", "in_progress", "completed", "missed"].includes(status)) {
+      throw new AppError("Invalid plan task status", 400, "VALIDATION_ERROR");
+    }
+    const result = await updatePlanTask(req.user!.id, req.params.id, status as "planned" | "in_progress" | "completed" | "missed");
+    res.json({ task: result });
   } catch (error) {
     next(error);
   }

@@ -137,8 +137,9 @@ export async function listSkills(userId: string, goalId: string) {
 }
 
 export async function updateSkill(userId: string, skillId: string, input: Partial<any>) {
-  const skill = await Skill.findOne({ _id: skillId, userId });
+  const skill = await Skill.findById(skillId);
   if (!skill) throw notFound("Skill not found", "SKILL_NOT_FOUND");
+  if (skill.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   if (typeof input.name === "string") skill.name = input.name.trim();
   if (typeof input.description === "string") skill.description = input.description;
@@ -160,8 +161,9 @@ export async function updateSkill(userId: string, skillId: string, input: Partia
 }
 
 export async function deleteSkill(userId: string, skillId: string) {
-  const skill = await Skill.findOne({ _id: skillId, userId });
+  const skill = await Skill.findById(skillId);
   if (!skill) throw notFound("Skill not found", "SKILL_NOT_FOUND");
+  if (skill.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
   await skill.deleteOne();
   return { deleted: true };
 }
@@ -239,13 +241,16 @@ async function getSkillLearningTasksForGoal(userId: string, goalId: string) {
 }
 
 export async function generateGoalPlan(userId: string, goalId: string) {
-  const goal = await Goal.findOne({ _id: goalId, userId });
+  const goal = await Goal.findById(goalId);
   if (!goal) throw notFound("Goal not found", "GOAL_NOT_FOUND");
+  if (goal.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
 
   const dueRecallTasks = await getDueRecallTasksForGoal(userId, goalId);
   const weakConceptTasks = await getWeakConceptTasksForGoal(userId, goalId);
   const learningTasks = await getSkillLearningTasksForGoal(userId, goalId);
-  const fallbackRecall = learningTasks.length > 0
+  const fallbackRecall = dueRecallTasks.length > 0
+    ? []
+    : learningTasks.length > 0
     ? [{
         title: `Recall ${learningTasks[0].title.replace(/^Learn\s+/, "")}`,
         description: "Review the relevant skill and check your recall before advancing.",
@@ -274,10 +279,20 @@ export async function generateGoalPlan(userId: string, goalId: string) {
     ...learningTasks,
   ];
 
-  const timeBudget = Math.max(goal.weeklyTimeBudgetMinutes, 60);
-  const limited = tasks
-    .sort((a, b) => b.priority - a.priority)
-    .slice(0, Math.max(4, Math.min(10, Math.floor(timeBudget / 45))));
+  const dailyBudget = Math.max(60, Math.ceil(goal.weeklyTimeBudgetMinutes / 7));
+  const seenRecallKeys = new Set<string>();
+  const limited: any[] = [];
+  let plannedMinutes = 0;
+  for (const task of tasks.sort((a, b) => b.priority - a.priority)) {
+    const recallKey = task.taskType === "recall"
+      ? String(task.recallAttemptId ?? task.conceptId ?? task.title)
+      : null;
+    if (recallKey && seenRecallKeys.has(recallKey)) continue;
+    if (limited.length > 0 && plannedMinutes + task.estimatedMinutes > dailyBudget) continue;
+    limited.push(task);
+    plannedMinutes += task.estimatedMinutes;
+    if (recallKey) seenRecallKeys.add(recallKey);
+  }
 
   const startDate = new Date();
   const endDate = new Date(startDate);
@@ -387,6 +402,11 @@ export async function getTodayPlan(userId: string) {
   const end = new Date();
   end.setHours(23, 59, 59, 999);
 
+  await PlanTask.updateMany(
+    { userId, status: "planned", scheduledFor: { $lt: start } },
+    { $set: { status: "missed" } },
+  );
+
   const tasks = await PlanTask.find({
     userId,
     scheduledFor: { $gte: start, $lte: end },
@@ -419,4 +439,13 @@ export async function getTodayPlan(userId: string) {
 
   const generated = await generateGoalPlan(userId, String(activeGoal._id));
   return generated;
+}
+
+export async function updatePlanTask(userId: string, taskId: string, status: "planned" | "in_progress" | "completed" | "missed") {
+  const task = await PlanTask.findById(taskId);
+  if (!task) throw notFound("Plan task not found", "PLAN_TASK_NOT_FOUND");
+  if (task.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  task.status = status;
+  await task.save();
+  return { id: String(task._id), status: task.status };
 }

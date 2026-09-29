@@ -21,27 +21,27 @@ Browser → Vite :5173 (/api proxy) → Express :3001 → MongoDB
 
 ## Important existing files
 
-| Path | Role |
-|------|------|
-| `package.json` | Workspace scripts: `dev`, `test`, `build` |
-| `.env.example` | `MONGODB_URI`, `PORT`, `LLM_*` |
-| `docker-compose.yml` | Local MongoDB 7 |
-| `server/src/index.ts` | API process entry |
-| `server/src/app.ts` | Express factory |
-| `server/src/routes/index.ts` | `/api` routers |
-| `client/src/main.tsx` | Frontend entry |
-| `client/src/App.tsx` | Routes for dashboard / study / recall |
-| `client/src/api/client.ts` | Central HTTP client |
-| `server/src/db/connect.ts` | Mongoose connection |
-| `server/src/config/env.ts` | Env + mock-LLM detection |
-| `server/src/models/*` | StudySession, Concept, RecallAttempt, ReviewState |
-| `server/src/services/{study,concept,recall,evaluator,scheduler,dashboard,question}` | Domain logic |
-| `client/src/pages/*` | UI flow |
-| `client/src/hooks/useDashboard.ts` | Dashboard fetch (no business logic) |
+| Path                                                                                | Role                                              |
+| ----------------------------------------------------------------------------------- | ------------------------------------------------- |
+| `package.json`                                                                      | Workspace scripts: `dev`, `test`, `build`         |
+| `.env.example`                                                                      | `MONGODB_URI`, `PORT`, `LLM_*`                    |
+| `docker-compose.yml`                                                                | Local MongoDB 7                                   |
+| `server/src/index.ts`                                                               | API process entry                                 |
+| `server/src/app.ts`                                                                 | Express factory                                   |
+| `server/src/routes/index.ts`                                                        | `/api` routers                                    |
+| `client/src/main.tsx`                                                               | Frontend entry                                    |
+| `client/src/App.tsx`                                                                | Routes for dashboard / study / recall             |
+| `client/src/api/client.ts`                                                          | Central HTTP client                               |
+| `server/src/db/connect.ts`                                                          | Mongoose connection                               |
+| `server/src/config/env.ts`                                                          | Env + mock-LLM detection                          |
+| `server/src/models/*`                                                               | StudySession, Concept, RecallAttempt, ReviewState |
+| `server/src/services/{study,concept,recall,evaluator,scheduler,dashboard,question}` | Domain logic                                      |
+| `client/src/pages/*`                                                                | UI flow                                           |
+| `client/src/hooks/useDashboard.ts`                                                  | Dashboard fetch (no business logic)               |
 
-**Authentication:** none. Sessions default `userId` to `local-user`.
+**Authentication:** JWT bearer authentication is available through `/api/auth/register`, `/api/auth/login`, and `/api/auth/me`. All study, recall, concept, dashboard, goal, plan, and learner routes require an authenticated learner and scope data by `req.user.id`.
 
-**Existing routes:** `GET /api/health`, study-sessions CRUD-complete, recalls due/get/submit, concepts list/get, dashboard.
+**Existing routes:** health, auth, goals/skills, today plan, learner summary, study sessions, recalls, concepts, and dashboard.
 
 ## Existing data flow
 
@@ -49,6 +49,8 @@ Browser → Vite :5173 (/api proxy) → Express :3001 → MongoDB
 2. `POST /api/study-sessions/:id/complete` marks complete and creates immediate explain recalls + `ReviewState(dueAt=now)`.
 3. `POST /api/recalls/:id/submit` evaluates, stores rubric, updates mastery, schedules next review.
 4. `GET /api/dashboard` lists due/upcoming/recent/mastery.
+5. `POST /api/goals/:id/plan/generate` creates a deterministic plan with learning and recall tasks informed by due reviews and weak concepts.
+6. `GET /api/learner/summary` exposes deterministic mastery, weakness, confidence, due-review, and mistake signals.
 
 Frontend pages call only `client/src/api/client.ts`.
 
@@ -66,7 +68,7 @@ The vertical slice was already present. Gaps closed in this pass:
 4. Dashboard fetch lived in the page instead of a hook.
 5. Audit docs still described an empty repository.
 
-Not missing (intentionally out of MVP): auth, FSRS, queues, Redis, social, notifications.
+Not included in this foundation: FSRS, queues, Redis, social, and notifications.
 
 ## Implementation plan
 
@@ -76,10 +78,11 @@ Not missing (intentionally out of MVP): auth, FSRS, queues, Redis, social, notif
 4. Return `pendingRecalls` on `GET /api/study-sessions/:id`.
 5. Wire study page “Continue pending recall”; extract `useDashboard`.
 6. Refresh docs; run Vitest.
+7. Add JWT auth plus goal, skill, plan, and learner-model infrastructure without changing the original study/recall flow.
 
 ## Risks / assumptions
 
-- **No auth:** single local user.
+- **JWT access tokens are required for all user-owned APIs.**
 - **MongoDB required** to run the app (memory server for tests).
 - **MVP scheduler is not FSRS.** Documented at `services/scheduler/`.
 - **Mock evaluation is lexical overlap**, not pedagogically equivalent to a live model.
