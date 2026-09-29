@@ -17,6 +17,7 @@ type ConceptLike = Pick<
 export async function createImmediateRecalls(input: {
   studySessionId: string;
   concepts: ConceptLike[];
+  userId?: string;
 }) {
   const created = [];
   const now = new Date();
@@ -32,6 +33,7 @@ export async function createImmediateRecalls(input: {
     }
 
     const attempt = await RecallAttempt.create({
+      userId: input.userId ?? "local-user",
       conceptId: concept._id,
       studySessionId: new Types.ObjectId(input.studySessionId),
       questionType: "explain",
@@ -42,6 +44,7 @@ export async function createImmediateRecalls(input: {
     const review = await ReviewState.findOne({ conceptId: concept._id });
     if (!review) {
       await ReviewState.create({
+        userId: input.userId ?? "local-user",
         conceptId: concept._id,
         state: "new",
         dueAt: now,
@@ -67,7 +70,10 @@ export async function getRecall(id: string) {
   return { attempt, concept };
 }
 
-export async function submitRecall(id: string, input: { answer: string; confidence: number }) {
+export async function submitRecall(
+  id: string,
+  input: { answer: string; confidence: number; userId?: string },
+) {
   const answer = input.answer?.trim();
   if (!answer) {
     throw new AppError("Answer cannot be empty", 400, "EMPTY_ANSWER");
@@ -79,12 +85,18 @@ export async function submitRecall(id: string, input: { answer: string; confiden
 
   const attempt = await RecallAttempt.findById(id);
   if (!attempt) throw notFound("Recall attempt not found", "RECALL_NOT_FOUND");
+  if (input.userId && attempt.userId && input.userId !== attempt.userId) {
+    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  }
   if (attempt.submittedAt) {
     throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   }
 
   const concept = await Concept.findById(attempt.conceptId);
   if (!concept) throw notFound("Concept missing for this recall", "MISSING_CONCEPT");
+  if (input.userId && concept.userId && input.userId !== concept.userId) {
+    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  }
   if (!concept.requiredKnowledgePoints?.length) {
     throw new AppError("Concept has no knowledge points to evaluate", 400, "MISSING_CONCEPT");
   }
@@ -103,6 +115,7 @@ export async function submitRecall(id: string, input: { answer: string; confiden
     evaluatorVersion: evaluator.version,
   };
 
+  attempt.userId = input.userId ?? attempt.userId ?? concept.userId ?? "local-user";
   attempt.answer = answer;
   attempt.confidence = confidence;
   attempt.evaluation = evaluation;
@@ -139,6 +152,7 @@ export async function submitRecall(id: string, input: { answer: string; confiden
   const review = await ReviewState.findOneAndUpdate(
     { conceptId: concept._id },
     {
+      userId: String(concept.userId ?? "local-user"),
       conceptId: concept._id,
       state: scheduled.state,
       dueAt: scheduled.dueAt,

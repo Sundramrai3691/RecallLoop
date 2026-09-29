@@ -22,8 +22,9 @@ export async function createStudySession(input: {
     throw new AppError("Invalid sourceType", 400, "VALIDATION_ERROR");
   }
 
+  const userId = input.userId ?? DEFAULT_USER_ID;
   const session = await StudySession.create({
-    userId: input.userId ?? DEFAULT_USER_ID,
+    userId,
     title,
     rawMaterial: input.rawMaterial?.trim() ?? "",
     sourceType,
@@ -35,32 +36,42 @@ export async function createStudySession(input: {
     studySessionId: String(session._id),
     title: session.title,
     rawMaterial: session.rawMaterial,
+    userId,
   });
 
   return { session, concepts };
 }
 
-export async function getStudySession(id: string) {
+export async function getStudySession(id: string, userId?: string) {
   const session = await StudySession.findById(id);
   if (!session) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
-  const concepts = await listConceptsForSession(id);
+  if (userId && session.userId !== userId) {
+    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  }
+  const concepts = await listConceptsForSession(id, userId);
   const pendingRecalls = await RecallAttempt.find({
     studySessionId: session._id,
+    userId: userId ?? session.userId,
     submittedAt: { $exists: false },
   }).sort({ createdAt: 1 });
   return { session, concepts, pendingRecalls };
 }
 
-export async function completeStudySession(id: string) {
+export async function completeStudySession(id: string, userId?: string) {
   const session = await StudySession.findById(id);
   if (!session) throw notFound("Study session not found", "STUDY_SESSION_NOT_FOUND");
 
-  let concepts = await listConceptsForSession(id);
+  if (userId && session.userId !== userId) {
+    throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  }
+
+  let concepts = await listConceptsForSession(id, userId ?? session.userId);
   if (concepts.length === 0) {
     concepts = await createConceptsForSession({
       studySessionId: id,
       title: session.title,
       rawMaterial: session.rawMaterial,
+      userId: userId ?? session.userId,
     });
   }
 
@@ -68,6 +79,7 @@ export async function completeStudySession(id: string) {
     const recalls = await createImmediateRecalls({
       studySessionId: id,
       concepts,
+      userId: userId ?? session.userId,
     });
     return { session, concepts, recalls, alreadyCompleted: true };
   }
@@ -79,6 +91,7 @@ export async function completeStudySession(id: string) {
   const recalls = await createImmediateRecalls({
     studySessionId: id,
     concepts,
+    userId: userId ?? session.userId,
   });
 
   return { session, concepts, recalls, alreadyCompleted: false };

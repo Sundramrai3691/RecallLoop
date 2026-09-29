@@ -13,6 +13,7 @@ export const REVIEW_OUTCOMES = ["again", "hard", "good", "easy"] as const;
 export type ReviewOutcome = (typeof REVIEW_OUTCOMES)[number];
 
 export interface ReviewStateDoc {
+  userId?: string;
   conceptId: Types.ObjectId;
   state: ReviewLifecycle;
   dueAt: Date;
@@ -28,6 +29,7 @@ export interface ReviewStateDoc {
 
 const reviewStateSchema = new Schema<ReviewStateDoc>(
   {
+    userId: { type: String, default: "local-user", index: true },
     conceptId: {
       type: Schema.Types.ObjectId,
       ref: "Concept",

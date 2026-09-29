@@ -1,4 +1,5 @@
 import mongoose, { Schema, Types } from "mongoose";
+import { DEFAULT_USER_ID } from "../config/env.js";
 
 export const QUESTION_TYPES = [
   "explain",
@@ -30,6 +31,7 @@ export interface RecallEvaluation {
 }
 
 export interface RecallAttemptDoc {
+  userId?: string;
   conceptId: Types.ObjectId;
   studySessionId: Types.ObjectId;
   question: string;
@@ -69,6 +71,7 @@ const evaluationSchema = new Schema<RecallEvaluation>(
 
 const recallAttemptSchema = new Schema<RecallAttemptDoc>(
   {
+    userId: { type: String, default: DEFAULT_USER_ID, index: true },
     conceptId: { type: Schema.Types.ObjectId, ref: "Concept", required: true, index: true },
     studySessionId: {
       type: Schema.Types.ObjectId,

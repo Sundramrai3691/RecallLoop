@@ -1,4 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Response } from "express";
+import type { AuthenticatedRequest } from "../lib/auth.js";
 import {
   getRecall,
   listDueRecalls,
@@ -29,7 +30,7 @@ export async function listDueRecallsHandler(
 }
 
 export async function getRecallHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
@@ -51,7 +52,7 @@ export async function getRecallHandler(
 }
 
 export async function submitRecallHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
@@ -59,6 +60,7 @@ export async function submitRecallHandler(
     const { attempt, concept, review } = await submitRecall(req.params.id, {
       answer: req.body?.answer,
       confidence: req.body?.confidence,
+      userId: req.user?.id,
     });
     res.json({
       recall: serializeAttempt(attempt),

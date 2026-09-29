@@ -2,6 +2,7 @@ import { Concept } from "../models/Concept.js";
 import { RecallAttempt } from "../models/RecallAttempt.js";
 import { ReviewState } from "../models/ReviewState.js";
 import { StudySession } from "../models/StudySession.js";
+import { User } from "../models/User.js";
 
 export function serializeSession(session: InstanceType<typeof StudySession>) {
   return {
@@ -61,5 +62,15 @@ export function serializeReview(review: InstanceType<typeof ReviewState> | null)
     lastOutcome: review.lastOutcome ?? null,
     consecutiveSuccesses: review.consecutiveSuccesses,
     updatedAt: review.updatedAt,
+  };
+}
+
+export function serializeUser(user: InstanceType<typeof User>) {
+  return {
+    id: String(user._id),
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
   };
 }

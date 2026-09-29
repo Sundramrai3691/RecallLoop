@@ -8,6 +8,7 @@ export async function createConceptsForSession(input: {
   studySessionId: string;
   title: string;
   rawMaterial?: string;
+  userId?: string;
 }) {
   const evaluator = getEvaluator();
   const extracted = await evaluator.extractConcepts({
@@ -33,6 +34,7 @@ export async function createConceptsForSession(input: {
 
   const docs = await Concept.insertMany(
     validated.map((c) => ({
+      userId: input.userId ?? "local-user",
       studySessionId: new Types.ObjectId(input.studySessionId),
       name: c.name.trim(),
       description: c.description.trim(),
@@ -45,8 +47,8 @@ export async function createConceptsForSession(input: {
   return docs;
 }
 
-export async function listConceptsForSession(studySessionId: string) {
-  return Concept.find({ studySessionId }).sort({ createdAt: 1 });
+export async function listConceptsForSession(studySessionId: string, userId?: string) {
+  return Concept.find({ studySessionId, ...(userId ? { userId } : {}) }).sort({ createdAt: 1 });
 }
 
 export async function getConceptById(id: string) {

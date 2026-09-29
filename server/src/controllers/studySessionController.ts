@@ -1,4 +1,5 @@
-import type { NextFunction, Request, Response } from "express";
+import type { NextFunction, Response } from "express";
+import type { AuthenticatedRequest } from "../lib/auth.js";
 import {
   completeStudySession,
   createStudySession,
@@ -7,12 +8,15 @@ import {
 import { serializeAttempt, serializeConcept, serializeSession } from "../lib/serialize.js";
 
 export async function createStudySessionHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts } = await createStudySession(req.body ?? {});
+    const { session, concepts } = await createStudySession({
+      ...(req.body ?? {}),
+      userId: req.user?.id,
+    });
     res.status(201).json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),
@@ -23,12 +27,12 @@ export async function createStudySessionHandler(
 }
 
 export async function getStudySessionHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts, pendingRecalls } = await getStudySession(req.params.id);
+    const { session, concepts, pendingRecalls } = await getStudySession(req.params.id, req.user?.id);
     res.json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),
@@ -40,12 +44,12 @@ export async function getStudySessionHandler(
 }
 
 export async function completeStudySessionHandler(
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response,
   next: NextFunction,
 ): Promise<void> {
   try {
-    const { session, concepts, recalls } = await completeStudySession(req.params.id);
+    const { session, concepts, recalls } = await completeStudySession(req.params.id, req.user?.id);
     res.json({
       session: serializeSession(session),
       concepts: concepts.map(serializeConcept),

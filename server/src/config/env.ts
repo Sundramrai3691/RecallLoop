@@ -14,6 +14,8 @@ export const env = {
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "gpt-4o-mini",
   llmBaseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
+  jwtSecret: process.env.JWT_SECRET ?? "recallloop-dev-secret-change-me",
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
 };
 
 export const DEFAULT_USER_ID = "local-user";

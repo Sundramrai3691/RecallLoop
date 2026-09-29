@@ -1,6 +1,8 @@
 import mongoose, { Schema, Types } from "mongoose";
+import { DEFAULT_USER_ID } from "../config/env.js";
 
 export interface ConceptDoc {
+  userId?: string;
   studySessionId: Types.ObjectId;
   name: string;
   description: string;
@@ -14,6 +16,7 @@ export interface ConceptDoc {
 
 const conceptSchema = new Schema<ConceptDoc>(
   {
+    userId: { type: String, default: DEFAULT_USER_ID, index: true },
     studySessionId: {
       type: Schema.Types.ObjectId,
       ref: "StudySession",
