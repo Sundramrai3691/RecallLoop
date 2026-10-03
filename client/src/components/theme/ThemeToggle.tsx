@@ -3,7 +3,8 @@ import { useTheme } from "./ThemeProvider";
 
 export function ThemeToggle() {
   const { theme, toggleTheme } = useTheme();
-  const label = theme === "light" ? "Switch to dark theme" : "Switch to light theme";
+  const label =
+    theme === "light" ? "Switch to dark theme" : "Switch to light theme";
   const Icon = theme === "light" ? Moon : Sun;
 
   return (

@@ -18,7 +18,11 @@ export function Layout() {
         </Link>
         <nav aria-label="Primary navigation" className="nav">
           <NavLink className="nav-link" end to="/dashboard">
-            <LayoutDashboard aria-hidden="true" className="nav-icon" size={17} />
+            <LayoutDashboard
+              aria-hidden="true"
+              className="nav-icon"
+              size={17}
+            />
             <span>Dashboard</span>
           </NavLink>
           <NavLink className="nav-link" to="/study/new">
