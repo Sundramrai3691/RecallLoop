@@ -23,7 +23,8 @@ CROSS JOIN (VALUES
   ('Messaging', 'Queues, pub/sub, retries, idempotency, and delivery semantics.', 80),
   ('Concurrency', 'Parallel work, coordination, backpressure, and safety.', 75),
   ('Operations', 'Containers, load balancing, observability, and reliability.', 70)
-) AS skill(name, description, priority) ON d.name = 'Backend Engineering'
+) AS skill(name, description, priority)
+WHERE d.name = 'Backend Engineering'
 ON CONFLICT (domain_id, name) DO NOTHING;
 
 INSERT INTO role_skills (role_id, skill_id, priority, target_mastery)
@@ -54,7 +55,8 @@ CROSS JOIN (VALUES
   ('Scalability', 'Capacity, bottlenecks, and horizontal scaling.', 95),
   ('Reliability', 'Failure handling, consistency, durability, and recovery.', 90),
   ('Architecture', 'Boundaries, tradeoffs, and system decomposition.', 85)
-) AS skill(name, description, priority) ON d.name = 'System Design'
+) AS skill(name, description, priority)
+WHERE d.name = 'System Design'
 ON CONFLICT (domain_id, name) DO NOTHING;
 
 INSERT INTO topics (skill_id, name, description)
@@ -79,7 +81,8 @@ JOIN (VALUES
   ('Operations', 'Load Balancing', 'Traffic distribution and health checks.'),
   ('Operations', 'Observability', 'Logs, metrics, traces, and diagnosis.'),
   ('Operations', 'Docker', 'Reproducible service packaging.')
-) AS topic(skill_name, name, description) ON s.name = topic.skill_name;
+) AS topic(skill_name, name, description) ON s.name = topic.skill_name
+ON CONFLICT (skill_id, name) DO NOTHING;
 
 INSERT INTO topics (skill_id, name, description)
 SELECT s.id, topic.name, topic.description
@@ -90,7 +93,8 @@ JOIN (VALUES
   ('Reliability', 'Consistency and Durability', 'Correctness during failures.'),
   ('Reliability', 'Failure Recovery', 'Degradation, retries, and recovery.'),
   ('Architecture', 'System Design Fundamentals', 'Tradeoffs and component boundaries.')
-) AS topic(skill_name, name, description) ON s.name = topic.skill_name;
+) AS topic(skill_name, name, description) ON s.name = topic.skill_name
+ON CONFLICT (skill_id, name) DO NOTHING;
 
 INSERT INTO canonical_concepts (topic_id, name, description, difficulty)
 SELECT t.id, c.name, c.description, c.difficulty
@@ -149,7 +153,7 @@ INSERT INTO knowledge_sources (name, url, source_type, trust_tier, version_date,
   ('PostgreSQL Documentation', 'https://www.postgresql.org/docs/', 'official_docs', 1, '2026', 'Curated reference for relational behavior.'),
   ('AWS Architecture Center', 'https://aws.amazon.com/architecture/', 'official_docs', 2, '2026', 'Practitioner-oriented architecture references.'),
   ('Google SRE Resources', 'https://sre.google/resources/', 'practitioner', 2, '2026', 'Reliability and operations references.')
-ON CONFLICT (url) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO resources (title, url, provider, resource_type, estimated_minutes, difficulty, description, trust_tier, freshness, source_type) VALUES
   ('MDN HTTP overview', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview', 'MDN', 'documentation', 20, 2, 'HTTP request and response fundamentals.', 1, '2026', 'official_docs'),
