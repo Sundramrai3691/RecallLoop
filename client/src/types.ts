@@ -103,6 +103,39 @@ export interface ResourceRecommendation {
   reasons?: Array<{code:string;text:string}>;
 }
 
+export interface GroundedRemediationSource {
+  chunkId: string;
+  sourceId: string;
+  title: string;
+  sourceType: string;
+  reference: string;
+  provenance: Record<string, unknown>;
+  relevance: number;
+  chunkOrder: number;
+  text: string;
+}
+
+export interface GroundedRemediation {
+  id: string;
+  conceptId: string;
+  conceptName: string;
+  triggeringAttemptId: string;
+  knowledgePoint: string;
+  reason: string;
+  evidence: { status: string; feedback: string; confidence: number | null; mistakes: string[]; attemptCount: number };
+  status: "pending" | "insufficient_sources" | "failed" | "ready" | "verification_created" | "verified";
+  content: null | { title: string; whyThis: string; explanation: string; keyPoints: string[]; commonMistake: string; checkYourself: string[]; unsupportedAspects: string[] };
+  generationError: string | null;
+  triggerScore: number | null;
+  verificationAttemptId: string | null;
+  verificationScore: number | null;
+  improved: boolean | null;
+  sources: GroundedRemediationSource[];
+  fallbackResources: ResourceRecommendation[];
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface StudySession {
   id: string;
   userId?: string;
@@ -165,6 +198,7 @@ export interface RecallAttempt {
   resultStatus: string | null;
   evidenceWeight: number;
   repetitionReason?: "spaced_recall" | "mastery_confirmation" | "remediation" | null;
+  remediationId?: string | null;
   recommendation?: { actionType: "recall" | "learn" | "practice" | "remediation" | "mastery_check" | "none"; title: string; reason: string; estimatedMinutes: number; priority: number } | null;
   evaluation: RecallEvaluation | null;
   submittedAt: string | null;

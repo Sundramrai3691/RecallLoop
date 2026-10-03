@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, type RecallAttempt, type ReviewState } from "../types";
+import type { GroundedRemediation } from "../types";
 
 function formatWhen(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -17,6 +18,7 @@ export function RecallResultPage() {
   const [reviewDate,setReviewDate]=useState("");
   const [reviewSaved,setReviewSaved]=useState(false);
   const [nextStepError,setNextStepError]=useState<string|null>(null);
+  const [groundedRemediation,setGroundedRemediation]=useState<GroundedRemediation|null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -27,6 +29,7 @@ export function RecallResultPage() {
         const data = await api.getRecall(attemptId);
         if (cancelled) return;
         setRecall(data.recall);
+        if(data.recall.remediationId){const result=await api.getRemediation(data.recall.remediationId);if(!cancelled)setGroundedRemediation(result.remediation);}
         const concept = await api.getConcept(data.concept.id);
         if (cancelled) return;
         setReview(concept.review);
@@ -61,7 +64,7 @@ export function RecallResultPage() {
   const coverage = Math.round(evaluation.overallCoverage * 100);
 
   async function saveReviewDate(){try{const result=await api.confirmReviewDate(recall!.conceptId,new Date(reviewDate).toISOString());setReview(result.review);setReviewSaved(true);setNextStepError(null);}catch(err){setNextStepError(err instanceof ApiError?err.message:"Could not update review date");}}
-  async function startRecommendation(){if(!recall?.recommendation||!['practice','remediation','mastery_check','recall'].includes(recall.recommendation.actionType))return;try{const mode=recall.recommendation.actionType==='practice'?'practice':recall.recommendation.actionType==='mastery_check'?'mastery_check':recall.recommendation.actionType==='remediation'?'deep_recall':'rapid_fire';const run=await api.createAssessment(recall.conceptId,mode);window.location.assign(`/assessments/${run.assessment.id}`);}catch(err){setNextStepError(err instanceof ApiError?err.message:"Could not start the recommended activity");}}
+  async function startRecommendation(){if(!recall?.recommendation)return;try{if(recall.recommendation.actionType==="remediation"){const result=recall.remediationId?{remediation:await api.getRemediation(recall.remediationId).then((value)=>value.remediation)}:await api.createRemediation(recall.id);navigate(`/remediations/${result.remediation.id}`);return;}if(!['practice','mastery_check','recall'].includes(recall.recommendation.actionType))return;const mode=recall.recommendation.actionType==='practice'?'practice':recall.recommendation.actionType==='mastery_check'?'mastery_check':'rapid_fire';const run=await api.createAssessment(recall.conceptId,mode);window.location.assign(`/assessments/${run.assessment.id}`);}catch(err){setNextStepError(err instanceof ApiError?err.message:"Could not start the recommended activity");}}
 
   return (
     <div className="grid">
@@ -103,7 +106,8 @@ export function RecallResultPage() {
         <p>Missing: {evaluation.missingConcepts.join("; ") || "none"}</p>
         <p>Mistakes: {evaluation.mistakes.join("; ") || "none"}</p>
         <p>Strengths: {evaluation.strengths.join("; ") || "none"}</p>
-        {recall.recommendation?<section><h3>Recommended next step</h3><p><strong>{recall.recommendation.title}</strong></p><p>{recall.recommendation.reason}</p><p>Estimated: {recall.recommendation.estimatedMinutes} minutes</p>{recall.recommendation.actionType==="learn"?<button className="btn" type="button" onClick={()=>navigate(`/resources?conceptId=${recall.conceptId}`)}>Explore focused resources</button>:recall.recommendation.actionType!=="none"?<button className="btn" type="button" onClick={()=>void startRecommendation()}>Practice now</button>:null}{nextStepError?<p className="error">{nextStepError}</p>:null}</section>:null}
+        {recall.recommendation?<section><h3>Recommended next step</h3><p><strong>{recall.recommendation.title}</strong></p><p>{recall.recommendation.reason}</p><p>Estimated: {recall.recommendation.estimatedMinutes} minutes</p>{recall.recommendation.actionType==="learn"?<button className="btn" type="button" onClick={()=>navigate(`/resources?conceptId=${recall.conceptId}`)}>Explore focused resources</button>:recall.recommendation.actionType==="remediation"?<button className="btn btn-primary" type="button" onClick={()=>void startRecommendation()}>Start focused remediation</button>:recall.recommendation.actionType!=="none"?<button className="btn" type="button" onClick={()=>void startRecommendation()}>Practice now</button>:null}{nextStepError?<p className="error">{nextStepError}</p>:null}</section>:null}
+        {groundedRemediation?.status==="verified"?<section className="card"><h3>Remediation verification</h3><p>{groundedRemediation.improved?"Your answer showed stronger evidence for the targeted point.":"Your answer did not yet show stronger evidence for the targeted point."}</p><Link to={`/remediations/${groundedRemediation.id}`}>Review remediation sources and result</Link></section>:null}
         <p className="muted">Suggested question form: {evaluation.suggestedRecallType}</p>
         <div className="actions">
           <Link className="btn btn-primary" to="/dashboard">

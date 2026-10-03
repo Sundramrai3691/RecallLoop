@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessmentBlueprint, buildQuestion, evaluateMcq, evidenceWeight, nextHint, selectAssessment } from "./questionService.js";
+import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, evaluateMcq, evidenceWeight, nextHint, selectAssessment } from "./questionService.js";
 import { findBuiltinMcq } from "./mcqBank.js";
 
 describe("question engine primitives", () => {
@@ -39,6 +39,14 @@ describe("question engine primitives", () => {
     expect(mcq?.prompt).toContain("token-bucket");
     expect(mcq?.distractors.some((option)=>option.toLowerCase().includes("fixed-window"))).toBe(true);
     expect(mcq?.explanation).toContain("Refill rate");
+  });
+  it("targets verification at the evaluated weak knowledge point with alternate wording",()=>{
+    const point="cwnd grows during slow start";
+    const first=buildTargetedVerificationQuestion("TCP Congestion Control",point,0);
+    const second=buildTargetedVerificationQuestion("TCP Congestion Control",point,1);
+    expect(first.knowledgePoints).toEqual([point]);
+    expect(first.prompt).toContain(point);
+    expect(second.prompt).not.toBe(first.prompt);
   });
   it("varies stable question prompts across a bounded wording set",()=>{
     const question1=buildQuestion("Queues","short_explanation",["ack timing"],2,0,0);

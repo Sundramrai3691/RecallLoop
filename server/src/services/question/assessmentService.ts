@@ -1,7 +1,7 @@
 import { withTransaction, query } from "../../db/postgres.js";
 import { getAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import { AppError, notFound } from "../../utils/errors.js";
-import { assessmentBlueprint, buildQuestion, upsertQuestion } from "./questionService.js";
+import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, upsertQuestion } from "./questionService.js";
 
 export type AssessmentMode = "rapid_fire" | "deep_recall" | "mastery_check" | "practice";
 const DIMENSIONS = ["recognition","recall","explanation","application","depth","transfer"];
@@ -34,6 +34,34 @@ export async function createAssessment(userId: string, conceptId: string, mode: 
   const questions = [];
   for (const id of attempts.attemptIds) questions.push(await getAttempt(id,userId));
   return { assessment: { id: attempts.id, mode: attempts.mode, status: "in_progress", current: 1, total: attempts.attemptIds.length }, questions };
+}
+
+export async function createTargetedVerification(userId:string,remediationId:string) {
+  const attemptId=await withTransaction(async(client)=>{
+    const result=await client.query<any>(`SELECT r.id,r.user_id,r.concept_id,r.knowledge_point,r.status,r.verification_attempt_id,c.name,c.study_session_id,c.difficulty
+      FROM grounded_remediations r JOIN personal_concepts c ON c.id=r.concept_id AND c.user_id=r.user_id WHERE r.id=$1 AND r.user_id=$2 FOR UPDATE OF r`,[remediationId,userId]);
+    const remediation=result.rows[0];
+    if(!remediation)throw notFound("Remediation not found","REMEDIATION_NOT_FOUND");
+    if(remediation.verification_attempt_id)return remediation.verification_attempt_id as string;
+    if(remediation.status!=="ready")throw new AppError("Remediation is not ready for verification",409,"REMEDIATION_NOT_READY");
+    const history=await client.query<any>(`SELECT question_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND question_id IS NOT NULL ORDER BY created_at DESC LIMIT 20`,[userId,remediation.concept_id]);
+    const recentIds=new Set<string>(history.rows.map((row)=>row.question_id));
+    let draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,0);
+    let questionId="";
+    for(let variant=0;variant<6;variant++){
+      draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,variant);
+      questionId=await upsertQuestion(client,remediation.concept_id,draft);
+      if(!recentIds.has(questionId))break;
+      questionId="";
+    }
+    if(!questionId)throw new AppError("No unseen targeted verification wording is available yet",409,"NO_FRESH_VERIFICATION");
+    const session=await client.query<any>(`INSERT INTO assessment_sessions(user_id,concept_id,mode) VALUES($1,$2,'practice') RETURNING id`,[userId,remediation.concept_id]);
+    const attempt=await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,question_id,assessment_session_id,assessment_position,remediation_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,1,$8) RETURNING id`,[userId,remediation.concept_id,remediation.study_session_id,draft.questionType,draft.prompt,questionId,session.rows[0].id,remediationId]);
+    await client.query(`UPDATE grounded_remediations SET status='verification_created',verification_attempt_id=$2,updated_at=now() WHERE id=$1`,[remediationId,attempt.rows[0].id]);
+    return attempt.rows[0].id as string;
+  });
+  return getAttempt(attemptId,userId);
 }
 
 export async function getAssessment(userId: string, assessmentId: string) {

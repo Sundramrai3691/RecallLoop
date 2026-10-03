@@ -76,4 +76,6 @@ Missed tasks remain in history with `missed` status. A new plan selects due reca
 
 ## Data and implementation boundaries
 
-The existing PostgreSQL tables remain the source of truth. Small additive migrations store review preference, repetition reason, requiredness, stable question uniqueness, recommendations, and resource links. The implementation adds no RAG, vector search, queue, agent, or external API subsystem.
+The existing PostgreSQL tables remain the source of truth. Small additive migrations store review preference, repetition reason, requiredness, stable question uniqueness, recommendations, and resource links. Grounded remediation adds a narrow source/chunk store and bounded similarity ranking; it does not add queues, agents, a separate database, or an unrestricted crawling subsystem.
+
+For the first evidence-grounded remediation flow, see [GROUNDED_REMEDIATION.md](./GROUNDED_REMEDIATION.md). It adds user-provided source chunks and targeted verification without replacing the existing question, recall, evaluation, or learner-state records.

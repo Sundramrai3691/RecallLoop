@@ -13,6 +13,8 @@ import { recallRouter } from "./recalls.js";
 import { studySessionRouter } from "./studySessions.js";
 import { assessmentRouter } from "./assessments.js";
 import { settingsRouter } from "./settings.js";
+import { groundingRouter } from "./grounding.js";
+import { remediationRouter } from "./remediations.js";
 
 export const apiRouter = Router();
 
@@ -35,5 +37,7 @@ apiRouter.use("/study-sessions", studySessionRouter);
 apiRouter.use("/recalls", recallRouter);
 apiRouter.use("/assessments", assessmentRouter);
 apiRouter.use("/settings", settingsRouter);
+apiRouter.use("/grounding", groundingRouter);
+apiRouter.use("/remediations", remediationRouter);
 apiRouter.use("/concepts", conceptRouter);
 apiRouter.use("/dashboard", dashboardRouter);

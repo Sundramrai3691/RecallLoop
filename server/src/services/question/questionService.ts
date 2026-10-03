@@ -84,6 +84,19 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
   return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: options ? [evaluatedPoint] : points, hints: ["Recall the key mechanism involved.", `Connect your answer to: ${evaluatedPoint}`, "Check the main tradeoff or a concrete use case." ] };
 }
 
+export function buildTargetedVerificationQuestion(conceptName:string,knowledgePoint:string,variant=0):QuestionDraft {
+  const base=buildQuestion(conceptName,"short_explanation",[knowledgePoint],3,0,variant);
+  const prompts=[
+    `Without looking at the remediation, explain this point about ${conceptName}: ${knowledgePoint}`,
+    `In your own words, state ${knowledgePoint} and explain why it matters for ${conceptName}.`,
+    `Teach a new learner the idea captured by this point: ${knowledgePoint}.`,
+    `Recall ${knowledgePoint} from memory and connect it to ${conceptName}.`,
+    `What does ${knowledgePoint} mean in ${conceptName}? Answer from memory.`,
+    `Describe ${knowledgePoint} clearly enough that someone could distinguish it from a related idea.`,
+  ];
+  return {...base,title:"Targeted Check",context:"Answer from memory without reopening the remediation.",prompt:prompts[variant%prompts.length],knowledgePoints:[knowledgePoint],estimatedMinutes:3};
+}
+
 export function evidenceWeight(hintsUsed: number): number {
   return [1, 0.85, 0.7, 0.55][Math.max(0, Math.min(3, hintsUsed))];
 }

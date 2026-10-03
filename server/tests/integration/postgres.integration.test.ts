@@ -9,6 +9,8 @@ import { recommendResources } from "../../src/services/resources/resourceRecomme
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
 import { generateGoalPlan,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
+import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
+import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -98,6 +100,88 @@ describe("PostgreSQL runtime integration", () => {
       expect(today.backlog.carriedForwardCount+today.backlog.deferredCount).toBeGreaterThan(0);
       const historical=await postgres.query(`SELECT count(*)::int AS count FROM plan_tasks WHERE user_id=$1 AND plan_id=$2 AND status='missed'`,[userId,plan.plan.id]);
       expect(historical.rows[0].count).toBeGreaterThan(0);
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("ingests attributed source text, retrieves a real gap, generates grounded remediation, and verifies improvement",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Grounding Test') RETURNING id`,[`grounding-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const study=await postgres.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'TCP study') RETURNING id`,[userId]);
+      const concept=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'TCP Congestion Control','Sender-side traffic regulation.',$3) RETURNING id`,[userId,study.rows[0].id,["cwnd grows during slow start"]]);
+      const sourceInput={title:"TCP Congestion Control Notes",text:"TCP congestion control uses the congestion window (cwnd) to limit bytes in flight at the sender. Slow start increases cwnd as acknowledgements arrive until the slow-start threshold or a loss event. Receiver flow control uses rwnd to limit data based on receiver capacity.",sourceType:"markdown",reference:"https://example.test/tcp-notes",provenance:{providedBy:"learner",license:"learner-provided"}};
+      const source=await ingestGroundingSource(userId,sourceInput);
+      expect(source.processingStatus).toBe("processed");
+      expect(source.chunkCount).toBeGreaterThan(0);
+      const repeated=await ingestGroundingSource(userId,sourceInput);
+      expect(repeated.id).toBe(source.id);
+      expect(repeated.duplicate).toBe(true);
+      expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM grounding_sources WHERE id=$1`,[source.id])).rows[0].count).toBe(1);
+      expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM grounding_chunks WHERE source_id=$1`,[source.id])).rows[0].count).toBe(source.chunkCount);
+      await expect(getGroundingSource(userId,randomUUID())).rejects.toThrow("Source not found");
+      const outsider=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Other User') RETURNING id`,[`grounding-other-${randomUUID()}@test.local`])).rows[0].id;
+      try{await expect(getGroundingSource(outsider,source.id)).rejects.toThrow("Source not found");}finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[outsider]);}
+
+      let triggeringAttempt:any;
+      for(let index=0;index<3;index++){
+        const run=await createAssessment(userId,concept.rows[0].id,"rapid_fire");
+        const mcq=run.questions.find((item:any)=>item.questionType==="mcq");
+        const submission=await submitRecall(mcq.id,{selectedOptionId:"a",confidence:9,userId});
+        triggeringAttempt=submission.attempt;
+      }
+      expect(triggeringAttempt.recommendation.actionType).toBe("remediation");
+      const remediation=await createGroundedRemediation(userId,triggeringAttempt.id);
+      expect(remediation?.status).toBe("ready");
+      expect(remediation?.knowledgePoint).toBe("cwnd grows during slow start");
+      expect(remediation?.reason).toContain("confidence was 9/10");
+      expect(remediation?.content.explanation).toContain("cwnd");
+      expect(remediation?.sources[0].sourceId).toBe(source.id);
+      expect(remediation?.sources[0].reference).toBe(sourceInput.reference);
+      const persisted=await postgres.query<any>(`SELECT count(*)::int AS count FROM grounded_remediations WHERE triggering_attempt_id=$1`,[triggeringAttempt.id]);
+      expect(persisted.rows[0].count).toBe(1);
+
+      const verification=await createTargetedVerification(userId,remediation!.id);
+      expect(verification.question.knowledgePoints).toEqual([remediation!.knowledgePoint]);
+      expect(verification.question.prompt).toContain(remediation!.knowledgePoint);
+      const priorQuestionIds=(await postgres.query<any>(`SELECT question_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND id<>$3`,[userId,concept.rows[0].id,verification.id])).rows.map((row:any)=>row.question_id);
+      expect(priorQuestionIds).not.toContain(verification.question.id);
+      expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM grounded_remediation_chunks WHERE remediation_id=$1`,[remediation!.id])).rows[0].count).toBeGreaterThan(0);
+      const sameVerification=await createTargetedVerification(userId,remediation!.id);
+      expect(sameVerification.id).toBe(verification.id);
+      const masteryBeforeVerification=(await getConceptState(userId,concept.rows[0].id))?.mastery;
+      await submitRecall(verification.id,{answer:"cwnd grows during slow start as acknowledgements arrive and is limited by the slow-start threshold or loss",confidence:8,userId});
+      const verified=await getGroundedRemediation(userId,remediation!.id);
+      expect(verified.status).toBe("verified");
+      expect(verified.improved).toBe(true);
+      expect(verified.verificationScore).toBeGreaterThan(verified.triggerScore??0);
+      const learnerAfterVerification=await getConceptState(userId,concept.rows[0].id);
+      expect(learnerAfterVerification?.attemptCount).toBe(4);
+      expect(learnerAfterVerification?.mastery).toBeGreaterThan(masteryBeforeVerification??0);
+
+      const unrelated=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database B tree page splits','Maintains ordered database indexes.',$3) RETURNING id`,[userId,study.rows[0].id,["page split preserves sorted key order"]]);
+      const unrelatedAssessment=await createAssessment(userId,unrelated.rows[0].id,"rapid_fire");
+      const unrelatedQuestion=unrelatedAssessment.questions.find((item:any)=>item.questionType==="mcq");
+      const unrelatedRecall=await submitRecall(unrelatedQuestion.id,{selectedOptionId:"a",confidence:4,userId});
+      const insufficient=await createGroundedRemediation(userId,unrelatedRecall.attempt.id);
+      expect(insufficient?.status).toBe("insufficient_sources");
+      expect(insufficient?.content).toBeNull();
+
+      const failedRun=await createAssessment(userId,concept.rows[0].id,"rapid_fire");
+      const failedQuestion=failedRun.questions.find((item:any)=>item.questionType==="mcq");
+      const failedRecall=await submitRecall(failedQuestion.id,{selectedOptionId:"a",confidence:9,userId});
+      const failedGeneration=await createGroundedRemediation(userId,failedRecall.attempt.id,{remediator:{name:"failing-test-generator",generate:async()=>{throw new Error("test generation failure");}}});
+      expect(failedGeneration?.status).toBe("failed");
+      expect(failedGeneration?.sources.length).toBeGreaterThan(0);
+      const retriedGeneration=await createGroundedRemediation(userId,failedRecall.attempt.id);
+      expect(retriedGeneration?.status).toBe("ready");
+      expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM grounded_remediations WHERE triggering_attempt_id=$1`,[failedRecall.attempt.id])).rows[0].count).toBe(1);
+
+      const noEmbedding={name:"bad-test-embedder",dimensions:64,embed:async()=>[]};
+      await expect(ingestGroundingSource(userId,{title:"Failed embedding source",text:"This document is retained with failed processing status for retry."},{embeddingProvider:noEmbedding})).rejects.toThrow("missing or invalid vectors");
+      const sources=await postgres.query<any>(`SELECT processing_status FROM grounding_sources WHERE user_id=$1 AND title='Failed embedding source'`,[userId]);
+      expect(sources.rows[0].processing_status).toBe("failed");
+      const retriedSource=await ingestGroundingSource(userId,{title:"Failed embedding source",text:"This document is retained with failed processing status for retry."});
+      expect(retriedSource.id).toBe((await postgres.query<any>(`SELECT id FROM grounding_sources WHERE user_id=$1 AND title='Failed embedding source'`,[userId])).rows[0].id);
+      expect(retriedSource.processingStatus).toBe("processed");
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 });

@@ -19,6 +19,7 @@ import { BaselineResultPage } from "./pages/BaselineResultPage";
 import { AssessmentPage } from "./pages/AssessmentPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
+import { GroundedRemediationPage } from "./pages/GroundedRemediationPage";
 
 export function App() {
   return (
@@ -44,6 +45,7 @@ export function App() {
         <Route path="/learner" element={<LearnerPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/resources" element={<ResourcesPage />} />
+        <Route path="/remediations/:id" element={<GroundedRemediationPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/knowledge/roles/:id" element={<KnowledgeRolePage />} />
         <Route path="/baseline/:id" element={<BaselinePage />} />

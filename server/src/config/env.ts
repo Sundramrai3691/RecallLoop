@@ -14,6 +14,11 @@ export const env = {
   llmApiKey: process.env.LLM_API_KEY ?? "",
   llmModel: process.env.LLM_MODEL ?? "gpt-4o-mini",
   llmBaseUrl: process.env.LLM_BASE_URL ?? "https://api.openai.com/v1",
+  remediationProvider: (process.env.REMEDIATION_PROVIDER ?? "mock").toLowerCase(),
+  embeddingProvider: (process.env.EMBEDDING_PROVIDER ?? "mock").toLowerCase(),
+  embeddingApiKey: process.env.EMBEDDING_API_KEY ?? "",
+  embeddingModel: process.env.EMBEDDING_MODEL ?? "text-embedding-3-small",
+  embeddingBaseUrl: process.env.EMBEDDING_BASE_URL ?? "https://api.openai.com/v1",
   jwtSecret: process.env.JWT_SECRET ?? "recallloop-dev-secret-change-me",
   jwtExpiresIn: process.env.JWT_EXPIRES_IN ?? "7d",
 };

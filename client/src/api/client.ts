@@ -3,6 +3,7 @@ import {
   type Concept,
   type DashboardData,
   type Goal,
+  type GroundedRemediation,
   type LearnerSummary,
   type BaselineQuestion,
   type KnowledgeRole,
@@ -184,6 +185,12 @@ export const api = {
   },
 
   learningPack(conceptId:string,availableMinutes:number,goalId?:string){const params=new URLSearchParams({conceptId,availableMinutes:String(availableMinutes)});if(goalId)params.set("goalId",goalId);return request<{pack:{conceptId:string;conceptName:string;availableMinutes:number;estimatedTotalMinutes:number;remainingMinutes:number;items:Array<{kind:string;title:string;minutes:number;reason:string;url?:string}>}}>(`/api/resources/learning-pack?${params.toString()}`);},
+
+  ingestGroundingSource(input:{title:string;text:string;sourceType:"text"|"markdown";reference?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;contentHash:string;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources',{method:'POST',body:JSON.stringify(input)});},
+  listGroundingSources(){return request<{sources:Array<{id:string;title:string;sourceType:string;reference:string;provenance:Record<string,unknown>;contentHash:string;processingStatus:string;processingError:string|null;createdAt:string;updatedAt:string;chunkCount:number}>}>('/api/grounding/sources');},
+  createRemediation(attemptId:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/from-attempt/${attemptId}`,{method:'POST'});},
+  getRemediation(id:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/${id}`);},
+  verifyRemediation(id:string){return request<{remediationId:string;attempt:RecallAttempt}>(`/api/remediations/${id}/verify`,{method:'POST'});},
 
   getSettings() { return request<{ reviewMode: "automatic" | "confirm" | "manual" }>("/api/settings"); },
   updateSettings(reviewMode: "automatic" | "confirm" | "manual") { return request<{ reviewMode: "automatic" | "confirm" | "manual" }>("/api/settings",{ method:"PATCH",body:JSON.stringify({ reviewMode }) }); },
