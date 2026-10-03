@@ -38,12 +38,32 @@ export function DashboardPage() {
   }, []);
 
   if (error) {
+    if (error.status === 401) {
+      return (
+        <section className="card">
+          <h1>Sign in to continue</h1>
+          <p className="muted">
+            Create an account or sign in to see your learning dashboard.
+          </p>
+          <div className="actions">
+            <Link className="btn btn-primary" to="/register">
+              Create account
+            </Link>
+            <Link className="btn" to="/login">
+              Sign in
+            </Link>
+          </div>
+        </section>
+      );
+    }
+
     return (
       <div className="card error">
-        <p>{error}</p>
+        <p>{error.message}</p>
         <p className="muted">
-          Start PostgreSQL (`docker compose up -d postgres`), run migrations,
-          and `npm run dev`.
+          {error.status === null || error.status >= 500
+            ? "Check that PostgreSQL and the API server are running."
+            : "Please try again or contact your administrator."}
         </p>
       </div>
     );
