@@ -5,6 +5,8 @@ import { getReview } from "../repositories/legacyPostgresRepositories.js";
 import { notFound } from "../utils/errors.js";
 import { getConceptState } from "../services/learner/learnerModelService.js";
 import { serializeConcept, serializeReview } from "../lib/serialize.js";
+import { confirmReviewDate } from "../services/recall/recallService.js";
+import { AppError } from "../utils/errors.js";
 
 export async function listConceptsHandler(
   req: AuthenticatedRequest,
@@ -33,8 +35,16 @@ export async function getConceptHandler(
       concept: serializeConcept(concept),
       review: serializeReview(review),
       dimensionScores: learnerState?.dimensionScores ?? {},
+      learnerState,
     });
   } catch (err) {
     next(err);
   }
+}
+
+export async function updateConceptReviewHandler(req: AuthenticatedRequest,res: Response,next: NextFunction): Promise<void> {
+  try {
+    if (typeof req.body?.dueAt !== "string") throw new AppError("dueAt is required",400,"VALIDATION_ERROR");
+    res.json({ review: serializeReview(await confirmReviewDate(req.user!.id,req.params.id,req.body.dueAt)) });
+  } catch (err) { next(err); }
 }

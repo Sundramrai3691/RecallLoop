@@ -17,6 +17,8 @@ import { KnowledgeRolePage } from "./pages/KnowledgeRolePage";
 import { BaselinePage } from "./pages/BaselinePage";
 import { BaselineResultPage } from "./pages/BaselineResultPage";
 import { AssessmentPage } from "./pages/AssessmentPage";
+import { SettingsPage } from "./pages/SettingsPage";
+import { ResourcesPage } from "./pages/ResourcesPage";
 
 export function App() {
   return (
@@ -40,6 +42,8 @@ export function App() {
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/plan/today" element={<PlanPage />} />
         <Route path="/learner" element={<LearnerPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/resources" element={<ResourcesPage />} />
         <Route path="/knowledge" element={<KnowledgePage />} />
         <Route path="/knowledge/roles/:id" element={<KnowledgeRolePage />} />
         <Route path="/baseline/:id" element={<BaselinePage />} />

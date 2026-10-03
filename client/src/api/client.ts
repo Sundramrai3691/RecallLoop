@@ -98,7 +98,7 @@ export const api = {
   },
 
   todayPlan() {
-    return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[]; timeBudget: { availableMinutes: number; plannedMinutes: number; remainingMinutes: number } | null }>(
+    return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[]; timeBudget: { availableMinutes: number; plannedMinutes: number; remainingMinutes: number } | null; backlog?: { carriedForwardCount: number; deferredCount: number } }>(
       "/api/plan/today",
     );
   },
@@ -134,9 +134,9 @@ export const api = {
     return request<{ startingConcept: { id: string; name: string } | null; conceptsToSkip: any[]; conceptsToReview: any[]; resources: ResourceRecommendation[] }>(`/api/goals/${goalId}/starting-point`);
   },
 
-  recommendedResources(conceptId?: string) {
-    const query = conceptId ? `?conceptId=${encodeURIComponent(conceptId)}` : "";
-    return request<{ resources: ResourceRecommendation[] }>(`/api/resources/recommendations${query}`);
+  recommendedResources(conceptId?: string,availableMinutes=60,goalId?:string) {
+    const params=new URLSearchParams({availableMinutes:String(availableMinutes),limit:"4"});if(conceptId)params.set("conceptId",conceptId);if(goalId)params.set("goalId",goalId);
+    return request<{ resources: ResourceRecommendation[] }>(`/api/resources/recommendations?${params.toString()}`);
   },
 
   health() {
@@ -183,19 +183,25 @@ export const api = {
     );
   },
 
+  learningPack(conceptId:string,availableMinutes:number,goalId?:string){const params=new URLSearchParams({conceptId,availableMinutes:String(availableMinutes)});if(goalId)params.set("goalId",goalId);return request<{pack:{conceptId:string;conceptName:string;availableMinutes:number;estimatedTotalMinutes:number;remainingMinutes:number;items:Array<{kind:string;title:string;minutes:number;reason:string;url?:string}>}}>(`/api/resources/learning-pack?${params.toString()}`);},
+
+  getSettings() { return request<{ reviewMode: "automatic" | "confirm" | "manual" }>("/api/settings"); },
+  updateSettings(reviewMode: "automatic" | "confirm" | "manual") { return request<{ reviewMode: "automatic" | "confirm" | "manual" }>("/api/settings",{ method:"PATCH",body:JSON.stringify({ reviewMode }) }); },
+  confirmReviewDate(conceptId: string,dueAt: string) { return request<{ review: ReviewState }>(`/api/concepts/${conceptId}/review`,{method:"PATCH",body:JSON.stringify({dueAt})}); },
+
   revealRecallHint(id: string) {
     return request<{ hint: string; maxHintLevel: number }>(`/api/recalls/${id}/hints`, { method: "POST" });
   },
 
-  createAssessment(conceptId: string, mode: "rapid_fire" | "deep_recall" | "mastery_check") {
+  createAssessment(conceptId: string, mode: "rapid_fire" | "deep_recall" | "mastery_check" | "practice") {
     return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[] }>("/api/assessments", { method: "POST", body: JSON.stringify({ conceptId, mode }) });
   },
 
   getAssessment(id: string) {
-    return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[]; result: null | { correct: number; total: number; dimensionScores: Record<string, number | null>; weakArea: string | null } }>(`/api/assessments/${id}`);
+    return request<{ assessment: { id: string; conceptId: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[]; result: null | { correct: number; total: number; dimensionScores: Record<string, number | null>; weakArea: string | null; recommendation: NonNullable<RecallAttempt["recommendation"]> | null } }>(`/api/assessments/${id}`);
   },
 
   getConcept(id: string) {
-    return request<{ concept: Concept; review: ReviewState | null; dimensionScores: Record<string, number | null> }>(`/api/concepts/${id}`);
+    return request<{ concept: Concept; review: ReviewState | null; dimensionScores: Record<string, number | null>; learnerState: null | { mastery:number|null; attemptCount:number; successRate:number|null; confidence:number|null; hintsUsed:number|null; mistakeCount:number; lastAttemptAt:string|null; nextReviewAt:string|null; dimensionScores:Record<string,number|null> } }>(`/api/concepts/${id}`);
   },
 };

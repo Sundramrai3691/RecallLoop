@@ -8,7 +8,7 @@ export function fitTasksToBudget(candidates: PlanCandidate[], budget: number, go
   const selected: Array<PlanCandidate & { goalId: string; sequenceOrder: number }> = [];
   const seen = new Set<string>(); let minutes = 0;
   for (const item of ordered) {
-    const key = item.taskType === "recall" ? String(item.recallAttemptId ?? item.conceptId ?? "") : "";
+    const key = item.taskType === "recall" && item.recallAttemptId ? `recall:${item.recallAttemptId}` : `${item.taskType}:${item.conceptId ?? ""}:${String(item.title ?? "")}`;
     if (key && seen.has(key)) continue;
     if (minutes + item.estimatedMinutes > budget) continue;
     selected.push({ ...item, goalId, sequenceOrder: selected.length + 1 });

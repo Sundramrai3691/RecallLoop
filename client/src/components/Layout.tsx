@@ -45,6 +45,7 @@ export function Layout() {
             <LibraryBig aria-hidden="true" className="nav-icon" size={17} />
             <span>Knowledge</span>
           </NavLink>
+          <NavLink className="nav-link" to="/settings"><span>Settings</span></NavLink>
         </nav>
         <ThemeToggle />
       </header>

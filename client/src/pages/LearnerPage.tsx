@@ -33,9 +33,9 @@ export function LearnerPage() {
       <div className="grid grid-2">
         <article className="card">
           <h2>Progress</h2>
-          <p className="stat">{Math.round(summary.averageMastery * 100)}%</p>
+          <p className="stat">{summary.averageMastery === null ? "—" : `${Math.round(summary.averageMastery * 100)}%`}</p>
           <p className="muted">
-            Average mastery across {summary.totalConcepts} concepts
+            {summary.averageMastery === null ? "Complete a recall to establish a baseline." : `Average mastery across ${summary.assessedConcepts} assessed concepts`}
           </p>
           <p>
             {summary.dueConcepts} concepts due · {summary.weakConceptCount} weak
@@ -43,20 +43,20 @@ export function LearnerPage() {
           </p>
         </article>
         <article className="card">
-          <h2>Weak skills</h2>
+          <h2>Goal skills</h2>
           {summary.weakSkills.length ? (
             <ul>
               {summary.weakSkills.map((skill) => (
                 <li key={skill.skillId}>
                   {skill.name}{" "}
                   <span className="muted">
-                    {Math.round(skill.currentMastery * 100)}%
+                    {skill.currentMastery === null ? "Not assessed" : `${Math.round(skill.currentMastery * 100)}%`}
                   </span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="muted">No skill weaknesses recorded yet.</p>
+            <p className="muted">No goal skills to assess yet.</p>
           )}
         </article>
         <article className="card">

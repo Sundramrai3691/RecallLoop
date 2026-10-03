@@ -214,10 +214,10 @@ export function DashboardPage() {
         <article className="card">
           <h2>Recent progress</h2>
           <p className="stat">
-            {learner ? Math.round(learner.averageMastery * 100) : 0}%
+            {learner?.averageMastery == null ? "N/A" : `${Math.round(learner.averageMastery * 100)}%`}
           </p>
           <p className="muted">
-            Average mastery · {learner?.dueConcepts ?? 0} concepts due
+            {learner?.averageMastery == null ? "No assessed concepts yet" : `Average mastery across ${learner.assessedConcepts} assessed concepts`} | {learner?.dueConcepts ?? 0} concepts due
           </p>
           <Link to="/learner">View learner model</Link>
         </article>

@@ -4,6 +4,8 @@ import { getScheduler, type ReviewStateSnapshot } from "../scheduler/index.js";
 import { getAttempt, getConcept, getReview, revealNextHint, submitAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import type { QuestionType } from "../../domain/recallTypes.js";
 import { evidenceWeight, evaluateMcq } from "../question/questionService.js";
+import { query } from "../../db/postgres.js";
+import { recommendNextAction } from "../recommendation/practiceRecommendationService.js";
 
 export async function getRecall(id: string, userId: string) {
   const attempt = await getAttempt(id, userId);
@@ -47,7 +49,19 @@ export async function submitRecall(id: string, input: { answer?: string; selecte
   const mastery = Number((Number(concept.mastery) * 0.4 + evidenceCoverage * 0.6).toFixed(4));
   const scheduled = getScheduler().scheduleNextReview({ conceptId: concept.id, coverage: evidenceCoverage, now: new Date(), previous: previousSnapshot, conceptDifficulty: concept.difficulty });
   const status = evaluation.overallCoverage >= 0.75 ? "correct" : evaluation.overallCoverage >= 0.4 ? "partial" : "incorrect";
-  const updated = await submitAttempt(input.userId, id, answer ?? "", confidence, { ...evaluation, dimension }, scheduled, concept.id, mastery, { selectedOptionId: input.selectedOptionId, resultStatus: status, evidenceWeight: hintWeight });
+  const [dimensionHistory,recentAttempts,requiredResult] = await Promise.all([
+    query<any>(`SELECT dimension,AVG(score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.user_id=$1 AND r.concept_id=$2 GROUP BY dimension`,[input.userId,concept.id]),
+    query<any>(`SELECT e.overall_coverage,e.missing_concepts FROM recall_attempts r JOIN recall_evaluations e ON e.recall_attempt_id=r.id WHERE r.user_id=$1 AND r.concept_id=$2 ORDER BY r.submitted_at DESC LIMIT 20`,[input.userId,concept.id]),
+    query<any>(`SELECT EXISTS(SELECT 1 FROM learner_skills s JOIN goals g ON g.id=s.goal_id WHERE s.user_id=$1 AND g.status='active' AND lower(s.name)=lower($2)) AS required`,[input.userId,concept.name]),
+  ]);
+  const dimensions: Record<string,number|null> = Object.fromEntries(["recognition","recall","explanation","application","depth","transfer"].map((name)=>[name,dimensionHistory.rows.find((row)=>row.dimension===name)?.score ?? null]));
+  dimensions[dimension]=evidenceCoverage;
+  let consecutiveFailures=0;
+  for(const previousAttempt of recentAttempts.rows){if(Number(previousAttempt.overall_coverage)<.55)consecutiveFailures++;else break;}
+  const repeatedPoint=evaluation.missingConcepts[0] ?? null;
+  const repeatedCount=repeatedPoint?recentAttempts.rows.filter((row)=>row.missing_concepts.includes(repeatedPoint)).length:0;
+  const recommendation=recommendNextAction({conceptName:concept.name,mastery,latestCoverage:evidenceCoverage,dimensions,consecutiveFailures,repeatedMissingPoint:repeatedPoint,repeatedMissingCount:repeatedCount,goalRequired:Boolean(requiredResult.rows[0]?.required)});
+  const updated = await submitAttempt(input.userId, id, answer ?? "", confidence, { ...evaluation, dimension }, scheduled, concept.id, mastery, { selectedOptionId: input.selectedOptionId, resultStatus: status, evidenceWeight: hintWeight, recommendation });
   if (!updated) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   const refreshed = await getRecall(id, input.userId);
   return { attempt: refreshed.attempt, concept: refreshed.concept, review: await getReview(input.userId, concept.id) };
@@ -58,4 +72,13 @@ export async function listDueRecalls(userId: string) {
   const rows = [];
   for (const row of result.rows) rows.push(await getRecall(row.id, userId));
   return rows.map((row) => ({ attempt: row.attempt, concept: row.concept }));
+}
+
+export async function confirmReviewDate(userId: string, conceptId: string, dueAtInput: string) {
+  const date = new Date(dueAtInput);
+  if (!Number.isFinite(date.getTime())) throw new AppError("dueAt must be a valid date",400,"VALIDATION_ERROR");
+  const result = await (await import("../../db/postgres.js")).query<any>(`UPDATE review_states rs SET due_at=$3,updated_at=now() FROM personal_concepts c WHERE rs.user_id=$1 AND rs.concept_id=$2 AND c.id=rs.concept_id AND c.user_id=$1 RETURNING rs.*`,[userId,conceptId,date]);
+  if (!result.rows[0]) throw notFound("Review state not found","REVIEW_NOT_FOUND");
+  const review = await getReview(userId,conceptId);
+  return review;
 }

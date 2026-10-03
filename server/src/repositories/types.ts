@@ -62,7 +62,9 @@ export interface PlanTaskRecord {
   source: string;
   reason: string;
   category: "must_do" | "recommended" | "optional";
+  requiredness: "must" | "recommended" | "optional";
   sequenceOrder: number;
+  resourceUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

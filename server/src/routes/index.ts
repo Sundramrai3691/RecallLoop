@@ -12,6 +12,7 @@ import { planRouter } from "./plan.js";
 import { recallRouter } from "./recalls.js";
 import { studySessionRouter } from "./studySessions.js";
 import { assessmentRouter } from "./assessments.js";
+import { settingsRouter } from "./settings.js";
 
 export const apiRouter = Router();
 
@@ -33,5 +34,6 @@ apiRouter.use("/resources", resourcesRouter);
 apiRouter.use("/study-sessions", studySessionRouter);
 apiRouter.use("/recalls", recallRouter);
 apiRouter.use("/assessments", assessmentRouter);
+apiRouter.use("/settings", settingsRouter);
 apiRouter.use("/concepts", conceptRouter);
 apiRouter.use("/dashboard", dashboardRouter);

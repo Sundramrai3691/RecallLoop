@@ -33,7 +33,7 @@ export interface Skill {
 
 export interface PlanTask {
   id: string;
-  taskType: "recall" | "learn" | "practice" | "remediation";
+  taskType: "recall" | "learn" | "practice" | "remediation" | "assessment";
   title: string;
   description: string;
   priority: number;
@@ -45,15 +45,18 @@ export interface PlanTask {
   conceptId: string | null;
   recallAttemptId: string | null;
   category: "must_do" | "recommended" | "optional";
+  requiredness: "must" | "recommended" | "optional";
   sequenceOrder: number;
+  resourceUrl: string | null;
 }
 
 export interface LearnerSummary {
   totalConcepts: number;
-  averageMastery: number;
+  assessedConcepts: number;
+  averageMastery: number | null;
   dueConcepts: number;
   weakConceptCount: number;
-  weakSkills: Array<Skill & { skillId: string; status: string }>;
+  weakSkills: Array<{ skillId: string; name: string; priority: number; targetMastery: number; currentMastery: number | null; status: string }>;
   weakConcepts: Array<{
     conceptId: string;
     conceptName: string;
@@ -95,6 +98,9 @@ export interface ResourceRecommendation {
   conceptName: string;
   reason: string;
   conceptsCovered: string[];
+  freshness?: string;
+  score?: number;
+  reasons?: Array<{code:string;text:string}>;
 }
 
 export interface StudySession {
@@ -147,6 +153,7 @@ export interface RecallAttempt {
   studySessionId: string;
   question: string;
   questionType: QuestionType;
+  questionId?: string | null;
   questionData: null | { assessmentLevel: string; difficulty: number; title: string; context: string; prompt: string; estimatedMinutes: number; options: Array<{ id: string; text: string }> | null; revealedHints: string[]; hintsRemaining: number };
   answer: string | null;
   selectedOptionId: string | null;
@@ -157,6 +164,8 @@ export interface RecallAttempt {
   timeTakenSeconds: number | null;
   resultStatus: string | null;
   evidenceWeight: number;
+  repetitionReason?: "spaced_recall" | "mastery_confirmation" | "remediation" | null;
+  recommendation?: { actionType: "recall" | "learn" | "practice" | "remediation" | "mastery_check" | "none"; title: string; reason: string; estimatedMinutes: number; priority: number } | null;
   evaluation: RecallEvaluation | null;
   submittedAt: string | null;
   createdAt: string;

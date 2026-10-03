@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assessmentBlueprint, buildQuestion, evaluateMcq, evidenceWeight, nextHint, selectAssessment } from "./questionService.js";
+import { findBuiltinMcq } from "./mcqBank.js";
 
 describe("question engine primitives", () => {
   it("maps question types to the six assessment dimensions", () => {
@@ -32,5 +33,16 @@ describe("question engine primitives", () => {
   it("creates a short breadth session and a balanced six-dimension mastery blueprint", () => {
     expect(assessmentBlueprint("rapid_fire")).toHaveLength(5);
     expect(new Set(assessmentBlueprint("mastery_check").map((type) => buildQuestion("Queues",type,["acks"]).assessmentLevel))).toEqual(new Set(["recognition","recall","explanation","application","depth","transfer"]));
+  });
+  it("uses specific misconceptions and deterministic explanations for curated seed MCQs",()=>{
+    const mcq=findBuiltinMcq("Token bucket rate limiting","Can compare burst capacity and sustained rate.");
+    expect(mcq?.prompt).toContain("token-bucket");
+    expect(mcq?.distractors.some((option)=>option.toLowerCase().includes("fixed-window"))).toBe(true);
+    expect(mcq?.explanation).toContain("Refill rate");
+  });
+  it("varies stable question prompts across a bounded wording set",()=>{
+    const question1=buildQuestion("Queues","short_explanation",["ack timing"],2,0,0);
+    const question2=buildQuestion("Queues","short_explanation",["ack timing"],2,0,1);
+    expect(question1.prompt).not.toBe(question2.prompt);
   });
 });
