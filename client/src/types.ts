@@ -1,6 +1,6 @@
 export type SourceType = "manual" | "notes" | "url" | "file";
 export type SessionStatus = "in_progress" | "completed";
-export type QuestionType = "explain" | "compare" | "application" | "coding";
+export type QuestionType = "mcq" | "rapid_recall" | "short_explanation" | "descriptive" | "comparison" | "scenario" | "application" | "transfer" | "explain" | "compare" | "coding";
 export type KnowledgePointStatus = "correct" | "partial" | "missing";
 
 export interface User {
@@ -44,6 +44,8 @@ export interface PlanTask {
   reason: string;
   conceptId: string | null;
   recallAttemptId: string | null;
+  category: "must_do" | "recommended" | "optional";
+  sequenceOrder: number;
 }
 
 export interface LearnerSummary {
@@ -145,8 +147,16 @@ export interface RecallAttempt {
   studySessionId: string;
   question: string;
   questionType: QuestionType;
+  questionData: null | { assessmentLevel: string; difficulty: number; title: string; context: string; prompt: string; estimatedMinutes: number; options: Array<{ id: string; text: string }> | null; revealedHints: string[]; hintsRemaining: number };
   answer: string | null;
+  selectedOptionId: string | null;
   confidence: number | null;
+  hintsUsed: number;
+  maxHintLevel: number;
+  startedAt: string;
+  timeTakenSeconds: number | null;
+  resultStatus: string | null;
+  evidenceWeight: number;
   evaluation: RecallEvaluation | null;
   submittedAt: string | null;
   createdAt: string;

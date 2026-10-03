@@ -64,6 +64,9 @@ export function StudySessionPage() {
                 <li key={point}>{point}</li>
               ))}
             </ul>
+            <div className="actions">
+              {(["rapid_fire","deep_recall","mastery_check"] as const).map((mode) => <button className="btn" key={mode} type="button" onClick={async () => { try { const run = await api.createAssessment(concept.id,mode); navigate(`/assessments/${run.assessment.id}`); } catch (err) { setError(err instanceof ApiError ? err.message : "Could not start assessment"); } }}>{mode.replace("_"," ")}</button>)}
+            </div>
           </article>
         ))}
       </div>

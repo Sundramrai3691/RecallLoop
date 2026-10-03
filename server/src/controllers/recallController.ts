@@ -3,6 +3,7 @@ import type { AuthenticatedRequest } from "../lib/auth.js";
 import {
   getRecall,
   listDueRecalls,
+  revealRecallHint,
   submitRecall,
 } from "../services/recall/recallService.js";
 import {
@@ -59,6 +60,7 @@ export async function submitRecallHandler(
   try {
     const { attempt, concept, review } = await submitRecall(req.params.id, {
       answer: req.body?.answer,
+      selectedOptionId: req.body?.selectedOptionId,
       confidence: req.body?.confidence,
       userId: req.user!.id,
     });
@@ -70,4 +72,8 @@ export async function submitRecallHandler(
   } catch (err) {
     next(err);
   }
+}
+
+export async function revealRecallHintHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try { res.json(await revealRecallHint(req.params.id,req.user!.id)); } catch (err) { next(err); }
 }

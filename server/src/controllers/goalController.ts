@@ -100,7 +100,11 @@ export async function deleteSkillHandler(req: AuthenticatedRequest, res: Respons
 
 export async function generateGoalPlanHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const result = await generateGoalPlan(req.user!.id, req.params.goalId);
+    const requestedMinutes = req.body?.availableMinutes == null ? undefined : Number(req.body.availableMinutes);
+    if (requestedMinutes !== undefined && (!Number.isInteger(requestedMinutes) || requestedMinutes < 0 || requestedMinutes > 240)) {
+      throw new AppError("availableMinutes must be an integer from 0 to 240", 400, "VALIDATION_ERROR");
+    }
+    const result = await generateGoalPlan(req.user!.id, req.params.goalId, requestedMinutes);
     res.status(201).json(result);
   } catch (error) {
     next(error);

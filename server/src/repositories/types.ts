@@ -61,6 +61,8 @@ export interface PlanTaskRecord {
   status: string;
   source: string;
   reason: string;
+  category: "must_do" | "recommended" | "optional";
+  sequenceOrder: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -88,7 +90,7 @@ export interface LearnerSkillRepository {
 }
 
 export interface PlanRepository {
-  upsert(userId: string, goalId: string, startDate: Date, endDate: Date): Promise<PlanRecord>;
+  upsert(userId: string, goalId: string, startDate: Date, endDate: Date, availableMinutes?: number, plannedMinutes?: number): Promise<PlanRecord>;
   findLatest(userId: string, goalId: string): Promise<PlanRecord | null>;
 }
 

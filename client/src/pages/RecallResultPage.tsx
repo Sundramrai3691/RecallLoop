@@ -11,6 +11,7 @@ export function RecallResultPage() {
   const { attemptId } = useParams();
   const [recall, setRecall] = useState<RecallAttempt | null>(null);
   const [review, setReview] = useState<ReviewState | null>(null);
+  const [dimensionScores, setDimensionScores] = useState<Record<string, number | null>>({});
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -24,6 +25,7 @@ export function RecallResultPage() {
         const concept = await api.getConcept(data.concept.id);
         if (cancelled) return;
         setReview(concept.review);
+        setDimensionScores(concept.dimensionScores);
       } catch (err) {
         if (!cancelled) {
           setError(err instanceof ApiError ? err.message : "Result not found");
@@ -58,6 +60,9 @@ export function RecallResultPage() {
           Coverage across required knowledge points — not an arbitrary 1–10 score.
         </p>
         <p>{evaluation.feedback}</p>
+        <p><strong>{recall.hintsUsed === 0 ? "Solved independently" : "Solved with assistance"}</strong>{recall.hintsUsed ? ` · ${recall.hintsUsed} hint${recall.hintsUsed === 1 ? "" : "s"} used` : ""}</p>
+        {recall.confidence ? <p>Confidence: {recall.confidence}/10</p> : null}
+        {recall.timeTakenSeconds != null ? <p>Time: {Math.floor(recall.timeTakenSeconds / 60)}m {recall.timeTakenSeconds % 60}s</p> : null}
         {review ? (
           <p>
             Next review: <strong>{formatWhen(review.dueAt)}</strong> ({review.lastOutcome},{" "}
@@ -80,6 +85,8 @@ export function RecallResultPage() {
       </article>
       <article className="card">
         <h2>Signals stored</h2>
+        <h3>Evidence by dimension</h3>
+        {Object.entries(dimensionScores).filter(([, score]) => score !== null).map(([dimension, score]) => <p key={dimension}>{dimension}: {Math.round((score ?? 0) * 100)}%</p>)}
         <p>Missing: {evaluation.missingConcepts.join("; ") || "none"}</p>
         <p>Mistakes: {evaluation.mistakes.join("; ") || "none"}</p>
         <p>Strengths: {evaluation.strengths.join("; ") || "none"}</p>

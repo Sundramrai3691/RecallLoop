@@ -16,6 +16,7 @@ import { KnowledgePage } from "./pages/KnowledgePage";
 import { KnowledgeRolePage } from "./pages/KnowledgeRolePage";
 import { BaselinePage } from "./pages/BaselinePage";
 import { BaselineResultPage } from "./pages/BaselineResultPage";
+import { AssessmentPage } from "./pages/AssessmentPage";
 
 export function App() {
   return (
@@ -28,6 +29,7 @@ export function App() {
         <Route path="/study/new" element={<NewStudyPage />} />
         <Route path="/study/:id" element={<StudySessionPage />} />
         <Route path="/recall/:attemptId" element={<RecallPage />} />
+        <Route path="/assessments/:id" element={<AssessmentPage />} />
         <Route
           path="/recall/:attemptId/result"
           element={<RecallResultPage />}

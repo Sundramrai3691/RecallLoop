@@ -90,14 +90,15 @@ export const api = {
     });
   },
 
-  generatePlan(goalId: string) {
+  generatePlan(goalId: string, availableMinutes?: number) {
     return request<{ tasks: PlanTask[] }>(`/api/goals/${goalId}/plan/generate`, {
       method: "POST",
+      body: JSON.stringify({ availableMinutes }),
     });
   },
 
   todayPlan() {
-    return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[] }>(
+    return request<{ plan: { id: string; goalId: string; status: string } | null; tasks: PlanTask[]; timeBudget: { availableMinutes: number; plannedMinutes: number; remainingMinutes: number } | null }>(
       "/api/plan/today",
     );
   },
@@ -175,14 +176,26 @@ export const api = {
     }>(`/api/recalls/${id}`);
   },
 
-  submitRecall(id: string, input: { answer: string; confidence: number }) {
+  submitRecall(id: string, input: { answer?: string; selectedOptionId?: string; confidence: number }) {
     return request<{ recall: RecallAttempt; concept: Concept; review: ReviewState }>(
       `/api/recalls/${id}/submit`,
       { method: "POST", body: JSON.stringify(input) },
     );
   },
 
+  revealRecallHint(id: string) {
+    return request<{ hint: string; maxHintLevel: number }>(`/api/recalls/${id}/hints`, { method: "POST" });
+  },
+
+  createAssessment(conceptId: string, mode: "rapid_fire" | "deep_recall" | "mastery_check") {
+    return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[] }>("/api/assessments", { method: "POST", body: JSON.stringify({ conceptId, mode }) });
+  },
+
+  getAssessment(id: string) {
+    return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[]; result: null | { correct: number; total: number; dimensionScores: Record<string, number | null>; weakArea: string | null } }>(`/api/assessments/${id}`);
+  },
+
   getConcept(id: string) {
-    return request<{ concept: Concept; review: ReviewState | null }>(`/api/concepts/${id}`);
+    return request<{ concept: Concept; review: ReviewState | null; dimensionScores: Record<string, number | null> }>(`/api/concepts/${id}`);
   },
 };

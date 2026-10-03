@@ -2,6 +2,7 @@ import { query } from "../../db/postgres.js";
 import { AppError, notFound } from "../../utils/errors.js";
 import { goalRepository, learnerSkillRepository, planRepository, planTaskRepository } from "../../repositories/postgresRepositories.js";
 import type { GoalRecord, LearnerSkillRecord, PlanTaskRecord } from "../../repositories/types.js";
+import { fitTasksToBudget } from "./planSelection.js";
 
 function serializeGoal(goal: GoalRecord) {
   return { id: goal.id, userId: goal.userId, title: goal.title, description: goal.description, goalType: goal.goalType, targetDate: goal.targetDate, weeklyTimeBudgetMinutes: goal.weeklyTimeBudgetMinutes, status: goal.status, createdAt: goal.createdAt, updatedAt: goal.updatedAt };
@@ -10,7 +11,7 @@ function serializeSkill(skill: LearnerSkillRecord) {
   return { id: skill.id, goalId: skill.goalId, userId: skill.userId, name: skill.name, description: skill.description, priority: skill.priority, targetMastery: skill.targetMastery, currentMastery: skill.currentMastery, createdAt: skill.createdAt, updatedAt: skill.updatedAt };
 }
 function serializeTask(task: PlanTaskRecord) {
-  return { id: task.id, taskType: task.taskType, title: task.title, description: task.description, priority: task.priority, estimatedMinutes: task.estimatedMinutes, scheduledFor: task.scheduledFor, status: task.status, source: task.source, reason: task.reason, conceptId: task.conceptId, recallAttemptId: task.recallAttemptId };
+  return { id: task.id, taskType: task.taskType, title: task.title, description: task.description, priority: task.priority, estimatedMinutes: task.estimatedMinutes, scheduledFor: task.scheduledFor, status: task.status, source: task.source, reason: task.reason, conceptId: task.conceptId, recallAttemptId: task.recallAttemptId, category: task.category, sequenceOrder: task.sequenceOrder };
 }
 
 async function ownedGoal(userId: string, goalId: string) {
@@ -66,37 +67,30 @@ export async function deleteSkill(userId: string, skillId: string) {
 
 async function dueRecallTasks(userId: string) {
   const result = await query<any>(`SELECT r.concept_id AS "conceptId", r.id AS "recallAttemptId", c.name, rs.due_at AS "scheduledFor" FROM review_states rs JOIN personal_concepts c ON c.id=rs.concept_id AND c.user_id=rs.user_id JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id AND r.submitted_at IS NULL WHERE rs.user_id=$1 AND rs.due_at <= now() ORDER BY rs.due_at`, [userId]);
-  return result.rows.map((row) => ({ title: `Review ${row.name}`, description: "Due for spaced review.", taskType: "recall", priority: 100, estimatedMinutes: 20, scheduledFor: row.scheduledFor, source: "scheduler", conceptId: row.conceptId, recallAttemptId: row.recallAttemptId, reason: "Due for spaced review." }));
+  return result.rows.map((row) => ({ title: `Recall · ${row.name}`, description: "Retrieve this concept from memory, then check what needs work.", taskType: "recall", category: "must_do", sequenceOrder: 10, priority: 100, estimatedMinutes: 10, scheduledFor: row.scheduledFor, source: "scheduler", conceptId: row.conceptId, recallAttemptId: row.recallAttemptId, reason: `Due for review since ${new Date(row.scheduledFor).toLocaleDateString()}.` }));
 }
 async function weakConceptTasks(userId: string) {
   const result = await query<any>(`SELECT id AS "conceptId", name, mastery FROM personal_concepts WHERE user_id=$1 AND mastery < 0.7 ORDER BY mastery, updated_at DESC LIMIT 5`, [userId]);
-  return result.rows.map((row) => ({ title: `Strengthen ${row.name}`, description: "Review a weak concept and rebuild missing knowledge points.", taskType: "practice", priority: 78, estimatedMinutes: 25, scheduledFor: new Date(), source: "learner_model", conceptId: row.conceptId, reason: `Previous observed mastery was ${Math.round(Number(row.mastery) * 100)}%.` }));
+  return result.rows.map((row) => ({ title: `${Number(row.mastery) < 0.25 ? "Remediate" : "Practice"} · ${row.name}`, description: "Rebuild missing knowledge points, then apply the concept.", taskType: Number(row.mastery) < 0.25 ? "remediation" : "practice", category: Number(row.mastery) < 0.25 ? "must_do" : "recommended", sequenceOrder: Number(row.mastery) < 0.25 ? 50 : 40, priority: Number(row.mastery) < 0.25 ? 92 : 78, estimatedMinutes: 15, scheduledFor: new Date(), source: "learner_model", conceptId: row.conceptId, reason: `Previous observed mastery was ${Math.round(Number(row.mastery) * 100)}%.` }));
 }
 async function learningTasks(userId: string, goalId: string) {
-  return (await learnerSkillRepository.list(userId, goalId)).slice(0, 4).map((skill) => ({ title: `Learn ${skill.name}`, description: skill.description || `Required for this goal: ${skill.name}.`, taskType: "learn", priority: skill.priority, estimatedMinutes: 30, scheduledFor: new Date(), source: "planner", skillId: skill.id, reason: `Required for goal; priority ${skill.priority}.` }));
+  return (await learnerSkillRepository.list(userId, goalId)).slice(0, 4).map((skill) => ({ title: `Learn · ${skill.name}`, description: skill.description || `Required for this goal: ${skill.name}.`, taskType: "learn", category: "recommended", sequenceOrder: 20, priority: skill.priority, estimatedMinutes: 20, scheduledFor: new Date(), source: "planner", skillId: skill.id, reason: `Required for goal; priority ${skill.priority}.` }));
 }
 
-export async function generateGoalPlan(userId: string, goalId: string) {
+export async function generateGoalPlan(userId: string, goalId: string, requestedMinutes?: number) {
   const goal = await ownedGoal(userId, goalId);
   const due = await dueRecallTasks(userId);
   const weak = await weakConceptTasks(userId);
   const learn = await learningTasks(userId, goalId);
-  const fallback = due.length ? [] : [{ title: "Review your active goal", description: "Keep retrieval practice active while the goal curriculum is starting.", taskType: "recall", priority: 95, estimatedMinutes: 20, scheduledFor: new Date(), source: "planner", reason: "The plan requires a recall task alongside learning work." }];
-  const candidates: any[] = [...due, ...fallback, ...weak, ...learn].sort((a, b) => b.priority - a.priority);
-  const budget = Math.max(60, Math.ceil(goal.weeklyTimeBudgetMinutes / 7));
-  const selected: any[] = [];
-  let minutes = 0;
-  const seen = new Set<string>();
-  for (const item of candidates) {
-    const key = item.taskType === "recall" ? String(item.recallAttemptId ?? item.conceptId ?? item.title) : "";
-    if (key && seen.has(key)) continue;
-    if (selected.length && minutes + item.estimatedMinutes > budget) continue;
-    selected.push({ ...item, goalId }); minutes += item.estimatedMinutes; if (key) seen.add(key);
-  }
+  const candidates: any[] = [...due, ...weak, ...learn].sort((a, b) => a.sequenceOrder - b.sequenceOrder || b.priority - a.priority);
+  const dailyAverage = Math.ceil(goal.weeklyTimeBudgetMinutes / 7);
+  const budget = Math.max(0, Math.min(240, Number.isFinite(requestedMinutes) ? Math.floor(requestedMinutes!) : dailyAverage));
+  const fit = fitTasksToBudget(candidates,budget,goalId);
+  const selected = fit.tasks;
   const start = new Date(); const end = new Date(start); end.setDate(end.getDate() + 7);
-  const plan = await planRepository.upsert(userId, goalId, start, end);
+  const plan = await planRepository.upsert(userId, goalId, start, end, budget, fit.plannedMinutes);
   await planTaskRepository.replaceForPlan(userId, plan.id, selected);
-  return { plan: { id: plan.id, goalId: plan.goalId, userId: plan.userId, startDate: plan.startDate, endDate: plan.endDate, status: plan.status }, tasks: (await planTaskRepository.listForPlan(userId, plan.id)).map(serializeTask) };
+  return { plan: { id: plan.id, goalId: plan.goalId, userId: plan.userId, startDate: plan.startDate, endDate: plan.endDate, status: plan.status }, timeBudget: { availableMinutes: budget, plannedMinutes: fit.plannedMinutes, remainingMinutes: fit.remainingMinutes }, tasks: (await planTaskRepository.listForPlan(userId, plan.id)).map(serializeTask) };
 }
 
 export async function getGoalPlan(userId: string, goalId: string) {
@@ -110,7 +104,11 @@ export async function getTodayPlan(userId: string) {
   await planTaskRepository.markMissed(userId, start);
   let tasks = await planTaskRepository.listToday(userId, start, end);
   if (!tasks.length) { const active = (await goalRepository.list(userId)).find((goal) => goal.status === "active"); if (active) return generateGoalPlan(userId, active.id); }
-  return { plan: { generatedAt: new Date().toISOString() }, tasks: tasks.map(serializeTask) };
+  const plannedMinutes = tasks.reduce((sum, task) => sum + task.estimatedMinutes, 0);
+  const budgetResult = tasks[0] ? await query<any>(`SELECT available_minutes AS "availableMinutes", planned_minutes AS "plannedMinutes" FROM plans WHERE id=$1`,[tasks[0].planId]) : { rows: [] };
+  const budgetRow = budgetResult.rows[0];
+  const timeBudget = budgetRow?.availableMinutes != null ? { availableMinutes: budgetRow.availableMinutes, plannedMinutes: budgetRow.plannedMinutes, remainingMinutes: budgetRow.availableMinutes-budgetRow.plannedMinutes } : null;
+  return { plan: { generatedAt: new Date().toISOString() }, timeBudget, tasks: tasks.map(serializeTask) };
 }
 export async function updatePlanTask(userId: string, taskId: string, status: "planned" | "in_progress" | "completed" | "missed") {
   const existing = await planTaskRepository.findById(taskId);
