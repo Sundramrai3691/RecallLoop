@@ -17,7 +17,8 @@ export function LoginPage() {
     try {
       const result = await api.login({ email, password });
       localStorage.setItem("recallloop_token", result.token);
-      navigate("/goals");
+      const goals = await api.listGoals().catch(() => null);
+      navigate(goals && goals.goals.length === 0 ? "/onboarding" : "/dashboard");
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not sign in");
     } finally {

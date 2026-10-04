@@ -1,55 +1,38 @@
 import { FormEvent, useEffect, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { ArrowRight, CheckCircle2, Clock3, Lightbulb } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { AssessmentReport } from "../components/AssessmentReport";
+import { ProgressBar } from "../components/Ui";
+import { WhyThis } from "../components/WhyThis";
 import { ApiError, type RecallAttempt } from "../types";
 
-export function AssessmentPage() {
-  const { id } = useParams();
-  const [assessment, setAssessment] = useState<{ id: string; conceptId:string; mode: string; status: string; current: number; total: number } | null>(null);
-  const [questions, setQuestions] = useState<RecallAttempt[]>([]);
-  const [result, setResult] = useState<{ correct: number; total: number; dimensionScores: Record<string, number | null>; weakArea: string | null; recommendation: NonNullable<RecallAttempt["recommendation"]>|null } | null>(null);
-  const [answer, setAnswer] = useState("");
-  const [selected, setSelected] = useState("");
-  const [confidence, setConfidence] = useState(6);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function load() {
-    if (!id) return;
-    try { const data = await api.getAssessment(id); setAssessment(data.assessment); setQuestions(data.questions); setResult(data.result); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Assessment not found"); }
+export function AssessmentPage(){
+  const {id}=useParams();const navigate=useNavigate();const [assessment,setAssessment]=useState<{id:string;conceptId:string;mode:string;status:string;current:number;total:number}|null>(null);const [questions,setQuestions]=useState<RecallAttempt[]>([]);const [result,setResult]=useState<Awaited<ReturnType<typeof api.getAssessment>>["result"]>(null);const [conceptName,setConceptName]=useState("");const [answer,setAnswer]=useState("");const [selected,setSelected]=useState("");const [confidence,setConfidence]=useState(6);const [busy,setBusy]=useState(false);const [started,setStarted]=useState(false);const [startedAt,setStartedAt]=useState<number|null>(null);const [elapsedSeconds,setElapsedSeconds]=useState(0);const [error,setError]=useState<string|null>(null);
+  async function load(){if(!id)return;try{const data=await api.getAssessment(id);setAssessment(data.assessment);setQuestions(data.questions);setResult(data.result);if(!conceptName){const concept=await api.getConcept(data.assessment.conceptId);setConceptName(concept.concept.name);}}catch(err){setError(err instanceof ApiError&&err.status===404?"This practice session could not be found.":"We couldn’t load this practice session.");}}
+  useEffect(()=>{void load();},[id]);const current=questions.find((item)=>!item.submittedAt)??null;useEffect(()=>{setAnswer("");setSelected("");setConfidence(6);},[current?.id]);
+  async function revealHint(){if(!current)return;try{await api.revealRecallHint(current.id);await load();}catch{setError("We couldn’t load a hint. Please try again.");}}
+  async function submit(event:FormEvent){event.preventDefault();if(!current)return;setBusy(true);setError(null);try{await api.submitRecall(current.id,{answer,selectedOptionId:selected||undefined,confidence});await load();}catch{setError("Your answer didn’t save. Please try again.");}finally{setBusy(false);}}
+  async function startRecommended(){if(!assessment||!result?.recommendation)return;const action=result.recommendation.actionType;if(action==="none")return;if(action==="learn"){navigate(`/resources?conceptId=${encodeURIComponent(assessment.conceptId)}`);return;}const mode=action==="practice"?"practice":action==="mastery_check"?"mastery_check":action==="remediation"?"deep_recall":"rapid_fire";try{const run=await api.createAssessment(assessment.conceptId,mode);navigate(`/assessments/${run.assessment.id}`);}catch{setError("We couldn’t start the suggested activity.");}}
+  const rapidMode=assessment?.mode==="rapid_fire";
+  useEffect(()=>{if(!rapidMode||startedAt===null||result)return;const tick=()=>setElapsedSeconds(Math.floor((Date.now()-startedAt)/1000));tick();const timer=window.setInterval(tick,1000);return()=>window.clearInterval(timer);},[rapidMode,startedAt,result]);
+  const elapsedLabel=`${String(Math.floor(elapsedSeconds/60)).padStart(2,"0")}:${String(elapsedSeconds%60).padStart(2,"0")}`;
+  if(error&&!assessment)return <p className="error" role="alert">{error}</p>;if(!assessment)return <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div>;
+  const rapid=rapidMode;const title=rapid?"Rapid Fire":assessment.mode==="mastery_check"?"Mastery check":assessment.mode==="practice"?"Apply":"Deep recall";const dimensions=Object.entries(result?.dimensionScores??{}).filter(([,score])=>score!==null).sort((a,b)=>(a[1]??0)-(b[1]??0));const strongest=dimensions.at(-1);const weakest=dimensions[0];const estimatedMinutes=questions.every((item)=>item.questionData?.estimatedMinutes!=null)?questions.reduce((sum,item)=>sum+(item.questionData?.estimatedMinutes??0),0):null;
+  if(rapid&&!started&&!result)return <div className="rapid-intro"><Link className="back-link" to="/dashboard">Exit practice</Link><section className="rapid-intro-panel card"><span className="rapid-intro-icon"><Lightbulb size={20}/></span><p className="eyebrow">FOCUSED PRACTICE</p><h1>Rapid Fire</h1><p className="muted">A short round of recall questions on {conceptName||"this topic"}. Answer from memory, then see which parts are strong and which need another pass.</p><div className="rapid-facts"><div><strong>{assessment.total}</strong><span>questions</span></div>{estimatedMinutes!=null?<div><strong>~{estimatedMinutes} min</strong><span>estimated from these questions</span></div>:null}</div><div className="rapid-intro-actions"><button className="btn btn-primary" type="button" onClick={()=>{setStarted(true);setStartedAt(Date.now());}}>Start Rapid Fire <ArrowRight size={16}/></button><Link className="btn" to="/dashboard">Done for now</Link></div></section></div>;
+  if(result){const recommendation=result.recommendation;const nextAction= recommendation?<><h2>{recommendation.title}</h2><WhyThis reason={recommendation.reason}/><span className="metadata">About {recommendation.estimatedMinutes} minutes</span>{recommendation.actionType!=="none"?<button className="btn btn-primary" type="button" onClick={()=>void startRecommended()}>Practice now <ArrowRight size={15}/></button>:null}</>:null;
+    return <AssessmentReport eyebrow={rapid?"Rapid Fire · complete":"Practice · complete"} title={conceptName||"Practice result"} description="Here’s what this practice session showed." scoreLabel="Score" score={`${result.correct}/${result.total}`} scoreDetail="correct answers" dimensions={result.dimensionScores} why={result.weakArea?`The lowest sampled dimension was ${result.weakArea}.`:undefined} nextAction={nextAction}>
+      {rapid&&startedAt!==null?<section className="card"><p className="eyebrow">ELAPSED TIME</p><p className="rapid-time-result"><Clock3 size={16}/>{elapsedLabel}</p></section>:null}
+      {strongest||weakest?<section className="card dimension-highlights">{strongest?<p><span className="status-chip">Strongest sampled</span><strong>{strongest[0]}</strong></p>:null}{weakest&&weakest[0]!==strongest?.[0]?<p><span className="badge due">Needs attention</span><strong>{weakest[0]}</strong></p>:null}</section>:null}
+      <div className="actions"><Link className="btn" to="/dashboard">Done for now</Link></div>{error?<p className="error" role="alert">{error}</p>:null}
+    </AssessmentReport>;
   }
-  useEffect(() => { void load(); }, [id]);
-  const current = questions.find((item) => !item.submittedAt) ?? null;
-  useEffect(() => { setAnswer(""); setSelected(""); setConfidence(6); }, [current?.id]);
-
-  async function revealHint() {
-    if (!current) return;
-    try { await api.revealRecallHint(current.id); await load(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Could not reveal hint"); }
-  }
-  async function submit(event: FormEvent) {
-    event.preventDefault(); if (!current) return;
-    setBusy(true); setError(null);
-    try { await api.submitRecall(current.id,{ answer, selectedOptionId: selected || undefined, confidence }); await load(); }
-    catch (err) { setError(err instanceof ApiError ? err.message : "Could not submit answer"); }
-    finally { setBusy(false); }
-  }
-  async function startRecommended(){if(!assessment||!result?.recommendation)return;const action=result.recommendation.actionType;if(action==="learn"){window.location.assign(`/resources?conceptId=${encodeURIComponent(assessment.conceptId)}`);return;}const mode=action==="practice"?"practice":action==="mastery_check"?"mastery_check":action==="remediation"?"deep_recall":"rapid_fire";try{const run=await api.createAssessment(assessment.conceptId,mode);window.location.assign(`/assessments/${run.assessment.id}`);}catch(err){setError(err instanceof ApiError?err.message:"Could not start the recommended activity");}}
-  if (error && !assessment) return <p className="error">{error}</p>;
-  if (!assessment) return <p className="muted">Loading assessment…</p>;
-  const rapid = assessment.mode === "rapid_fire";
-  return <div>
-    <section className="hero"><p className="badge due">{assessment.mode.replace("_"," ")}</p><h1>{result ? "Assessment result" : rapid ? "Rapid Fire" : assessment.mode === "mastery_check" ? "Mastery Check" : assessment.mode === "practice" ? "Apply" : "Deep Recall"}</h1><p className="muted">{result ? "Your evidence across this session." : `Question ${assessment.current} / ${assessment.total}`}</p></section>
-    {error ? <p className="error">{error}</p> : null}
-    {result ? <article className="card"><h2>{result.correct} / {result.total} correct</h2>{result.weakArea ? <p>Weak area: {result.weakArea}</p> : null}<h3>What you demonstrated</h3>{Object.entries(result.dimensionScores).map(([dimension,score]) => <p key={dimension}>{dimension}: {score == null ? "Not sampled" : `${Math.round(score*100)}%`}</p>)}{result.recommendation?<section><h3>Recommended next step</h3><p><strong>{result.recommendation.title}</strong></p><p>Why: {result.recommendation.reason}</p><p>Estimated: {result.recommendation.estimatedMinutes} minutes</p>{result.recommendation.actionType!=="none"?<button className="btn" type="button" onClick={()=>void startRecommended()}>Practice now</button>:null}</section>:null}<div className="actions"><Link className="btn btn-primary" to="/dashboard">Done for now</Link></div></article> : current ? <form className={`card ${rapid ? "rapid-fire" : ""}`} onSubmit={(event) => void submit(event)}>
-      <p className="badge">{current.questionData?.title ?? current.questionType} · ~{current.questionData?.estimatedMinutes ?? 2} min</p>
-      {current.questionData?.context ? <p>{current.questionData.context}</p> : null}<h2>{current.questionData?.prompt ?? current.question}</h2>
-      {current.questionData?.revealedHints.map((hint,index) => <p key={index}><strong>Hint {index+1}:</strong> {hint}</p>)}
-      {current.questionData && current.questionData.hintsRemaining > 0 ? <button className="btn" type="button" onClick={() => void revealHint()}>Reveal hint {current.maxHintLevel+1}</button> : null}
-      {current.questionType === "mcq" ? <fieldset><legend>Select one</legend>{current.questionData?.options?.map((option) => <label className="option" key={option.id}><input type="radio" name="answer" checked={selected===option.id} onChange={()=>setSelected(option.id)} /> {option.text}</label>)}</fieldset> : <><label htmlFor="assessment-answer">Your answer</label><textarea id="assessment-answer" required value={answer} onChange={(event)=>setAnswer(event.target.value)} placeholder={rapid ? "One line is enough." : "Answer from memory."}/></>}
-      <label htmlFor="assessment-confidence">Confidence ({confidence}/10)</label><input id="assessment-confidence" type="range" min={1} max={10} value={confidence} onChange={(event)=>setConfidence(Number(event.target.value))}/>
-      <button className="btn btn-primary" disabled={busy || (current.questionType === "mcq" ? !selected : !answer.trim())} type="submit">{busy ? "Saving…" : "Submit and continue"}</button>
-    </form> : <p className="muted">This assessment is complete.</p>}
+  return <div className={rapid?"assessment-page rapid-mode":"assessment-page"}><Link className="back-link" to="/dashboard">Exit practice</Link><section className="assessment-context"><p className="eyebrow">{rapid?"Rapid Fire":"Recall practice"}</p><h1>{title}</h1><p className="muted">{conceptName||"Your study topic"}</p></section>{rapid?<section className="rapid-live-bar card"><div><span className="eyebrow">ELAPSED</span><strong className="rapid-live-time"><Clock3 size={17}/>{elapsedLabel}</strong></div><div><span className="eyebrow">QUESTION</span><strong>{assessment.current} / {assessment.total}</strong></div></section>:null}<section className="assessment-progress card"><div><span className="eyebrow">QUESTION {String(assessment.current).padStart(2,"0")} OF {assessment.total}</span>{current?.questionData?.estimatedMinutes!=null?<span className="metadata">About {current.questionData.estimatedMinutes} min</span>:null}</div><ProgressBar value={assessment.total?Math.min(100,assessment.current/assessment.total*100):0} label={`Question ${assessment.current} of ${assessment.total}`}/></section>
+    {error?<p className="error" role="alert">{error}</p>:null}
+    {current?<form className="card question-card" onSubmit={(event)=>void submit(event)}><div className="question-label"><span className="status-chip">{current.questionData?.title??current.questionType.replaceAll("_"," ")}</span>{current.questionData?.estimatedMinutes!=null?<span className="metadata">About {current.questionData.estimatedMinutes} min</span>:null}</div>{current.questionData?.context?<div className="question-context"><span className="eyebrow">CONTEXT</span><p>{current.questionData.context}</p></div>:null}<h2 className="question-prompt">{current.questionData?.prompt??current.question}</h2>
+      {current.questionData?.revealedHints.map((hint,index)=><p className="hint-callout" key={index}><Lightbulb size={16}/><span><strong>Hint {index+1}</strong>{hint}</span></p>)}{current.questionData&&current.questionData.hintsRemaining>0?<button className="btn hint-button" type="button" onClick={()=>void revealHint()}><Lightbulb size={15}/> Need a nudge?</button>:null}
+      {current.questionType==="mcq"?<fieldset><legend>Choose one answer</legend>{current.questionData?.options?.map((option)=><label className="option" key={option.id}><input type="radio" name="answer" checked={selected===option.id} onChange={()=>setSelected(option.id)}/>{option.text}</label>)}</fieldset>:<><label htmlFor="assessment-answer">Your answer</label><textarea id="assessment-answer" required value={answer} onChange={(event)=>setAnswer(event.target.value)} placeholder={rapid?"Write a concise answer from memory.":"Explain it in your own words."}/></>}
+      <div className="confidence-block"><label htmlFor="assessment-confidence">How confident are you?</label><div className="confidence-row"><span className="metadata">Guessing</span><input id="assessment-confidence" type="range" min={1} max={10} value={confidence} onChange={(event)=>setConfidence(Number(event.target.value))}/><span className="metadata">Certain</span><strong>{confidence}/10</strong></div></div><div className="question-footer"><span className="metadata">Your answer is evaluated after you submit.</span><button className="btn btn-primary" disabled={busy||(current.questionType==="mcq"?!selected:!answer.trim())} type="submit">{busy?"Evaluating…":"Submit answer"} <ArrowRight size={15}/></button></div>
+    </form>:<div className="card"><CheckCircle2 size={20}/><h2>Practice complete</h2><p className="muted">Your answers have been submitted.</p></div>}
   </div>;
 }

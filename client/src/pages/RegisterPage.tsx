@@ -18,7 +18,7 @@ export function RegisterPage() {
     try {
       const result = await api.register({ name, email, password });
       localStorage.setItem("recallloop_token", result.token);
-      navigate("/goals");
+      navigate("/onboarding");
     } catch (err) {
       setError(
         err instanceof ApiError ? err.message : "Could not create account",

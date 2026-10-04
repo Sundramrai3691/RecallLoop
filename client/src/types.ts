@@ -28,7 +28,7 @@ export interface Skill {
   description: string;
   priority: number;
   targetMastery: number;
-  currentMastery: number;
+  currentMastery: number | null;
 }
 
 export interface PlanTask {
@@ -83,6 +83,7 @@ export interface BaselineQuestion {
   answer: string | null;
   coverage: number | null;
   confidence: number | null;
+  knowledgePointResults?: KnowledgePointResult[] | null;
   submittedAt: string | null;
 }
 
@@ -91,6 +92,7 @@ export interface ResourceRecommendation {
   title: string;
   url: string;
   provider: string;
+  resourceType?: string;
   estimatedMinutes: number;
   difficulty: number;
   description: string;

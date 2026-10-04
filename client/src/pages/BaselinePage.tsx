@@ -1,88 +1,16 @@
 import { FormEvent, useEffect, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
+import { PageHeader, ProgressBar } from "../components/Ui";
 import { ApiError, type BaselineQuestion } from "../types";
 
 export function BaselinePage() {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const [question, setQuestion] = useState<BaselineQuestion | null>(null);
-  const [assessment, setAssessment] = useState<any>(null);
-  const [answer, setAnswer] = useState("");
-  const [confidence, setConfidence] = useState(5);
-  const [error, setError] = useState<string | null>(null);
-  useEffect(() => {
-    if (id)
-      api
-        .getBaseline(id)
-        .then((result) => {
-          setAssessment(result.baseline.assessment);
-          setQuestion(
-            result.baseline.questions.find((item) => !item.submittedAt) ?? null,
-          );
-        })
-        .catch((err) =>
-          setError(
-            err instanceof ApiError ? err.message : "Baseline unavailable",
-          ),
-        );
-  }, [id]);
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!id || !question) return;
-    try {
-      const result = await api.submitBaselineQuestion(id, {
-        questionId: question.id,
-        answer,
-        confidence,
-      });
-      const next = result.baseline.questions.find((item) => !item.submittedAt);
-      if (next) {
-        setQuestion(next);
-        setAnswer("");
-      } else navigate(`/baseline/${id}/result`);
-    } catch (err) {
-      setError(
-        err instanceof ApiError
-          ? err.message
-          : "Could not evaluate baseline answer",
-      );
-    }
-  }
-  if (error) return <p className="error">{error}</p>;
-  if (!assessment) return <p className="muted">Loading baseline...</p>;
-  if (!question)
-    return (
-      <div className="card">
-        <h1>Baseline complete</h1>
-        <Link to={`/baseline/${id}/result`}>View result</Link>
-      </div>
-    );
-  return (
-    <form className="card" onSubmit={submit}>
-      <p className="badge due">{question.level}</p>
-      <h1>Baseline assessment</h1>
-      <p>{question.question}</p>
-      {error ? <p className="error">{error}</p> : null}
-      <label htmlFor="answer">Your answer</label>
-      <textarea
-        id="answer"
-        required
-        value={answer}
-        onChange={(event) => setAnswer(event.target.value)}
-      />
-      <label htmlFor="confidence">Confidence ({confidence}/10)</label>
-      <input
-        id="confidence"
-        type="range"
-        min={1}
-        max={10}
-        value={confidence}
-        onChange={(event) => setConfidence(Number(event.target.value))}
-      />
-      <button className="btn btn-primary" type="submit">
-        Submit answer
-      </button>
-    </form>
-  );
+  const {id}=useParams(); const navigate=useNavigate(); const [question,setQuestion]=useState<BaselineQuestion|null>(null); const [questions,setQuestions]=useState<BaselineQuestion[]>([]); const [assessment,setAssessment]=useState<any>(null); const [answer,setAnswer]=useState(""); const [confidence,setConfidence]=useState(5); const [error,setError]=useState<string|null>(null); const [busy,setBusy]=useState(false);
+  useEffect(()=>{if(id)void api.getBaseline(id).then((result)=>{setAssessment(result.baseline.assessment);setQuestions(result.baseline.questions);setQuestion(result.baseline.questions.find((item)=>!item.submittedAt)??null);}).catch((err)=>setError(err instanceof ApiError&&err.status===404?"This starting assessment could not be found.":"We couldn’t load this assessment."));},[id]);
+  async function submit(event:FormEvent){event.preventDefault();if(!id||!question)return;setBusy(true);setError(null);try{const result=await api.submitBaselineQuestion(id,{questionId:question.id,answer,confidence});setQuestions(result.baseline.questions);const next=result.baseline.questions.find((item)=>!item.submittedAt);if(next){setQuestion(next);setAnswer("");setConfidence(5);}else navigate(`/baseline/${id}/result`);}catch{setError("Your answer didn’t save. Please try again.");}finally{setBusy(false);}}
+  if(error&&!assessment)return <p className="error" role="alert">{error}</p>;if(!assessment)return <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div>;
+  if(!question)return <div className="card"><p className="eyebrow">STARTING POINT COMPLETE</p><h1>You’ve completed your assessment</h1><p className="muted">Your starting point is ready to review.</p><Link className="btn btn-primary" to={`/baseline/${id}/result`}>View your starting point <ArrowRight size={15}/></Link></div>;
+  const questionIndex=questions.findIndex((item)=>item.id===question.id)+1;
+  return <div className="assessment-page"><Link className="back-link" to="/goals">Exit assessment</Link><PageHeader eyebrow="Starting point" title="A quick check of what you know" description="Answer from memory. This gives your learning plan a useful starting signal."/><section className="assessment-progress card"><div><span className="eyebrow">QUESTION {String(questionIndex).padStart(2,"0")} OF {questions.length}</span><span className="metadata">{question.level.replaceAll("_"," ")}</span></div><ProgressBar value={questions.length?questionIndex/questions.length*100:0} label={`Question ${questionIndex} of ${questions.length}`}/></section><form className="card question-card" onSubmit={(event)=>void submit(event)}>{error?<p className="error" role="alert">{error}</p>:null}<p className="eyebrow">YOUR QUESTION</p><h2 className="question-prompt">{question.question}</h2><label htmlFor="baseline-answer">Your answer</label><textarea id="baseline-answer" required value={answer} onChange={(event)=>setAnswer(event.target.value)} placeholder="Explain what you remember."/><div className="confidence-block"><label htmlFor="baseline-confidence">How confident are you?</label><div className="confidence-row"><span className="metadata">Guessing</span><input id="baseline-confidence" type="range" min={1} max={10} value={confidence} onChange={(event)=>setConfidence(Number(event.target.value))}/><span className="metadata">Certain</span><strong>{confidence}/10</strong></div></div><div className="question-footer"><span className="metadata">Your answers establish a starting point, not a final score.</span><button className="btn btn-primary" disabled={busy||!answer.trim()}>{busy?"Evaluating…":"Continue"} <ArrowRight size={15}/></button></div></form></div>;
 }

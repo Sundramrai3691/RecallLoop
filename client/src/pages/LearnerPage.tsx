@@ -1,97 +1,22 @@
 import { useEffect, useState } from "react";
+import { ArrowRight, BrainCircuit, Target } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
+import { EmptyState, PageHeader } from "../components/Ui";
 import { ApiError, type LearnerSummary } from "../types";
 
 export function LearnerPage() {
   const [summary, setSummary] = useState<LearnerSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    api
-      .learnerSummary()
-      .then(setSummary)
-      .catch((err) =>
-        setError(
-          err instanceof ApiError
-            ? err.message
-            : "Could not load learner model",
-        ),
-      );
-  }, []);
-
-  if (error) return <p className="error">{error}</p>;
-  if (!summary) return <p className="muted">Loading learner model...</p>;
-
-  return (
-    <div>
-      <section className="hero">
-        <h1>Learner model</h1>
-        <p className="muted">
-          A transparent snapshot of the signals currently shaping your plan.
-        </p>
-      </section>
-      <div className="grid grid-2">
-        <article className="card">
-          <h2>Progress</h2>
-          <p className="stat">{summary.averageMastery === null ? "—" : `${Math.round(summary.averageMastery * 100)}%`}</p>
-          <p className="muted">
-            {summary.averageMastery === null ? "Complete a recall to establish a baseline." : `Average mastery across ${summary.assessedConcepts} assessed concepts`}
-          </p>
-          <p>
-            {summary.dueConcepts} concepts due · {summary.weakConceptCount} weak
-            concepts
-          </p>
-        </article>
-        <article className="card">
-          <h2>Goal skills</h2>
-          {summary.weakSkills.length ? (
-            <ul>
-              {summary.weakSkills.map((skill) => (
-                <li key={skill.skillId}>
-                  {skill.name}{" "}
-                  <span className="muted">
-                    {skill.currentMastery === null ? "Not assessed" : `${Math.round(skill.currentMastery * 100)}%`}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">No goal skills to assess yet.</p>
-          )}
-        </article>
-        <article className="card">
-          <h2>Weak concepts</h2>
-          {summary.weakConcepts.length ? (
-            <ul>
-              {summary.weakConcepts.map((concept) => (
-                <li key={concept.conceptId}>
-                  {concept.conceptName}{" "}
-                  <span className="muted">
-                    {Math.round(concept.mastery * 100)}% ·{" "}
-                    {concept.mistakeCount} mistakes
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="muted">No weak concepts recorded yet.</p>
-          )}
-        </article>
-        <article className="card">
-          <h2>Recent mistakes</h2>
-          {summary.recentMistakes.length ? (
-            summary.recentMistakes.map((item) => (
-              <p key={`${item.conceptId}-${item.submittedAt}`}>
-                {item.mistakes.join("; ")}
-              </p>
-            ))
-          ) : (
-            <p className="muted">
-              Mistakes from evaluated recall will appear here.
-            </p>
-          )}
-        </article>
-      </div>
-    </div>
-  );
+  useEffect(() => { void api.learnerSummary().then(setSummary).catch((err) => setError(err instanceof ApiError && err.status === 401 ? "Sign in to see your learner view." : "We couldn’t load your learner evidence. Please try again.")); }, []);
+  return <div>
+    <PageHeader eyebrow="Your learning evidence" title="What do you actually know?" description="A view of what your recall has demonstrated so far. Knowledge grows through evidence, one attempt at a time." />
+    {error ? <section className="error" role="alert">{error} {error.startsWith("Sign in") ? <Link to="/login">Sign in</Link> : null}</section> : !summary ? <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div> : summary.assessedConcepts === 0 ? <EmptyState title="No recall evidence yet" to="/study/new" action="Start a study session" icon={<BrainCircuit size={18}/>}>Complete your first recall to establish your learner model. What you tell us you know stays separate from what recall demonstrates.</EmptyState> : <>
+      <section className="learner-overview"><article className="card learner-score"><p className="eyebrow">DEMONSTRATED RECALL</p><p className="hero-stat">{Math.round((summary.averageMastery ?? 0) * 100)}<span className="score-unit">%</span></p><p className="muted">Across {summary.assessedConcepts} assessed {summary.assessedConcepts === 1 ? "concept" : "concepts"}</p></article><article className="card learner-signal"><div className="empty-icon"><Target size={18}/></div><h2>What needs attention</h2><p className="muted">{summary.weakConceptCount ? `${summary.weakConceptCount} concept${summary.weakConceptCount === 1 ? "" : "s"} could use another focused recall.` : "Your assessed concepts have no current weakness signals."}</p><p className="metadata">{summary.dueConcepts} due for review</p></article></section>
+      <div className="section-heading"><h2>Concept evidence</h2><Link to="/study/new">Study something new <ArrowRight size={14}/></Link></div>
+      {summary.weakConcepts.length ? <section className="card">{summary.weakConcepts.map((concept) => <Link className="learner-concept" to={`/resources?conceptId=${encodeURIComponent(concept.conceptId)}`} key={concept.conceptId}><span className="learner-concept-copy"><strong>{concept.conceptName}</strong><span className="metadata">{concept.mistakeCount ? `${concept.mistakeCount} missed knowledge point${concept.mistakeCount === 1 ? "" : "s"}` : "Recall evidence"}</span></span><span className={`mastery-label ${concept.status.toLowerCase()}`}>{concept.status.replaceAll("_", " ")}</span><span className="mastery-track"><span className="mastery-fill" style={{ width: `${Math.max(0,Math.min(100,Math.round(concept.mastery * 100)))}%` }}/></span><span className="metadata">{Math.round(concept.mastery * 100)}%</span></Link>)}</section> : <EmptyState title="No weak concepts identified" to="/study/new" action="Keep learning">New recall attempts add evidence and help identify where practice will matter.</EmptyState>}
+      {summary.weakSkills.length ? <><div className="section-heading"><h2>Goal skills</h2><Link to="/goals">View goals</Link></div><section className="card">{summary.weakSkills.map((skill) => <div className="skill-evidence" key={skill.skillId}><strong>{skill.name}</strong><span className="metadata">{skill.currentMastery === null ? "Not assessed" : `${Math.round(skill.currentMastery * 100)}% demonstrated`}</span></div>)}</section></> : null}
+      {summary.recentMistakes.length ? <><div className="section-heading"><h2>Recent recall notes</h2></div><section className="grid grid-2">{summary.recentMistakes.map((item, index) => <article className="card" key={`${item.conceptId}-${item.submittedAt ?? index}`}><p className="eyebrow">{item.submittedAt ? new Date(item.submittedAt).toLocaleDateString() : "Recall note"}</p><ul className="mistake-list">{item.mistakes.map((mistake) => <li key={mistake}>{mistake}</li>)}</ul></article>)}</section></> : null}
+    </>}
+  </div>;
 }

@@ -1,120 +1,26 @@
 import { useEffect, useState } from "react";
+import { ArrowRight, Lightbulb } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { ApiError, type RecallAttempt, type ReviewState } from "../types";
-import type { GroundedRemediation } from "../types";
+import { AssessmentReport } from "../components/AssessmentReport";
+import { WhyThis } from "../components/WhyThis";
+import { ApiError, type RecallAttempt, type ReviewState, type GroundedRemediation } from "../types";
 
-function formatWhen(iso: string): string {
-  return new Date(iso).toLocaleString();
-}
+function formatWhen(iso:string){return new Date(iso).toLocaleString();}
 
 export function RecallResultPage() {
-  const { attemptId } = useParams();
-  const navigate=useNavigate();
-  const [recall, setRecall] = useState<RecallAttempt | null>(null);
-  const [review, setReview] = useState<ReviewState | null>(null);
-  const [dimensionScores, setDimensionScores] = useState<Record<string, number | null>>({});
-  const [reviewMode,setReviewMode]=useState<"automatic"|"confirm"|"manual">("automatic");
-  const [reviewDate,setReviewDate]=useState("");
-  const [reviewSaved,setReviewSaved]=useState(false);
-  const [nextStepError,setNextStepError]=useState<string|null>(null);
-  const [groundedRemediation,setGroundedRemediation]=useState<GroundedRemediation|null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!attemptId) return;
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await api.getRecall(attemptId);
-        if (cancelled) return;
-        setRecall(data.recall);
-        if(data.recall.remediationId){const result=await api.getRemediation(data.recall.remediationId);if(!cancelled)setGroundedRemediation(result.remediation);}
-        const concept = await api.getConcept(data.concept.id);
-        if (cancelled) return;
-        setReview(concept.review);
-        setDimensionScores(concept.dimensionScores);
-        const settings=await api.getSettings();
-        if(cancelled)return;
-        setReviewMode(settings.reviewMode);
-        if(concept.review?.dueAt){const date=new Date(concept.review.dueAt);date.setMinutes(date.getMinutes()-date.getTimezoneOffset());setReviewDate(date.toISOString().slice(0,16));}
-      } catch (err) {
-        if (!cancelled) {
-          setError(err instanceof ApiError ? err.message : "Result not found");
-        }
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [attemptId]);
-
-  if (error) return <p className="error">{error}</p>;
-  if (!recall) return <p className="muted">Loading evaluation…</p>;
-  if (!recall.evaluation) {
-    return (
-      <div className="card">
-        <p>This recall has not been submitted yet.</p>
-        <Link to={`/recall/${recall.id}`}>Answer it now</Link>
-      </div>
-    );
-  }
-
-  const evaluation = recall.evaluation;
-  const coverage = Math.round(evaluation.overallCoverage * 100);
-
-  async function saveReviewDate(){try{const result=await api.confirmReviewDate(recall!.conceptId,new Date(reviewDate).toISOString());setReview(result.review);setReviewSaved(true);setNextStepError(null);}catch(err){setNextStepError(err instanceof ApiError?err.message:"Could not update review date");}}
-  async function startRecommendation(){if(!recall?.recommendation)return;try{if(recall.recommendation.actionType==="remediation"){const result=recall.remediationId?{remediation:await api.getRemediation(recall.remediationId).then((value)=>value.remediation)}:await api.createRemediation(recall.id);navigate(`/remediations/${result.remediation.id}`);return;}if(!['practice','mastery_check','recall'].includes(recall.recommendation.actionType))return;const mode=recall.recommendation.actionType==='practice'?'practice':recall.recommendation.actionType==='mastery_check'?'mastery_check':'rapid_fire';const run=await api.createAssessment(recall.conceptId,mode);window.location.assign(`/assessments/${run.assessment.id}`);}catch(err){setNextStepError(err instanceof ApiError?err.message:"Could not start the recommended activity");}}
-
-  return (
-    <div className="grid">
-      <article className="card">
-        <h1>Retrieval result</h1>
-        <p className="stat">{coverage}%</p>
-        <p className="muted">
-          Coverage across required knowledge points — not an arbitrary 1–10 score.
-        </p>
-        <p>{evaluation.feedback}</p>
-        <p><strong>{recall.hintsUsed === 0 ? "Solved independently" : "Solved with assistance"}</strong>{recall.hintsUsed ? ` · ${recall.hintsUsed} hint${recall.hintsUsed === 1 ? "" : "s"} used` : ""}</p>
-        {recall.confidence ? <p>Confidence: {recall.confidence}/10</p> : null}
-        {recall.timeTakenSeconds != null ? <p>Time: {Math.floor(recall.timeTakenSeconds / 60)}m {recall.timeTakenSeconds % 60}s</p> : null}
-        {review ? (
-          <p>
-            Next review: <strong>{formatWhen(review.dueAt)}</strong> ({review.lastOutcome},{" "}
-            {review.intervalDays} day interval)
-          </p>
-        ) : null}
-        {reviewMode==="confirm"&&review?<div><label htmlFor="confirm-review-date">Confirm or adjust next review</label><input id="confirm-review-date" type="datetime-local" value={reviewDate} onChange={(event)=>{setReviewDate(event.target.value);setReviewSaved(false);}}/><button className="btn" type="button" onClick={()=>void saveReviewDate()}>Confirm review date</button>{reviewSaved?<p>Review date saved.</p>:null}{nextStepError?<p className="error">{nextStepError}</p>:null}</div>:null}
-        <p className="muted">Evaluator {evaluation.evaluatorVersion}</p>
-      </article>
-      <article className="card">
-        <h2>Knowledge points</h2>
-        <div className="kp">
-          {evaluation.knowledgePointResults.map((kp) => (
-            <div className={`kp-item ${kp.status}`} key={kp.point}>
-              <strong>{kp.point}</strong>
-              <div className="badge">{kp.status}</div>
-              <p className="muted">{kp.feedback}</p>
-            </div>
-          ))}
-        </div>
-      </article>
-      <article className="card">
-        <h2>Signals stored</h2>
-        <h3>Evidence by dimension</h3>
-        {Object.entries(dimensionScores).filter(([, score]) => score !== null).map(([dimension, score]) => <p key={dimension}>{dimension}: {Math.round((score ?? 0) * 100)}%</p>)}
-        <p>Missing: {evaluation.missingConcepts.join("; ") || "none"}</p>
-        <p>Mistakes: {evaluation.mistakes.join("; ") || "none"}</p>
-        <p>Strengths: {evaluation.strengths.join("; ") || "none"}</p>
-        {recall.recommendation?<section><h3>Recommended next step</h3><p><strong>{recall.recommendation.title}</strong></p><p>{recall.recommendation.reason}</p><p>Estimated: {recall.recommendation.estimatedMinutes} minutes</p>{recall.recommendation.actionType==="learn"?<button className="btn" type="button" onClick={()=>navigate(`/resources?conceptId=${recall.conceptId}`)}>Explore focused resources</button>:recall.recommendation.actionType==="remediation"?<button className="btn btn-primary" type="button" onClick={()=>void startRecommendation()}>Start focused remediation</button>:recall.recommendation.actionType!=="none"?<button className="btn" type="button" onClick={()=>void startRecommendation()}>Practice now</button>:null}{nextStepError?<p className="error">{nextStepError}</p>:null}</section>:null}
-        {groundedRemediation?.status==="verified"?<section className="card"><h3>Remediation verification</h3><p>{groundedRemediation.improved?"Your answer showed stronger evidence for the targeted point.":"Your answer did not yet show stronger evidence for the targeted point."}</p><Link to={`/remediations/${groundedRemediation.id}`}>Review remediation sources and result</Link></section>:null}
-        <p className="muted">Suggested question form: {evaluation.suggestedRecallType}</p>
-        <div className="actions">
-          <Link className="btn btn-primary" to="/dashboard">
-            Back to dashboard
-          </Link>
-        </div>
-      </article>
-    </div>
-  );
+  const {attemptId}=useParams();const navigate=useNavigate();const [recall,setRecall]=useState<RecallAttempt|null>(null);const [conceptName,setConceptName]=useState("");const [review,setReview]=useState<ReviewState|null>(null);const [dimensionScores,setDimensionScores]=useState<Record<string,number|null>>({});const [reviewMode,setReviewMode]=useState<"automatic"|"confirm"|"manual">("automatic");const [reviewDate,setReviewDate]=useState("");const [reviewSaved,setReviewSaved]=useState(false);const [nextError,setNextError]=useState<string|null>(null);const [remediation,setRemediation]=useState<GroundedRemediation|null>(null);const [error,setError]=useState<string|null>(null);
+  useEffect(()=>{if(!attemptId)return;let cancelled=false;void(async()=>{try{const data=await api.getRecall(attemptId);if(cancelled)return;setRecall(data.recall);setConceptName(data.concept.name);if(data.recall.remediationId){const item=await api.getRemediation(data.recall.remediationId);if(!cancelled)setRemediation(item.remediation);}const concept=await api.getConcept(data.concept.id);if(cancelled)return;setReview(concept.review);setDimensionScores(concept.dimensionScores);const settings=await api.getSettings();if(cancelled)return;setReviewMode(settings.reviewMode);if(concept.review?.dueAt){const date=new Date(concept.review.dueAt);date.setMinutes(date.getMinutes()-date.getTimezoneOffset());setReviewDate(date.toISOString().slice(0,16));}}catch(err){if(!cancelled)setError(err instanceof ApiError&&err.status===404?"This recall result could not be found.":"We couldn’t load your recall result.");}})();return()=>{cancelled=true;};},[attemptId]);
+  if(error)return <p className="error" role="alert">{error}</p>;if(!recall)return <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div>;if(!recall.evaluation)return <section className="card"><h1>This recall isn’t complete yet</h1><p className="muted">Submit your answer to see what it demonstrated.</p><Link className="btn btn-primary" to={`/recall/${recall.id}`}>Continue recall</Link></section>;
+  const currentRecall=recall;const evaluation=currentRecall.evaluation!;const coverage=Math.round(evaluation.overallCoverage*100);const points={correct:evaluation.knowledgePointResults.filter((point)=>point.status==="correct"),partial:evaluation.knowledgePointResults.filter((point)=>point.status==="partial"),missing:evaluation.knowledgePointResults.filter((point)=>point.status==="missing")};
+  async function saveReviewDate(){try{const result=await api.confirmReviewDate(currentRecall.conceptId,new Date(reviewDate).toISOString());setReview(result.review);setReviewSaved(true);setNextError(null);}catch{setNextError("We couldn’t save this review date. Please try again.");}}
+  async function startRecommendation(){const recommendation=currentRecall.recommendation;if(!recommendation)return;try{if(recommendation.actionType==="remediation"){const item=currentRecall.remediationId?{remediation:await api.getRemediation(currentRecall.remediationId).then((value)=>value.remediation)}:await api.createRemediation(currentRecall.id);navigate(`/remediations/${item.remediation.id}`);return;}if(recommendation.actionType==="learn"){navigate(`/resources?conceptId=${currentRecall.conceptId}`);return;}if(["practice","mastery_check","recall"].includes(recommendation.actionType)){const mode=recommendation.actionType==="practice"?"practice":recommendation.actionType==="mastery_check"?"mastery_check":"rapid_fire";const run=await api.createAssessment(currentRecall.conceptId,mode);navigate(`/assessments/${run.assessment.id}`);}}catch{setNextError("We couldn’t start the next activity. Please try again.");}}
+  const recommendation=recall.recommendation;
+  return <AssessmentReport eyebrow="Recall result" title={conceptName} description="Here’s what your answer showed, and what to focus on next." scoreLabel="Knowledge coverage" score={`${coverage}%`} scoreDetail="of required points demonstrated" confidence={recall.confidence===null?undefined:{label:"Self-reported confidence",value:`${recall.confidence}/10`}} points={points} dimensions={dimensionScores} misconceptions={evaluation.mistakes} why={evaluation.feedback}>
+    <section className="card report-feedback"><p className="metadata"><Lightbulb size={14}/>{recall.hintsUsed===0?"Answered without hints":`Used ${recall.hintsUsed} hint${recall.hintsUsed===1?"":"s"}`}{recall.timeTakenSeconds!=null?` · ${Math.floor(recall.timeTakenSeconds/60)}m ${recall.timeTakenSeconds%60}s`:""}</p></section>
+    {review?<section className="card review-next"><p className="eyebrow">SPACED REVIEW</p><h2>Next review: {formatWhen(review.dueAt)}</h2><p className="muted">{review.lastOutcome?`Based on this recall: ${review.lastOutcome.replaceAll("_"," ")}.`:"Your next review is scheduled."}</p>{reviewMode==="confirm"?<div><label htmlFor="confirm-review-date">Adjust the suggested date</label><input id="confirm-review-date" type="datetime-local" value={reviewDate} onChange={(event)=>{setReviewDate(event.target.value);setReviewSaved(false);}}/><button className="btn" type="button" onClick={()=>void saveReviewDate()}>Save review date</button>{reviewSaved?<p className="saved-state">Review date saved.</p>:null}{nextError?<p className="error" role="alert">{nextError}</p>:null}</div>:null}</section>:null}
+    {remediation?.status==="verified"?<section className="card"><p className="eyebrow">FOCUSED REMEDIATION</p><h2>{remediation.improved?"You showed stronger evidence on your second try":"This point needs more practice"}</h2><Link to={`/remediations/${remediation.id}`}>Review the focused material</Link></section>:null}
+    {recommendation?<section className="card next-step-action"><p className="eyebrow">NEXT BEST ACTION</p><h2>{recommendation.title}</h2><WhyThis reason={recommendation.reason}/><span className="metadata">About {recommendation.estimatedMinutes} minutes</span>{recommendation.actionType!=="none"?<button className="btn btn-primary" type="button" onClick={()=>void startRecommendation()}>Practice now <ArrowRight size={15}/></button>:null}{nextError?<p className="error" role="alert">{nextError}</p>:null}</section>:<section className="card"><p className="muted">There’s no additional activity to recommend from this recall yet.</p></section>}
+    <div className="actions"><Link className="btn" to="/dashboard">Done for now</Link></div>
+  </AssessmentReport>;
 }

@@ -85,6 +85,7 @@ export function GoalDetailPage() {
   return (
     <div>
       <section className="hero">
+        <p className="eyebrow">Learning goal</p>
         <h1>{goal.title}</h1>
         <p className="muted">
           {goal.description ||
@@ -169,7 +170,7 @@ export function GoalDetailPage() {
             <p>{skill.description || "No description yet."}</p>
             <p className="muted">
               Priority {skill.priority} ·{" "}
-              {Math.round(skill.currentMastery * 100)}% mastery
+              {skill.currentMastery === null ? "Not assessed yet" : `${Math.round(skill.currentMastery * 100)}% demonstrated mastery`}
             </p>
           </article>
         ))}

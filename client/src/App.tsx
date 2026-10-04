@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 import { DashboardPage } from "./pages/DashboardPage";
 import { NewStudyPage } from "./pages/NewStudyPage";
@@ -20,15 +20,18 @@ import { AssessmentPage } from "./pages/AssessmentPage";
 import { SettingsPage } from "./pages/SettingsPage";
 import { ResourcesPage } from "./pages/ResourcesPage";
 import { GroundedRemediationPage } from "./pages/GroundedRemediationPage";
+import { LandingPage } from "./pages/LandingPage";
+import { OnboardingPage } from "./pages/OnboardingPage";
 
 export function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
+      <Route path="/" element={<LandingPage />} />
       <Route element={<Layout />}>
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/study/new" element={<NewStudyPage />} />
         <Route path="/study/:id" element={<StudySessionPage />} />
         <Route path="/recall/:attemptId" element={<RecallPage />} />

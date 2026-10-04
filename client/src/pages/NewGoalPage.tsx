@@ -1,82 +1,33 @@
 import { FormEvent, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { ArrowLeft, Clock3 } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError } from "../types";
+
+const outcomes = ["Understand fundamentals", "Build production systems", "Get interview ready", "A mix of these"];
 
 export function NewGoalPage() {
   const navigate = useNavigate();
   const [title, setTitle] = useState("");
+  const [outcome, setOutcome] = useState(outcomes[0]);
   const [description, setDescription] = useState("");
-  const [goalType, setGoalType] = useState("learning");
-  const [targetDate, setTargetDate] = useState("");
   const [weeklyTimeBudgetMinutes, setWeeklyTimeBudgetMinutes] = useState(240);
   const [error, setError] = useState<string | null>(null);
-
+  const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
-    event.preventDefault();
-    try {
-      const result = await api.createGoal({
-        title,
-        description,
-        goalType,
-        targetDate: targetDate || undefined,
-        weeklyTimeBudgetMinutes,
-      });
-      navigate(`/goals/${result.goal.id}`);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not create goal");
-    }
+    event.preventDefault(); setBusy(true); setError(null);
+    try { const result = await api.createGoal({ title: title.trim(), description: [outcome, description.trim()].filter(Boolean).join(" · "), goalType: "learning", weeklyTimeBudgetMinutes }); navigate(`/goals/${result.goal.id}`); }
+    catch (err) { setError(err instanceof ApiError ? "We couldn’t save this goal. Please try again." : "We couldn’t reach the goal service. Please try again."); }
+    finally { setBusy(false); }
   }
-
-  return (
-    <form className="card" onSubmit={submit}>
-      <h1>New learning goal</h1>
-      {error ? <p className="error">{error}</p> : null}
-      <label htmlFor="title">Goal</label>
-      <input
-        id="title"
-        required
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        placeholder="Become a backend engineer"
-      />
-      <label htmlFor="description">Description</label>
-      <textarea
-        id="description"
-        value={description}
-        onChange={(event) => setDescription(event.target.value)}
-      />
-      <label htmlFor="type">Goal type</label>
-      <select
-        id="type"
-        value={goalType}
-        onChange={(event) => setGoalType(event.target.value)}
-      >
-        <option value="learning">Learning</option>
-        <option value="exam">Exam</option>
-        <option value="career">Career</option>
-        <option value="project">Project</option>
-      </select>
-      <label htmlFor="targetDate">Deadline</label>
-      <input
-        id="targetDate"
-        type="date"
-        value={targetDate}
-        onChange={(event) => setTargetDate(event.target.value)}
-      />
-      <label htmlFor="weekly">Weekly time (minutes)</label>
-      <input
-        id="weekly"
-        type="number"
-        min={60}
-        value={weeklyTimeBudgetMinutes}
-        onChange={(event) =>
-          setWeeklyTimeBudgetMinutes(Number(event.target.value))
-        }
-      />
-      <button className="btn btn-primary" type="submit">
-        Create goal
-      </button>
+  return <div className="goal-form-wrap"><Link className="back-link" to="/goals"><ArrowLeft size={15}/> Goals</Link><header className="goal-form-heading"><p className="eyebrow">A direction worth working toward</p><h1>What do you want to become good at?</h1><p className="muted">Set an outcome that can guide what you learn and practice.</p></header>
+    <form className="card goal-form" onSubmit={(event) => void submit(event)}>
+      {error ? <p className="error" role="alert">{error}</p> : null}
+      <label htmlFor="goal-title">Your goal</label><input id="goal-title" required value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Backend engineer" />
+      <fieldset><legend>What does “good” mean to you?</legend><div className="outcome-options">{outcomes.map((value) => <button type="button" key={value} className={`outcome-option ${outcome === value ? "selected" : ""}`} aria-pressed={outcome === value} onClick={() => setOutcome(value)}>{value}</button>)}</div></fieldset>
+      <label htmlFor="goal-context">Anything specific you have in mind? <span className="muted">(optional)</span></label><textarea id="goal-context" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="A role, project, or milestone you’re working toward" />
+      <fieldset><legend>How much time can you give it?</legend><div className="time-choice"><Clock3 size={17}/><strong>{weeklyTimeBudgetMinutes / 60} hours a week</strong><span className="metadata">About {Math.round(weeklyTimeBudgetMinutes / 7)} min a day</span></div><input aria-label="Weekly learning time in minutes" type="range" min={60} max={840} step={30} value={weeklyTimeBudgetMinutes} onChange={(event) => setWeeklyTimeBudgetMinutes(Number(event.target.value))}/><div className="range-labels"><span>1 hour</span><span>14 hours</span></div></fieldset>
+      <div className="actions"><button className="btn btn-primary" disabled={busy || !title.trim()} type="submit">{busy ? "Saving goal…" : "Create goal"}</button><Link className="btn" to="/goals">Cancel</Link></div>
     </form>
-  );
+  </div>;
 }
