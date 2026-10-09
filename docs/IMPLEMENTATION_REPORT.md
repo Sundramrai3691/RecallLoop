@@ -1,4 +1,6 @@
-# Implementation Report — RecallLoop MVP
+# Historical Implementation Report — RecallLoop MVP
+
+> This report records earlier phase snapshots and is retained as project history. Statements below such as MongoDB persistence, PostgreSQL/RAG not being built, or a planned cutover were true only at the time those notes were written and do not describe the current runtime. For current architecture, see [Architecture](ARCHITECTURE.md), [Grounded Remediation](GROUNDED_REMEDIATION.md), and [Project Status](PROJECT_STATUS.md).
 
 ## 1. What I changed
 

@@ -31,6 +31,12 @@ flowchart TD
   Learner --> Scheduler
   Scheduler --> ReviewState
   ReviewState --> Planner
+  Evaluation --> Gap[Knowledge-point gap]
+  Gap --> Retrieval[Owner-scoped source retrieval]
+  Sources[User-provided text] --> Retrieval
+  Retrieval --> Remediation[Grounded remediation]
+  Remediation --> Verification[Existing Question Engine]
+  Verification --> Evaluation
 ```
 
 Canonical knowledge answers what a role may require. Personal concepts, recall history, confidence, mistakes, mastery, and review state answer what a learner has demonstrated. Canonical skills and learner skills are separate tables; canonical concepts and personal concepts are separate tables.
@@ -47,12 +53,14 @@ Canonical knowledge answers what a role may require. Personal concepts, recall h
 - `knowledgeService -> PostgreSQL queries -> canonical knowledge and provenance tables`
 - `baselineService -> PostgreSQL queries -> baseline assessments, questions, and learner states`
 - `resourceRecommendationService -> PostgreSQL queries -> resources and resource coverage`
+- `groundedRemediationService -> embedding provider / bounded chunk retrieval -> grounding_sources / grounding_chunks / grounded_remediations`
+- `createTargetedVerification -> existing question builder and recall_attempts -> existing evaluator and learner-state update`
 
 Ownership is derived from `req.user.id`. Clients never provide an authoritative `user_id`.
 
 ## Evaluation and transactions
 
-The LLM is used only for concept extraction and rubric evaluation. Structured output is schema validated, then domain services persist it. LLM numeric `overallCoverage` is ignored; coverage is derived from knowledge-point statuses: correct = 1, partial = 0.5, missing = 0.
+The default local provider is deterministic. Optional LLM providers support concept extraction, rubric evaluation, and structured grounded remediation when explicitly configured. Structured output is schema validated, then domain services persist it. LLM numeric `overallCoverage` is ignored; coverage is derived from knowledge-point statuses: correct = 1, partial = 0.5, missing = 0. Grounded remediation uses only retrieved source excerpts and cannot directly update learner state.
 
 Recall submission loads and validates the attempt, performs evaluation outside the database transaction, then must atomically persist the attempt answer, normalized evaluation rows, concept mastery, review state, and learning events. Study completion must atomically update the session, create immediate recalls/reviews, and append its event. Plan replacement and baseline submission have the same focused transaction requirement.
 
@@ -77,4 +85,4 @@ npm run dev
 
 ## Verification boundary
 
-Unit tests run without a database. PostgreSQL integration tests run with `npm run test:integration -w server` and require a running PostgreSQL instance. The current environment has no Docker executable and no PostgreSQL listener, so those tests are reported as blocked rather than replaced with an in-memory fake.
+Unit tests run without a database. PostgreSQL integration tests run with `npm run test:integration -w server` and require a running PostgreSQL instance. See [Project Status](PROJECT_STATUS.md) for the latest observed verification; local service availability changes independently of this architecture description.

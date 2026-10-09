@@ -69,3 +69,15 @@ Focused Resources includes a small source-text form. Recall Result offers the re
 Unit tests cover stable chunking, deterministic embeddings, ranking/irrelevant rejection, structured validation, extractive grounding, fallback, and targeted question variants. PostgreSQL integration tests use the real configured DB and cover source idempotency/provenance, ownership, retrieval, remediation persistence, verification/evaluation/model update, no relevant source, invalid embeddings, and generation retry.
 
 Known limitations: only pasted text/Markdown is ingested; PDF parsing and URL fetching are intentionally absent. The deterministic mock embedder is not a substitute for production semantic embeddings. The current PostgreSQL deployment lacks pgvector, so ranking currently happens in application code over bounded per-user chunk rows. LLM output is constrained and validated but still requires human review for product quality. Evidence scores and the improved flag are transparent product heuristics, not a validated learning-science measure.
+
+## Manual learner scenarios
+
+With the API running against a migrated PostgreSQL database, create a learner account and add a small source through Focused Resources (for example, notes that explicitly explain the TCP congestion window and receiver window). Then try:
+
+1. **Strong recall:** answer the relevant knowledge point correctly. Remediation should not be recommended for that point.
+2. **Weak recall:** omit a central distinction. The result should offer a focused remediation with an evidence-based reason and an attributed excerpt.
+3. **Repeated misconception:** submit another weak answer that repeats the same misconception. The reason should reflect the persisted history, and the verification should use new wording for the same point.
+4. **No relevant material:** ingest an unrelated source and request remediation for a gap. The UI should explain that useful material was not found and show existing resource recommendations when available.
+5. **Improved verification:** answer the targeted question more completely. The normal evaluation should update learner evidence, and the remediation record should show the before/after outcome.
+
+These are product checks, not proof of learning-science validity. Automated PostgreSQL coverage and manual browser exercise status are tracked separately in [Project Status](PROJECT_STATUS.md).
