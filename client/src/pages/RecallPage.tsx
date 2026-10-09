@@ -9,6 +9,7 @@ export function RecallPage() {
   const [recall, setRecall] = useState<RecallAttempt | null>(null);
   const [conceptName, setConceptName] = useState("");
   const [answer, setAnswer] = useState("");
+  const [partAnswers, setPartAnswers] = useState<Record<string,string>>({});
   const [confidence, setConfidence] = useState(6);
   const [selectedOptionId, setSelectedOptionId] = useState("");
   const [hintBusy, setHintBusy] = useState(false);
@@ -17,6 +18,7 @@ export function RecallPage() {
 
   useEffect(() => {
     if (!attemptId) return;
+    setRecall(null);setAnswer("");setPartAnswers({});setSelectedOptionId("");setError(null);
     api
       .getRecall(attemptId)
       .then((data) => {
@@ -35,7 +37,8 @@ export function RecallPage() {
     setBusy(true);
     setError(null);
     try {
-      await api.submitRecall(attemptId, { answer, selectedOptionId: selectedOptionId || undefined, confidence });
+      const parts=recall?.questionData?.parts;
+      await api.submitRecall(attemptId, { answer:parts?undefined:answer, answers:parts?.map((part)=>({partId:part.id,answer:partAnswers[part.id]??""})), selectedOptionId: selectedOptionId || undefined, confidence });
       navigate(`/recall/${attemptId}/result`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not submit recall");
@@ -69,7 +72,7 @@ export function RecallPage() {
       {recall.questionData?.revealedHints.map((hint, index) => <p className="callout" key={index}><strong>Hint {index + 1}:</strong> {hint}</p>)}
       {recall.questionData && recall.questionData.hintsRemaining > 0 ? <button className="btn" disabled={hintBusy} onClick={() => void revealHint()} type="button">{hintBusy ? "Revealing…" : `Need a nudge? Reveal hint ${recall.maxHintLevel + 1}`}</button> : null}
       {error ? <p className="error">{error}</p> : null}
-      {recall.questionType === "mcq" && recall.questionData?.options ? <fieldset><legend>Your answer</legend>{recall.questionData.options.map((option) => <label className="option" key={option.id}><input type="radio" name="option" checked={selectedOptionId === option.id} onChange={() => setSelectedOptionId(option.id)} /> {option.text}</label>)}</fieldset> : <><label htmlFor="answer">Your answer</label><textarea
+      {recall.questionType === "mcq" && recall.questionData?.options ? <fieldset><legend>Your answer</legend>{recall.questionData.options.map((option) => <label className="option" key={option.id}><input type="radio" name="option" checked={selectedOptionId === option.id} onChange={() => setSelectedOptionId(option.id)} /> {option.text}</label>)}</fieldset> : recall.questionData?.parts?.length ? <div className="structured-answer-parts">{recall.questionData.parts.map((part)=><section className="structured-answer-part" key={part.id}><h2>{part.label}</h2><p>{part.prompt}</p><label htmlFor={`answer-${part.id}`}>Your answer for {part.label}</label><textarea id={`answer-${part.id}`} value={partAnswers[part.id]??""} onChange={(event)=>setPartAnswers((current)=>({...current,[part.id]:event.target.value}))} placeholder="Explain this part from memory." /></section>)}</div> : <><label htmlFor="answer">Your answer</label><textarea
         id="answer"
         required
         value={answer}
@@ -90,7 +93,7 @@ export function RecallPage() {
         <span className="muted">Certain</span>
       </div>
       <div className="actions">
-        <button className="btn btn-primary" disabled={busy} type="submit">
+        <button className="btn btn-primary" disabled={busy||(recall.questionData?.parts?.length?!Object.values(partAnswers).some((value)=>value.trim()):false)} type="submit">
           {busy ? "Evaluating…" : "Submit recall"}
         </button>
       </div>

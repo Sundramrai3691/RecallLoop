@@ -11,10 +11,18 @@ import { deriveCoverage, parseConceptExtractionJson, parseEvaluationJson } from 
 import { tokenOverlap } from "../../lib/llm/json.js";
 import type { KnowledgePointResult } from "../../domain/recallTypes.js";
 
-function alignKnowledgePoints(
+export function alignKnowledgePoints(
   required: string[],
   results: KnowledgePointResult[],
+  strict = false,
 ): KnowledgePointResult[] {
+  if(strict){
+    const keys=required.map((point)=>point.trim().toLowerCase());
+    const returned=results.map((result)=>result.point.trim().toLowerCase());
+    if(new Set(returned).size!==returned.length||returned.length!==keys.length||keys.some((point)=>!returned.includes(point))){
+      throw new AppError("The evaluator returned results for unexpected knowledge points.",502,"INVALID_EVALUATION_RESULT");
+    }
+  }
   const unused = [...results];
   return required.map((point) => {
     const exact = unused.findIndex((r) => r.point.trim().toLowerCase() === point.trim().toLowerCase());
@@ -66,6 +74,7 @@ Concept name: ${input.conceptName}
 Concept description: ${input.conceptDescription}
 Question type: ${input.questionType}
 Required knowledge points: ${JSON.stringify(input.requiredKnowledgePoints)}
+Grading rubric / required answer ideas: ${JSON.stringify(input.rubric ?? input.requiredKnowledgePoints)}
 Learner answer: ${input.answer}`;
 }
 
@@ -109,6 +118,7 @@ export class LlmEvaluator implements Evaluator {
     const knowledgePointResults = alignKnowledgePoints(
       input.requiredKnowledgePoints,
       parsed.knowledgePointResults,
+      input.strictKnowledgePoints,
     );
     return {
       ...parsed,

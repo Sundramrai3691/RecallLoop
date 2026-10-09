@@ -6,6 +6,7 @@ import type { QuestionType } from "../../domain/recallTypes.js";
 import { evidenceWeight, evaluateMcq } from "../question/questionService.js";
 import { query } from "../../db/postgres.js";
 import { recommendNextAction } from "../recommendation/practiceRecommendationService.js";
+import { evaluateStructuredParts, mapStructuredAnswers, validateQuestionParts } from "../question/questionService.js";
 
 export async function getRecall(id: string, userId: string) {
   const attempt = await getAttempt(id, userId);
@@ -24,11 +25,21 @@ export async function revealRecallHint(id: string, userId: string) {
   return result;
 }
 
-export async function submitRecall(id: string, input: { answer?: string; selectedOptionId?: string; confidence: number; userId: string }) {
+export async function submitRecall(id: string, input: { answer?: string; answers?: Array<{partId:string;answer:string}>; selectedOptionId?: string; confidence: number; userId: string }) {
   const answer = input.answer?.trim();
   const { attempt, concept } = await getRecall(id, input.userId);
   const mcq = attempt.questionType === "mcq" && attempt.question;
-  if (mcq ? !input.selectedOptionId : !answer) throw new AppError(mcq ? "Select an option" : "Answer cannot be empty", 400, "EMPTY_ANSWER");
+  const parts=attempt.question?validateQuestionParts(attempt.question.parts,attempt.question.knowledgePoints):null;
+  if(mcq&&parts)throw new AppError("A multiple-choice question cannot contain structured answer parts.",500,"INVALID_QUESTION_PARTS");
+  let structuredAnswers: Array<{partId:string;answer:string}> | null=null;
+  if(parts){
+    if(!Array.isArray(input.answers))throw new AppError("Submit an answer for each question part.",400,"STRUCTURED_ANSWERS_REQUIRED");
+    structuredAnswers=mapStructuredAnswers(parts,input.answers);
+    if(!structuredAnswers.some((part)=>part.answer.length>0))throw new AppError("At least one part needs an answer.",400,"EMPTY_ANSWER");
+  } else if(input.answers!==undefined){
+    throw new AppError("This question does not accept part-based answers.",400,"UNEXPECTED_STRUCTURED_ANSWERS");
+  }
+  if (mcq ? !input.selectedOptionId : !parts && !answer) throw new AppError(mcq ? "Select an option" : "Answer cannot be empty", 400, "EMPTY_ANSWER");
   const confidence = Number(input.confidence);
   if (!Number.isFinite(confidence) || confidence < 1 || confidence > 10) throw new AppError("Confidence must be a number from 1 to 10", 400, "VALIDATION_ERROR");
   if (attempt.submittedAt) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
@@ -37,6 +48,10 @@ export async function submitRecall(id: string, input: { answer?: string; selecte
   if (mcq) {
     const graded = evaluateMcq({ selectedOptionId: input.selectedOptionId!, correctOptionId: attempt.question.correctOptionId, knowledgePoints: attempt.question.knowledgePoints });
     evaluationBody = { ...graded, feedback: graded.correct ? "Correct. This matches the question's answer key." : attempt.question.explanation, suggestedRecallType: "short_explanation" as QuestionType };
+  } else if(parts && structuredAnswers) {
+    const structuredEvaluation=await evaluateStructuredParts(parts,structuredAnswers,(part,partAnswer)=>evaluator!.evaluate({conceptName:concept.name,conceptDescription:concept.description,requiredKnowledgePoints:part.knowledgePoints,answer:partAnswer,questionType:attempt.questionType as QuestionType,rubric:part.rubric,strictKnowledgePoints:true}));
+    const {knowledgePointResults,overallCoverage}=structuredEvaluation;
+    evaluationBody={knowledgePointResults,overallCoverage,missingConcepts:knowledgePointResults.filter((point)=>point.status==="missing").map((point)=>point.point),mistakes:knowledgePointResults.filter((point)=>point.status!=="correct").map((point)=>point.feedback),strengths:knowledgePointResults.filter((point)=>point.status==="correct").map((point)=>point.point),feedback:structuredEvaluation.feedback,suggestedRecallType:overallCoverage>=.75?"application" as QuestionType:"explain" as QuestionType};
   } else {
     evaluationBody = await evaluator!.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: attempt.question?.knowledgePoints ?? concept.requiredKnowledgePoints, answer: answer!, questionType: attempt.questionType as QuestionType });
   }
@@ -61,7 +76,8 @@ export async function submitRecall(id: string, input: { answer?: string; selecte
   const repeatedPoint=evaluation.missingConcepts[0] ?? null;
   const repeatedCount=repeatedPoint?recentAttempts.rows.filter((row)=>row.missing_concepts.includes(repeatedPoint)).length:0;
   const recommendation=recommendNextAction({conceptName:concept.name,mastery,latestCoverage:evidenceCoverage,dimensions,consecutiveFailures,repeatedMissingPoint:repeatedPoint,repeatedMissingCount:repeatedCount,goalRequired:Boolean(requiredResult.rows[0]?.required)});
-  const updated = await submitAttempt(input.userId, id, answer ?? "", confidence, { ...evaluation, dimension }, scheduled, concept.id, mastery, { selectedOptionId: input.selectedOptionId, resultStatus: status, evidenceWeight: hintWeight, recommendation });
+  const persistedAnswer=structuredAnswers?structuredAnswers.map((part)=>{const label=parts?.find((item)=>item.id===part.partId)?.label??part.partId;return `${label}: ${part.answer}`;}).join("\n\n"):answer??"";
+  const updated = await submitAttempt(input.userId, id, persistedAnswer, confidence, { ...evaluation, dimension }, scheduled, concept.id, mastery, { selectedOptionId: input.selectedOptionId, resultStatus: status, evidenceWeight: hintWeight, recommendation, structuredAnswers });
   if (!updated) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   const refreshed = await getRecall(id, input.userId);
   return { attempt: refreshed.attempt, concept: refreshed.concept, review: await getReview(input.userId, concept.id) };

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, evaluateMcq, evidenceWeight, nextHint, selectAssessment } from "./questionService.js";
+import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, createStructuredParts, evaluateMcq, evaluateStructuredParts, evidenceWeight, mapStructuredAnswers, nextHint, selectAssessment, validateQuestionParts } from "./questionService.js";
 import { findBuiltinMcq } from "./mcqBank.js";
 
 describe("question engine primitives", () => {
@@ -52,5 +52,40 @@ describe("question engine primitives", () => {
     const question1=buildQuestion("Queues","short_explanation",["ack timing"],2,0,0);
     const question2=buildQuestion("Queues","short_explanation",["ack timing"],2,0,1);
     expect(question1.prompt).not.toBe(question2.prompt);
+  });
+  it("creates parts only for multi-point explanatory questions and preserves legacy single-point questions",()=>{
+    expect(buildQuestion("Transactions","short_explanation",["Atomicity","Isolation"]).parts).toHaveLength(2);
+    expect(buildQuestion("Transactions","short_explanation",["Atomicity"]).parts).toBeNull();
+    expect(buildQuestion("Transactions","descriptive",["Atomicity","Isolation"]).parts).toBeNull();
+    expect(buildQuestion("Transactions","mcq",["Atomicity","Isolation"]).parts).toBeNull();
+  });
+  it("validates question part IDs and their knowledge-point associations",()=>{
+    const parts=createStructuredParts(["Atomicity","Isolation"],"Transactions")!;
+    expect(validateQuestionParts(parts,["Atomicity","Isolation"])).toEqual(parts);
+    expect(()=>validateQuestionParts([{...parts[0],knowledgePoints:["unknown"]},parts[1]],["Atomicity","Isolation"])).toThrow();
+    expect(()=>validateQuestionParts([{...parts[0],id:parts[1].id},parts[1]],["Atomicity","Isolation"])).toThrow();
+  });
+  it("maps each answer by part ID, fills omitted parts as unanswered, and rejects unexpected or duplicate IDs",()=>{
+    const parts=createStructuredParts(["Atomicity","Isolation"],"Transactions")!;
+    expect(mapStructuredAnswers(parts,[{partId:"part-2",answer:"isolation answer"}])).toEqual([{partId:"part-1",answer:""},{partId:"part-2",answer:"isolation answer"}]);
+    expect(()=>mapStructuredAnswers(parts,[{partId:"wrong",answer:"answer"}])).toThrow();
+    expect(()=>mapStructuredAnswers(parts,[{partId:"part-1",answer:"a"},{partId:"part-1",answer:"b"}])).toThrow();
+    expect(()=>mapStructuredAnswers(parts,[null])).toThrow();
+  });
+  it("evaluates each part against only its own answer and rubric",async()=>{
+    const parts=createStructuredParts(["Atomicity: all operations commit or none do","Isolation: concurrent transactions do not interfere"],"Transactions")!;
+    const mapped=mapStructuredAnswers(parts,[{partId:"part-1",answer:"Atomicity: all operations commit or none do"},{partId:"part-2",answer:"unrelated answer"}]);
+    const evaluated=await evaluateStructuredParts(parts,mapped,async(part,answer)=>({feedback:`checked ${part.id}`,knowledgePointResults:[{point:part.knowledgePoints[0],status:answer===part.knowledgePoints[0]?"correct":"missing",evidence:answer,feedback:"checked"}]}));
+    expect(evaluated.knowledgePointResults.map((item)=>[item.partId,item.status])).toEqual([["part-1","correct"],["part-2","missing"]]);
+    expect(evaluated.overallCoverage).toBe(.5);
+  });
+  it("records missing structured answers as missing without invoking the evaluator",async()=>{
+    const parts=createStructuredParts(["Atomicity","Isolation"],"Transactions")!;
+    const mapped=mapStructuredAnswers(parts,[{partId:"part-1",answer:""},{partId:"part-2",answer:"isolation"}]);
+    const evaluatePart=async(part:any,answer:string)=>({feedback:"checked",knowledgePointResults:[{point:part.knowledgePoints[0],status:"correct" as const,evidence:answer,feedback:"ok"}]});
+    const evaluated=await evaluateStructuredParts(parts,mapped,evaluatePart);
+    expect(evaluated.knowledgePointResults.map((item)=>item.status)).toEqual(["missing","correct"]);
+    expect(evaluated.knowledgePointResults[0].evidence).toBe("");
+    await expect(evaluateStructuredParts(parts,mapped,async()=>{throw new Error("provider unavailable");})).rejects.toThrow("provider unavailable");
   });
 });

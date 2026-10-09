@@ -9,6 +9,8 @@ export interface EvaluateAnswerInput {
   requiredKnowledgePoints: string[];
   answer: string;
   questionType: QuestionType;
+  rubric?: string[];
+  strictKnowledgePoints?: boolean;
 }
 
 export interface ExtractConceptsInput {

@@ -50,6 +50,8 @@ The planner consumes `ReviewState` for due timing and `LearnerModelService` for 
 
 ## Why the boundaries matter
 
+Structured multi-part questions preserve evidence for each required point label in `learner_knowledge_point_states`. A correct part updates only its own state; missing or partial evidence for another part remains visible independently. Aggregate attempt coverage and concept mastery remain separate projections for existing scheduling and summaries.
+
 - The planner and recall engine are separate because planning decides what work to expose while recall owns question attempts and answers.
 - The scheduler and planner are separate because the scheduler decides when a concept is due while the planner decides how today's bounded work is composed.
 - The LLM is not authoritative because probabilistic output must be validated before persistence and cannot decide access, timing, or critical transitions.

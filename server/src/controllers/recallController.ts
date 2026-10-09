@@ -60,6 +60,7 @@ export async function submitRecallHandler(
   try {
     const { attempt, concept, review } = await submitRecall(req.params.id, {
       answer: req.body?.answer,
+      answers: req.body?.answers,
       selectedOptionId: req.body?.selectedOptionId,
       confidence: req.body?.confidence,
       userId: req.user!.id,

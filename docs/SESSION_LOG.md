@@ -17,6 +17,16 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Verification: `npm run build` passed; `npm test` passed (8 files, 32 tests); relative Markdown links resolved; `git diff --check` passed.
 - PostgreSQL integration tests were not run because local PostgreSQL was unavailable at the configured `127.0.0.1:5432` endpoint, matching the startup refusal reported by the user.
 
+## 2026-10-10 — Phase 6B structured questions
+
+- Reused the existing question, recall submission, evaluator, point-result and transaction pipeline. Added optional structured parts for multi-point short-explanation questions, part-keyed answers, strict part/result association, explicit missing-part evidence, and independent learner state keyed by user/concept/point.
+- Added migration `011_structured_question_parts.sql`; existing question/answer columns and the legacy one-string API continue to support old records. MCQ grading remains deterministic.
+- Added unit tests for question parts, mapping/validation, independent scores, missing answers, malformed evaluator point mappings, legacy questions and MCQ behavior. Added a PostgreSQL roundtrip/retry integration test.
+- `npm test`: passed, 9 files and 39 tests. `git diff --check`: passed.
+- `npm run test:integration -w server`: blocked; migration setup could not connect to `127.0.0.1:5432`, so all 4 integration cases were skipped. The DB persistence assertions have not been run locally.
+- `npm run build`: passed for server and client production builds.
+- Canonical UUID linkage is not present in the current personal knowledge-point model; parts validate against the question's existing point labels rather than inventing canonical IDs.
+
 ### Verification follow-up — 2026-10-09
 
 - Re-ran `npm run build`: passed (server TypeScript and client Vite production build).

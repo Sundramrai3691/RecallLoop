@@ -24,6 +24,31 @@ describe("PostgreSQL runtime integration", () => {
   it("applies relational schema and exposes core tables", async () => {
     const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations')`);
     expect(result.rows.length).toBe(13);
+    const structured=await postgres.query<any>(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name='part_id'))`);
+    expect(structured.rows).toHaveLength(3);
+  });
+
+  it("persists structured answers and keeps each knowledge point state independent, including retries",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Structured Test') RETURNING id`,[`structured-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'Structured evaluation') RETURNING id`,[userId])).rows[0];
+      const points=["Atomicity guarantees all operations commit together or none do.","Isolation prevents concurrent transactions from observing inconsistent intermediate state."];
+      const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database transactions','Transaction guarantees.',$3) RETURNING id`,[userId,session.id,points])).rows[0];
+      const assessment=await createAssessment(userId,concept.id,"mastery_check");
+      const structured=assessment.questions.find((item:any)=>item.questionType==="short_explanation");
+      expect(structured?.questionData?.parts).toHaveLength(2);
+      const [atomicity,isolation]=structured.questionData.parts;
+      const submitted=await submitRecall(structured.id,{userId,confidence:8,answers:[{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:"Transactions use a database."}]});
+      expect(submitted.attempt.evaluation.knowledgePointResults.map((point:any)=>[point.partId,point.status])).toEqual([[atomicity.id,"correct"],[isolation.id,"missing"]]);
+      expect(submitted.attempt.structuredAnswers).toEqual([{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:"Transactions use a database."}]);
+      const states=(await postgres.query<any>(`SELECT point,mastery::float AS mastery,attempt_count FROM learner_knowledge_point_states WHERE user_id=$1 AND concept_id=$2 ORDER BY point`,[userId,concept.id])).rows;
+      expect(states).toHaveLength(2);
+      expect(states.find((state:any)=>state.point===points[0]).mastery).toBe(0.6);
+      expect(states.find((state:any)=>state.point===points[1]).mastery).toBe(0);
+      await expect(submitRecall(structured.id,{userId,confidence:8,answers:[{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:points[1]}]})).rejects.toThrow("already been submitted");
+      const counts=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[structured.id,userId,concept.id]);
+      expect(counts.rows[0]).toMatchObject({evaluations:1,states:2});
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
   it("persists adaptive assessment, preferences, resources, packs, plans, and missed-task history",async()=>{

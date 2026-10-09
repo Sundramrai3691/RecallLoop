@@ -1,4 +1,9 @@
 import type { AssessmentLevel, QuestionType } from "../../domain/recallTypes.js";
+import type { StructuredQuestionPart } from "../../domain/recallTypes.js";
+import { z } from "zod";
+import { AppError } from "../../utils/errors.js";
+import { deriveCoverage } from "../evaluator/validate.js";
+import type { KnowledgePointResult } from "../../domain/recallTypes.js";
 import { findBuiltinMcq } from "./mcqBank.js";
 import type { PoolClient } from "pg";
 
@@ -15,7 +20,76 @@ export interface QuestionDraft {
   correctOptionId: string | null;
   explanation: string;
   knowledgePoints: string[];
+  parts: StructuredQuestionPart[] | null;
   hints: string[];
+}
+
+export function createStructuredParts(points: string[], conceptName: string): StructuredQuestionPart[] | null {
+  const distinct = [...new Set(points.map((point) => point.trim()).filter(Boolean))];
+  if (distinct.length < 2) return null;
+  return distinct.map((point, index) => {
+    const label = point.length <= 48 ? point : `${point.slice(0, 45).trimEnd()}…`;
+    return {
+      id: `part-${index + 1}`,
+      label,
+      prompt: `Explain this part of ${conceptName}: ${point}`,
+      knowledgePoints: [point],
+      rubric: [point],
+    };
+  });
+}
+
+export function mapStructuredAnswers(
+  parts: StructuredQuestionPart[],
+  submitted: unknown,
+) {
+  const parsed=z.array(z.object({partId:z.string().min(1).max(80),answer:z.string().max(20000)})).max(12).safeParse(submitted);
+  if(!parsed.success)throw new AppError("Each answer needs a valid part ID and text.",400,"INVALID_PART_ANSWER");
+  const known = new Set(parts.map((part) => part.id));
+  const seen = new Set<string>();
+  for (const item of parsed.data) {
+    if (!known.has(item.partId)) throw new AppError("An answer refers to an unknown question part.",400,"UNKNOWN_ANSWER_PART");
+    if (seen.has(item.partId)) throw new AppError("Each question part can only have one answer.",400,"DUPLICATE_ANSWER_PART");
+    seen.add(item.partId);
+  }
+  return parts.map((part) => ({ partId: part.id, answer: parsed.data.find((item) => item.partId === part.id)?.answer.trim() ?? "" }));
+}
+
+export function validateQuestionParts(value: unknown, questionKnowledgePoints: string[]): StructuredQuestionPart[] | null {
+  if (value == null) return null;
+  const schema = z.array(z.object({ id:z.string().min(1).max(80),label:z.string().min(1).max(160),prompt:z.string().min(1).max(1000),knowledgePoints:z.array(z.string().min(1)).min(1),rubric:z.array(z.string().min(1)).min(1) })).min(2).max(12);
+  const parsed=schema.safeParse(value);
+  if (!parsed.success) throw new AppError("The stored question has invalid structured parts.",500,"INVALID_QUESTION_PARTS");
+  const ids=new Set<string>();
+  const usedPoints=new Set<string>();
+  const available=new Set(questionKnowledgePoints.map((point)=>point.trim()));
+  for(const part of parsed.data){
+    if(ids.has(part.id)||new Set(part.knowledgePoints.map((point)=>point.trim())).size!==part.knowledgePoints.length||part.knowledgePoints.some((point)=>!available.has(point.trim())||usedPoints.has(point.trim()))){
+      throw new AppError("The stored question references invalid parts or knowledge points.",500,"INVALID_QUESTION_PARTS");
+    }
+    ids.add(part.id);
+    part.knowledgePoints.forEach((point)=>usedPoints.add(point.trim()));
+  }
+  return parsed.data;
+}
+
+export async function evaluateStructuredParts(
+  parts: StructuredQuestionPart[],
+  answers: Array<{partId:string;answer:string}>,
+  evaluatePart: (part:StructuredQuestionPart,answer:string)=>Promise<{knowledgePointResults:KnowledgePointResult[];feedback:string}>,
+) {
+  const evaluations=[];
+  for(const part of parts){
+    const answer=answers.find((item)=>item.partId===part.id)?.answer.trim()??"";
+    if(!answer){
+      evaluations.push({partId:part.id,feedback:`${part.label}: unanswered.`,results:part.knowledgePoints.map((point)=>({point,status:"missing" as const,evidence:"",feedback:"No answer was provided for this part.",partId:part.id}))});
+    }else{
+      const evaluated=await evaluatePart(part,answer);
+      evaluations.push({partId:part.id,feedback:`${part.label}: ${evaluated.feedback}`,results:evaluated.knowledgePointResults.map((result)=>({...result,partId:part.id}))});
+    }
+  }
+  const knowledgePointResults=evaluations.flatMap((part)=>part.results);
+  return {knowledgePointResults,overallCoverage:deriveCoverage(knowledgePointResults),feedback:evaluations.map((part)=>part.feedback).join(" ")};
 }
 
 const LEVEL_TYPES: Record<AssessmentLevel, QuestionType> = {
@@ -81,7 +155,9 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
   };
   const selectedPrompt = alternatePrompts[questionType]?.[Math.abs(wordingVariant) % (alternatePrompts[questionType]?.length ?? 1)] ?? spec.prompt;
   const mcqPrompt=curated?.prompt ?? null;
-  return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: options ? [evaluatedPoint] : points, hints: ["Recall the key mechanism involved.", `Connect your answer to: ${evaluatedPoint}`, "Check the main tradeoff or a concrete use case." ] };
+  const questionKnowledgePoints = options ? [evaluatedPoint] : points;
+  const parts = questionType === "short_explanation" ? createStructuredParts(questionKnowledgePoints, conceptName) : null;
+  return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: parts ? "Answer each part separately." : mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: questionKnowledgePoints, parts, hints: ["Recall the key mechanism involved.", `Connect your answer to: ${evaluatedPoint}`, "Check the main tradeoff or a concrete use case." ] };
 }
 
 export function buildTargetedVerificationQuestion(conceptName:string,knowledgePoint:string,variant=0):QuestionDraft {
@@ -94,7 +170,7 @@ export function buildTargetedVerificationQuestion(conceptName:string,knowledgePo
     `What does ${knowledgePoint} mean in ${conceptName}? Answer from memory.`,
     `Describe ${knowledgePoint} clearly enough that someone could distinguish it from a related idea.`,
   ];
-  return {...base,title:"Targeted Check",context:"Answer from memory without reopening the remediation.",prompt:prompts[variant%prompts.length],knowledgePoints:[knowledgePoint],estimatedMinutes:3};
+  return {...base,title:"Targeted Check",context:"Answer from memory without reopening the remediation.",prompt:prompts[variant%prompts.length],knowledgePoints:[knowledgePoint],parts:null,estimatedMinutes:3};
 }
 
 export function evidenceWeight(hintsUsed: number): number {
@@ -119,6 +195,6 @@ export function evaluateMcq(input: { selectedOptionId: string; correctOptionId: 
 }
 
 export async function upsertQuestion(client: PoolClient, conceptId: string, draft: QuestionDraft) {
-  const result = await client.query<{ id: string }>(`INSERT INTO questions (concept_id,question_type,assessment_level,difficulty,title,context,prompt,estimated_minutes,source,options,correct_option_id,explanation,knowledge_points,hints) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) ON CONFLICT (concept_id,question_type,prompt) DO UPDATE SET assessment_level=EXCLUDED.assessment_level,difficulty=EXCLUDED.difficulty,title=EXCLUDED.title,context=EXCLUDED.context,estimated_minutes=EXCLUDED.estimated_minutes,source=EXCLUDED.source,options=EXCLUDED.options,correct_option_id=EXCLUDED.correct_option_id,explanation=EXCLUDED.explanation,knowledge_points=EXCLUDED.knowledge_points,hints=EXCLUDED.hints,updated_at=now() RETURNING id`,[conceptId,draft.questionType,draft.assessmentLevel,draft.difficulty,draft.title,draft.context,draft.prompt,draft.estimatedMinutes,draft.source,draft.options ? JSON.stringify(draft.options) : null,draft.correctOptionId,draft.explanation,draft.knowledgePoints,draft.hints]);
+  const result = await client.query<{ id: string }>(`INSERT INTO questions (concept_id,question_type,assessment_level,difficulty,title,context,prompt,estimated_minutes,source,options,correct_option_id,explanation,knowledge_points,hints,question_parts) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (concept_id,question_type,prompt) DO UPDATE SET assessment_level=EXCLUDED.assessment_level,difficulty=EXCLUDED.difficulty,title=EXCLUDED.title,context=EXCLUDED.context,estimated_minutes=EXCLUDED.estimated_minutes,source=EXCLUDED.source,options=EXCLUDED.options,correct_option_id=EXCLUDED.correct_option_id,explanation=EXCLUDED.explanation,knowledge_points=EXCLUDED.knowledge_points,hints=EXCLUDED.hints,question_parts=EXCLUDED.question_parts,updated_at=now() RETURNING id`,[conceptId,draft.questionType,draft.assessmentLevel,draft.difficulty,draft.title,draft.context,draft.prompt,draft.estimatedMinutes,draft.source,draft.options ? JSON.stringify(draft.options) : null,draft.correctOptionId,draft.explanation,draft.knowledgePoints,draft.hints,draft.parts ? JSON.stringify(draft.parts) : null]);
   return result.rows[0].id;
 }
