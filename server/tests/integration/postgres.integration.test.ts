@@ -11,6 +11,7 @@ import { generateGoalPlan,getTodayPlan } from "../../src/services/goal/goalServi
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
+import { serializeAttempt } from "../../src/lib/serialize.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -36,15 +37,28 @@ describe("PostgreSQL runtime integration", () => {
       const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database transactions','Transaction guarantees.',$3) RETURNING id`,[userId,session.id,points])).rows[0];
       const assessment=await createAssessment(userId,concept.id,"mastery_check");
       const structured=assessment.questions.find((item:any)=>item.questionType==="short_explanation");
-      expect(structured?.questionData?.parts).toHaveLength(2);
-      const [atomicity,isolation]=structured.questionData.parts;
+      expect(structured,"mastery_check should include its short_explanation question").toBeDefined();
+      expect(structured.question?.parts,"service result should expose parts on its nested question").toHaveLength(2);
+      const [atomicity,isolation]=structured.question.parts;
+      expect(structured.question.parts.map((part:any)=>part.knowledgePoints)).toEqual(points.map((point)=>[point]));
+      const storedQuestion=await postgres.query<any>(`SELECT question_parts FROM questions WHERE id=$1`,[structured.question.id]);
+      expect(storedQuestion.rows[0]?.question_parts,"question_parts should survive PostgreSQL persistence").toEqual(structured.question.parts);
+      const apiAttempt=serializeAttempt(structured);
+      expect(apiAttempt.questionData?.parts,"HTTP serialization should expose parts as questionData.parts").toEqual(structured.question.parts);
       const submitted=await submitRecall(structured.id,{userId,confidence:8,answers:[{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:"Transactions use a database."}]});
-      expect(submitted.attempt.evaluation.knowledgePointResults.map((point:any)=>[point.partId,point.status])).toEqual([[atomicity.id,"correct"],[isolation.id,"missing"]]);
+      const evaluatedByPart=Object.fromEntries(submitted.attempt.evaluation.knowledgePointResults.map((point:any)=>[point.partId,point]));
+      expect(evaluatedByPart[atomicity.id]).toMatchObject({point:points[0],status:"correct"});
+      expect(evaluatedByPart[isolation.id]).toMatchObject({point:points[1],status:"missing"});
       expect(submitted.attempt.structuredAnswers).toEqual([{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:"Transactions use a database."}]);
       const states=(await postgres.query<any>(`SELECT point,mastery::float AS mastery,attempt_count FROM learner_knowledge_point_states WHERE user_id=$1 AND concept_id=$2 ORDER BY point`,[userId,concept.id])).rows;
       expect(states).toHaveLength(2);
-      expect(states.find((state:any)=>state.point===points[0]).mastery).toBe(0.6);
+      expect(states.find((state:any)=>state.point===points[0]).mastery).toBe(1);
       expect(states.find((state:any)=>state.point===points[1]).mastery).toBe(0);
+      const learnerState=await getConceptState(userId,concept.id);
+      expect(learnerState?.knowledgePointStates.find((state:any)=>state.point===points[0])).toMatchObject({mastery:1,attemptCount:1,lastStatus:"correct"});
+      expect(learnerState?.knowledgePointStates.find((state:any)=>state.point===points[1])).toMatchObject({mastery:0,attemptCount:1,lastStatus:"missing"});
+      const storedResults=await postgres.query<any>(`SELECT k.part_id,k.point,k.status FROM recall_knowledge_point_results k JOIN recall_evaluations e ON e.id=k.evaluation_id WHERE e.recall_attempt_id=$1 ORDER BY k.point`,[structured.id]);
+      expect(storedResults.rows.map((row:any)=>[row.part_id,row.point,row.status])).toEqual([[atomicity.id,points[0],"correct"],[isolation.id,points[1],"missing"]]);
       await expect(submitRecall(structured.id,{userId,confidence:8,answers:[{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:points[1]}]})).rejects.toThrow("already been submitted");
       const counts=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[structured.id,userId,concept.id]);
       expect(counts.rows[0]).toMatchObject({evaluations:1,states:2});

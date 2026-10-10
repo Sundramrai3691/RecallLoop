@@ -35,3 +35,12 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Updated current architecture/status references and labeled earlier implementation reports as historical snapshots.
 - Added five manual learner scenarios to the grounded-remediation guide. Browser exercise remains unperformed.
 - Markdown links resolved. `git diff --check` and untracked-doc whitespace scan passed; Git only reported its standard LF-to-CRLF working-copy warnings on modified files.
+
+## 2026-10-10 — Structured-question PostgreSQL integration regression
+
+- Root cause: the integration test called `createAssessment`, whose service result uses the repository's raw attempt shape (`question.parts`). It incorrectly asserted `questionData.parts`, which is introduced only by `serializeAttempt` in the HTTP controller. Generation, `question_parts` persistence, repository loading, and HTTP serialization were functioning.
+- Corrected the test to identify the short-explanation question by type, inspect `question.parts`, compare its knowledge-point associations with the fixture, read the persisted `question_parts` value, and verify `serializeAttempt` exposes the API's `questionData.parts` contract.
+- The corrected roundtrip also exposed an incorrect expectation for initial point mastery: a first correct result initializes mastery at `1.0` (the raw evidence score); `.6` is only the update coefficient for later observations. Updated the assertion to match the implemented learner-state rule and retained the assertion that the missing point remains at `0`.
+- Strengthened read-back assertions for both learner point states, persisted part-attributed results, serialized answers, and duplicate-submission idempotency. No production API or storage behavior changed in this bug fix.
+- `npm run test:integration -w server`: passed, 4/4 cases against PostgreSQL. `npm test`: passed, 9 files / 39 tests. `git diff --check`: passed.
+- `npm run build`: passed for server and client production builds.

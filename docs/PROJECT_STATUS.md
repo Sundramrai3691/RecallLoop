@@ -28,7 +28,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
 | Unit-level tests | TESTED | Latest run passed: 9 files, 39 tests. |
 | Client and server production builds | TESTED | `npm run build` passed for server and client in the Phase 6B session. |
-| PostgreSQL integration tests | BLOCKED LOCALLY | `npm run test:integration -w server` was attempted; all 4 cases were skipped after setup failed with `ECONNREFUSED 127.0.0.1:5432`. The structured-answer roundtrip test exists but was not executed. |
+| PostgreSQL integration tests | TESTED | Latest `npm run test:integration -w server` run passed all 4 cases against the configured PostgreSQL database. |
 | Current developer API startup | BLOCKED LOCALLY | Reported `ECONNREFUSED 127.0.0.1:5432`; `server/src/index.ts` probes PostgreSQL before listening. Start PostgreSQL, apply migrations, then rerun `npm run dev`. |
 | Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |
