@@ -2,6 +2,7 @@ import { withTransaction, query } from "../../db/postgres.js";
 import { getAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import { AppError, notFound } from "../../utils/errors.js";
 import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, upsertQuestion } from "./questionService.js";
+import { findBuiltinMcq } from "./mcqBank.js";
 
 export type AssessmentMode = "rapid_fire" | "deep_recall" | "mastery_check" | "practice";
 const DIMENSIONS = ["recognition","recall","explanation","application","depth","transfer"];
@@ -20,9 +21,11 @@ export async function createAssessment(userId: string, conceptId: string, mode: 
     const review=await client.query<any>(`SELECT due_at<=now() AS due FROM review_states WHERE user_id=$1 AND concept_id=$2`,[userId,conceptId]);
     const failures=await client.query<any>(`SELECT count(*)::int AS count FROM (SELECT e.overall_coverage FROM recall_attempts r JOIN recall_evaluations e ON e.recall_attempt_id=r.id WHERE r.user_id=$1 AND r.concept_id=$2 ORDER BY r.submitted_at DESC LIMIT 3) recent WHERE overall_coverage<.55`,[userId,conceptId]);
     for (let index=0; index<blueprint.length; index++) {
-      let draft=buildQuestion(concept.name,blueprint[index],concept.required_knowledge_points,Math.min(5,Number(concept.difficulty)),index,0);
+      const target=concept.required_knowledge_points[index % Math.max(1,concept.required_knowledge_points.length)];
+      const type=blueprint[index]==="mcq"&&!findBuiltinMcq(concept.name,target??"",index)?"rapid_recall":blueprint[index];
+      let draft=buildQuestion(concept.name,type,concept.required_knowledge_points,Math.min(5,Number(concept.difficulty)),index,0);
       let questionId=await upsertQuestion(client,conceptId,draft);
-      for(let variant=1;recentIds.has(questionId)&&variant<8;variant++){draft=buildQuestion(concept.name,blueprint[index],concept.required_knowledge_points,Math.min(5,Number(concept.difficulty)),index+variant,variant);questionId=await upsertQuestion(client,conceptId,draft);}
+      for(let variant=1;recentIds.has(questionId)&&variant<8;variant++){draft=buildQuestion(concept.name,type,concept.required_knowledge_points,Math.min(5,Number(concept.difficulty)),index+variant,variant);questionId=await upsertQuestion(client,conceptId,draft);}
       const repeated=recentIds.has(questionId);
       const repetitionReason=repeated?(Number(failures.rows[0]?.count)>=2?"remediation":mode==="mastery_check"||Number(concept.mastery)>=.75?"mastery_confirmation":review.rows[0]?.due?"spaced_recall":null):null;
       const attempt = await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,question_id,assessment_session_id,assessment_position,repetition_reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`,[userId,conceptId,concept.study_session_id,draft.questionType,draft.prompt,questionId,session.rows[0].id,index+1,repetitionReason]);

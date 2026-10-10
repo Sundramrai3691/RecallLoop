@@ -1,4 +1,5 @@
 import { query } from "../../db/postgres.js";
+import { displayResourceTitle } from "../resources/resourceTitle.js";
 
 export interface KnowledgeRole {
   id: string;
@@ -65,7 +66,9 @@ export async function getConcept(conceptId: string) {
     WHERE c.id = $1
     GROUP BY c.id, t.id, t.name
   `, [conceptId]);
-  return result.rows[0] ?? null;
+  const row:any=result.rows[0];
+  if(!row)return null;
+  return {...row,resources:row.resources.map((resource:any)=>({...resource,title:displayResourceTitle(resource.title,resource.provider,resource.url)}))};
 }
 
 export async function getConceptResources(conceptId: string) {
@@ -75,5 +78,5 @@ export async function getConceptResources(conceptId: string) {
     FROM resources r JOIN resource_coverage rc ON rc.resource_id = r.id
     WHERE rc.concept_id = $1 ORDER BY r.trust_tier, r.estimated_minutes
   `, [conceptId]);
-  return result.rows;
+  return result.rows.map((resource:any)=>({...resource,title:displayResourceTitle(resource.title,resource.provider,resource.url)}));
 }

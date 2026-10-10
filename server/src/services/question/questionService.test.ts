@@ -5,7 +5,7 @@ import { findBuiltinMcq } from "./mcqBank.js";
 describe("question engine primitives", () => {
   it("maps question types to the six assessment dimensions", () => {
     const cases = [["mcq","recognition"],["rapid_recall","recall"],["short_explanation","explanation"],["scenario","application"],["descriptive","depth"],["transfer","transfer"]] as const;
-    for (const [type, level] of cases) expect(buildQuestion("Caching",type,["cache keys"]).assessmentLevel).toBe(level);
+    for (const [type, level] of cases) expect(buildQuestion(type==="mcq"?"Token bucket rate limiting":"Caching",type,[type==="mcq"?"burst capacity":"cache keys"]).assessmentLevel).toBe(level);
   });
   it("selects easier evidence after repeated failure and progresses after success", () => {
     expect(selectAssessment({ mastery: .7, recentFailures: 2 }).assessmentLevel).toBe("explanation");
@@ -30,15 +30,28 @@ describe("question engine primitives", () => {
     expect(evidenceWeight(1)).toBeLessThan(evidenceWeight(0));
     expect(evidenceWeight(3)).toBeLessThan(evidenceWeight(2));
   });
-  it("creates a short breadth session and a balanced six-dimension mastery blueprint", () => {
+  it("creates the six-item mastery blueprint while requiring curated content for recognition", () => {
     expect(assessmentBlueprint("rapid_fire")).toHaveLength(5);
-    expect(new Set(assessmentBlueprint("mastery_check").map((type) => buildQuestion("Queues",type,["acks"]).assessmentLevel))).toEqual(new Set(["recognition","recall","explanation","application","depth","transfer"]));
+    expect(assessmentBlueprint("mastery_check")).toHaveLength(6);
+    expect(buildQuestion("Queues","mcq",["ack timing"]).questionType).toBe("rapid_recall");
+    expect(buildQuestion("Token bucket rate limiting","mcq",["burst capacity"]).assessmentLevel).toBe("recognition");
   });
   it("uses specific misconceptions and deterministic explanations for curated seed MCQs",()=>{
     const mcq=findBuiltinMcq("Token bucket rate limiting","Can compare burst capacity and sustained rate.");
     expect(mcq?.prompt).toContain("token-bucket");
     expect(mcq?.distractors.some((option)=>option.toLowerCase().includes("fixed-window"))).toBe(true);
     expect(mcq?.explanation).toContain("Refill rate");
+  });
+  it("keeps rapid recall scoped to the single knowledge point named in its prompt",()=>{
+    const draft=buildQuestion("Transactions","rapid_recall",["Atomicity commits all writes or none.","Isolation separates concurrent work."],2,0);
+    expect(draft.knowledgePoints).toHaveLength(1);
+    expect(draft.prompt).toContain(draft.knowledgePoints[0]);
+  });
+  it("does not fabricate MCQ distractors when no curated misconception set exists",()=>{
+    const draft=buildQuestion("Database B tree page splits","mcq",["A split preserves sorted key order."],2);
+    expect(draft.questionType).toBe("rapid_recall");
+    expect(draft.options).toBeNull();
+    expect(draft.knowledgePoints).toEqual(["A split preserves sorted key order."]);
   });
   it("targets verification at the evaluated weak knowledge point with alternate wording",()=>{
     const point="cwnd grows during slow start";

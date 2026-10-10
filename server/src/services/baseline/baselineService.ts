@@ -30,16 +30,17 @@ export async function createBaseline(input: { userId: string; goalId: string; sk
 
   const concepts = await query<{ id: string; name: string; description: string; statement: string }>(
     `SELECT c.id, c.name, c.description, kp.statement
-     FROM canonical_concepts c JOIN topics t ON t.id = c.topic_id JOIN knowledge_points kp ON kp.concept_id = c.id
+     FROM canonical_concepts c JOIN topics t ON t.id = c.topic_id
+     JOIN LATERAL (SELECT statement FROM knowledge_points WHERE concept_id=c.id ORDER BY importance DESC, id LIMIT 1) kp ON true
      WHERE t.skill_id = $1 ORDER BY c.difficulty, c.name LIMIT $2`,
     [input.skillId, QUESTION_COUNT[level]],
   );
   const blueprints = [
-    ["L1", "What is the core idea of {name}?"],
-    ["L2", "Explain {name} from memory and name an important tradeoff."],
-    ["L3", "Apply {name} to a backend system you are designing."],
-    ["L4", "What failure mode or scaling issue changes how you use {name}?"],
-    ["L5", "Transfer {name} to a distributed system with competing constraints."],
+    ["L1", "Explain this core idea about {name}: {point}"],
+    ["L2", "Explain {point} from memory, then state one tradeoff."],
+    ["L3", "Apply {point} in a backend system and explain your choice."],
+    ["L4", "What failure mode could undermine {point}, and how would you detect it?"],
+    ["L5", "How would {point} change in a distributed system with competing constraints?"],
   ] as const;
   for (let index = 0; index < concepts.rows.length; index += 1) {
     const concept = concepts.rows[index];
@@ -47,8 +48,11 @@ export async function createBaseline(input: { userId: string; goalId: string; sk
     await query(
       `INSERT INTO baseline_questions (assessment_id, concept_id, knowledge_point_id, level, question)
        SELECT $1, $2, kp.id, $3, $4 FROM knowledge_points kp WHERE kp.concept_id = $2 ORDER BY kp.importance DESC LIMIT 1`,
-      [assessmentId, concept.id, blueprint[0], blueprint[1].replace("{name}", concept.name)],
+      [assessmentId, concept.id, blueprint[0], blueprint[1].replaceAll("{name}", concept.name).replaceAll("{point}", concept.statement)],
     );
+  }
+  if (!concepts.rows.length) {
+    await query(`UPDATE baseline_assessments SET status='completed', observed_mastery=NULL, updated_at=now() WHERE id=$1 AND user_id=$2`, [assessmentId,input.userId]);
   }
   return getBaseline(assessmentId, input.userId);
 }
@@ -56,7 +60,7 @@ export async function createBaseline(input: { userId: string; goalId: string; sk
 export async function getBaseline(id: string, userId: string) {
   const assessment = await query(`SELECT id, goal_id AS "goalId", skill_id AS "skillId", selected_level AS "selectedLevel", baseline_source AS "baselineSource", baseline_confidence AS "baselineConfidence", status, observed_mastery AS "observedMastery", self_declared_mastery AS "selfDeclaredMastery", recommended_concept_id AS "recommendedConceptId", created_at AS "createdAt" FROM baseline_assessments WHERE id = $1 AND user_id = $2`, [id, userId]);
   if (!assessment.rows[0]) throw notFound("Baseline assessment not found", "BASELINE_NOT_FOUND");
-  const questions = await query(`SELECT id, concept_id AS "conceptId", level, question, answer, coverage, confidence, knowledge_point_results AS "knowledgePointResults", submitted_at AS "submittedAt" FROM baseline_questions WHERE assessment_id = $1 ORDER BY id`, [id]);
+  const questions = await query(`SELECT id, concept_id AS "conceptId", knowledge_point_id AS "knowledgePointId", level, question, answer, coverage, confidence, knowledge_point_results AS "knowledgePointResults", submitted_at AS "submittedAt" FROM baseline_questions WHERE assessment_id = $1 ORDER BY id`, [id]);
   return { assessment: assessment.rows[0], questions: questions.rows };
 }
 
@@ -64,9 +68,9 @@ export async function submitBaselineQuestion(assessmentId: string, userId: strin
   if (!input.answer?.trim()) throw new AppError("Answer cannot be empty", 400, "EMPTY_ANSWER");
   if (!Number.isInteger(input.confidence) || input.confidence < 1 || input.confidence > 10) throw new AppError("Confidence must be from 1 to 10", 400, "VALIDATION_ERROR");
   const question = await query<{ id: string; conceptId: string; name: string; description: string; points: string[] }>(
-    `SELECT bq.id, c.id AS "conceptId", c.name, c.description, array_agg(kp.statement) AS points
+    `SELECT bq.id, c.id AS "conceptId", c.name, c.description, array_agg(DISTINCT kp.statement ORDER BY kp.statement) AS points
      FROM baseline_questions bq JOIN baseline_assessments ba ON ba.id = bq.assessment_id
-     JOIN canonical_concepts c ON c.id = bq.concept_id JOIN knowledge_points kp ON kp.concept_id = c.id
+     JOIN canonical_concepts c ON c.id = bq.concept_id JOIN knowledge_points kp ON kp.concept_id = c.id AND (kp.id = bq.knowledge_point_id OR bq.knowledge_point_id IS NULL)
     WHERE bq.id = $1 AND ba.id = $2 AND ba.user_id = $3 GROUP BY bq.id, c.id`, [input.questionId, assessmentId, userId],
   );
   if (!question.rows[0]) throw notFound("Baseline question not found", "BASELINE_QUESTION_NOT_FOUND");
@@ -78,14 +82,33 @@ export async function submitBaselineQuestion(assessmentId: string, userId: strin
 }
 
 async function refreshBaseline(id: string, userId: string) {
-  const aggregate = await query<{ count: string; answered: string; mastery: number; confidence: number; conceptId: string }>(
-    `SELECT count(*)::text, count(coverage)::text, COALESCE(avg(coverage), 0) AS mastery, COALESCE(avg(confidence) / 10, 0) AS confidence,
-      (array_agg(concept_id ORDER BY coverage ASC NULLS FIRST))[1] AS "conceptId"
-     FROM baseline_questions WHERE assessment_id = $1`, [id]);
+  const aggregate = await query<{ count: string; answered: string }>(
+    `SELECT count(*)::text, count(coverage)::text FROM baseline_questions WHERE assessment_id = $1`, [id]);
   const row = aggregate.rows[0];
   if (Number(row.count) !== Number(row.answered)) return;
+  const evidence = await query<{ conceptId:string; knowledgePointId:string|null; knowledgePointResults:any }>(
+    `SELECT concept_id AS "conceptId", knowledge_point_id AS "knowledgePointId", knowledge_point_results AS "knowledgePointResults" FROM baseline_questions WHERE assessment_id=$1 AND submitted_at IS NOT NULL ORDER BY id`,[id]);
+  const points = new Map<string,{status:string}>();
+  for(const item of evidence.rows){
+    const results=Array.isArray(item.knowledgePointResults)?item.knowledgePointResults:[];
+    for(const result of results){
+      const normalizedLabel=String(result.point??"").trim().toLowerCase().replace(/\s+/g," ");
+      const key=item.knowledgePointId??`${item.conceptId}:${normalizedLabel}`;
+      if(key.endsWith(":"))continue;
+      const prior=points.get(key);
+      const rank=(status:string)=>status==="correct"?2:status==="partial"?1:0;
+      if(!prior||rank(result.status)<rank(prior.status))points.set(key,{status:result.status});
+    }
+  }
+  if(!points.size){
+    await query(`UPDATE baseline_assessments SET status='completed',observed_mastery=NULL,baseline_confidence=NULL,recommended_concept_id=NULL,updated_at=now() WHERE id=$1 AND user_id=$2`,[id,userId]);
+    return;
+  }
+  const mastery=Array.from(points.values()).reduce((sum,item)=>sum+(item.status==="correct"?1:item.status==="partial"?.5:0),0)/points.size;
+  const confidenceResult=await query<{confidence:number}>(`SELECT avg(confidence)/10 AS confidence FROM baseline_questions WHERE assessment_id=$1 AND submitted_at IS NOT NULL`,[id]);
+  const weakest=(await query<{conceptId:string}>(`SELECT concept_id AS "conceptId" FROM baseline_questions WHERE assessment_id=$1 AND submitted_at IS NOT NULL ORDER BY coverage ASC,id LIMIT 1`,[id])).rows[0];
   await withTransaction(async (client) => {
-    await client.query(`UPDATE baseline_assessments SET status = 'completed', observed_mastery = $1, baseline_confidence = $2, recommended_concept_id = $3, updated_at = now() WHERE id = $4 AND user_id = $5`, [row.mastery, row.confidence, row.conceptId, id, userId]);
+    await client.query(`UPDATE baseline_assessments SET status = 'completed', observed_mastery = $1, baseline_confidence = $2, recommended_concept_id = $3, updated_at = now() WHERE id = $4 AND user_id = $5`, [mastery, confidenceResult.rows[0]?.confidence ?? null, weakest?.conceptId ?? null, id, userId]);
     await client.query(`INSERT INTO learner_knowledge_states (user_id, canonical_concept_id, observed_mastery, observed_confidence, baseline_source, last_assessed_at)
       SELECT $1, concept_id, coverage, confidence / 10, 'assessed', now() FROM baseline_questions WHERE assessment_id = $2
       ON CONFLICT (user_id, canonical_concept_id) DO UPDATE SET observed_mastery = EXCLUDED.observed_mastery, observed_confidence = EXCLUDED.observed_confidence, baseline_source = 'assessed', last_assessed_at = now()`, [userId, id]);

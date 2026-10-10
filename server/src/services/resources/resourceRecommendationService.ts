@@ -1,4 +1,5 @@
 import { query } from "../../db/postgres.js";
+import { displayResourceTitle } from "./resourceTitle.js";
 
 export interface ResourceReason { code:"coverage"|"goal_skill"|"learner_level"|"time_fit"|"trust"|"freshness"|"assessment_gap"; text:string; }
 export interface RecommendedResource { id:string; title:string; url:string; provider:string; resourceType:string; estimatedMinutes:number; difficulty:number; description:string; trustTier:number; freshness:string; conceptName:string; conceptsCovered:string[]; score:number; reasons:ResourceReason[]; reason:string; }
@@ -52,7 +53,7 @@ export async function recommendResources(input: { userId:string; conceptId?:stri
     if(appGap)reasons.push({code:"assessment_gap",text:"Application evidence is weaker or not recorded, so this applied resource may help."});
     reasons.push({code:"time_fit",text:`Fits your ${available}-minute window (${minutes} minutes).`},{code:"trust",text:`Source trust tier ${row.trustTier}.`});
     if(Number.isFinite(year))reasons.push({code:"freshness",text:`Resource metadata marks it ${year}.`});
-    ranked.push({...row,estimatedMinutes:minutes,difficulty:Number(row.difficulty),trustTier:Number(row.trustTier),coverageStrength:coverage,mastery,score:Number(score.toFixed(4)),conceptsCovered:row.conceptsCovered,reasons,reason:reasons.map((reason)=>reason.text).join(" ")});
+    ranked.push({...row,title:displayResourceTitle(row.title,row.provider,row.url),estimatedMinutes:minutes,difficulty:Number(row.difficulty),trustTier:Number(row.trustTier),coverageStrength:coverage,mastery,score:Number(score.toFixed(4)),conceptsCovered:row.conceptsCovered,reasons,reason:reasons.map((reason)=>reason.text).join(" ")});
   }
   ranked.sort((a,b)=>b.score-a.score||a.estimatedMinutes-b.estimatedMinutes);
   const selected:RecommendedResource[]=[];let total=0;

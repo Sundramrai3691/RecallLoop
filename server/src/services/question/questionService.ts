@@ -117,6 +117,9 @@ export function selectAssessment(input: {
 export function buildQuestion(conceptName: string, questionType: QuestionType, knowledgePoints: string[], difficulty = 2, variant = 0, wordingVariant = 0): QuestionDraft {
   const points = knowledgePoints.length ? knowledgePoints : [`Explain the main mechanism behind ${conceptName}`, `Describe when ${conceptName} is useful`, `Identify an important tradeoff of ${conceptName}`];
   const targetPoint = points[Math.abs(variant) % points.length];
+  if (questionType === "mcq" && !findBuiltinMcq(conceptName, targetPoint, variant)) {
+    return buildQuestion(conceptName, "rapid_recall", points, difficulty, variant, wordingVariant);
+  }
   const lowerConcept=conceptName.toLowerCase();
   const mappedPoint=lowerConcept.includes("token bucket")?points.find((point)=>/burst|token|sustained rate/i.test(point)):
     lowerConcept.includes("distributed rate")?points.find((point)=>/coordination|instance|shared state|distributed/i.test(point)):
@@ -127,7 +130,7 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
   const byType: Partial<Record<QuestionType, { level: AssessmentLevel; prompt: string; title: string; minutes: number; context?: string }>> = {
     mcq: { level: "recognition", title: "Quick Check", minutes: 1, prompt: `Which statement best captures this key idea about ${conceptName}: ${targetPoint}?` },
     rapid_recall: { level: "recall", title: "Rapid Fire", minutes: 1, prompt: `In one or two sentences, explain this point about ${conceptName}: ${targetPoint}` },
-    short_explanation: { level: "explanation", title: "Explain", minutes: 3, prompt: `Explain ${conceptName} from memory, including its central mechanism and when it is useful.` },
+    short_explanation: { level: "explanation", title: "Explain", minutes: 3, prompt: `Answer each part separately. Explain each required idea about ${conceptName} from memory.` },
     explain: { level: "explanation", title: "Explain", minutes: 4, prompt: `Without looking at your notes, explain how ${conceptName} works from start to finish.` },
     descriptive: { level: "depth", title: "Deep Recall", minutes: 5, context: `Describe the key mechanism, the decisions involved, and the tradeoffs that matter when using ${conceptName}.`, prompt: `How would you reason through ${conceptName}? Explain the approach, important tradeoffs, and likely failure cases.` },
     comparison: { level: "explanation", title: "Compare", minutes: 4, prompt: `Compare ${conceptName} with a closely related approach. When would you choose each?` },
@@ -155,7 +158,7 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
   };
   const selectedPrompt = alternatePrompts[questionType]?.[Math.abs(wordingVariant) % (alternatePrompts[questionType]?.length ?? 1)] ?? spec.prompt;
   const mcqPrompt=curated?.prompt ?? null;
-  const questionKnowledgePoints = options ? [evaluatedPoint] : points;
+  const questionKnowledgePoints = options || questionType === "rapid_recall" ? [evaluatedPoint] : points;
   const parts = questionType === "short_explanation" ? createStructuredParts(questionKnowledgePoints, conceptName) : null;
   return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: parts ? "Answer each part separately." : mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: questionKnowledgePoints, parts, hints: ["Recall the key mechanism involved.", `Connect your answer to: ${evaluatedPoint}`, "Check the main tradeoff or a concrete use case." ] };
 }

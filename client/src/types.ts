@@ -79,6 +79,7 @@ export interface KnowledgeRole {
 export interface BaselineQuestion {
   id: string;
   conceptId: string;
+  knowledgePointId?: string | null;
   level: string;
   question: string;
   answer: string | null;

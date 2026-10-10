@@ -7,7 +7,21 @@ export async function createConceptsForSession(input: { studySessionId: string; 
   const extracted = await getEvaluator().extractConcepts({ title: input.title, rawMaterial: input.rawMaterial });
   const validated = extracted.map((concept, index) => { const parsed = extractedConceptSchema.safeParse(concept); if (!parsed.success) throw new AppError(`Extracted concept ${index + 1} failed validation and was not stored`, 502, "INVALID_AI_JSON"); return parsed.data; });
   if (!validated.length) throw new AppError("No valid concepts were extracted", 502, "INVALID_AI_JSON");
-  return createConcepts(input.userId, input.studySessionId, validated);
+  const merged = new Map<string, typeof validated[number]>();
+  for (const concept of validated) {
+    const name = concept.name.trim().replace(/\s+/g, " ");
+    const key = name.toLowerCase();
+    const points = [...new Map(concept.requiredKnowledgePoints.map((point) => {
+      const normalized = point.trim().replace(/\s+/g, " ");
+      return [normalized.toLowerCase(), normalized] as const;
+    })).values()];
+    const prior = merged.get(key);
+    if (prior) {
+      prior.requiredKnowledgePoints = [...new Map([...prior.requiredKnowledgePoints, ...points].map((point) => [point.toLowerCase(), point])).values()];
+      if (concept.description.length > prior.description.length) prior.description = concept.description;
+    } else merged.set(key, { ...concept, name, requiredKnowledgePoints: points });
+  }
+  return createConcepts(input.userId, input.studySessionId, [...merged.values()]);
 }
 export async function listConceptsForSessionOwned(studySessionId: string, userId: string) { return listConceptsForSession(studySessionId, userId); }
 export async function getConceptById(id: string, userId: string) { return getConcept(id, userId); }

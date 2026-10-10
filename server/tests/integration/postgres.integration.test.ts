@@ -2,6 +2,8 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { postgres, runPostgresMigration } from "../../src/db/postgres.js";
 import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
+import { createBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
+import { createConceptsForSession } from "../../src/services/concept/conceptService.js";
 import { getAttempt,revealNextHint } from "../../src/repositories/legacyPostgresRepositories.js";
 import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
@@ -27,6 +29,37 @@ describe("PostgreSQL runtime integration", () => {
     expect(result.rows.length).toBe(13);
     const structured=await postgres.query<any>(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name='part_id'))`);
     expect(structured.rows).toHaveLength(3);
+  });
+
+  it("keeps extracted concepts and points stable across repeated processing and scores unique baseline evidence",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Integrity Test') RETURNING id`,[`integrity-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,raw_material) VALUES($1,'Cache notes',$2) RETURNING id`,[userId,"Cache reads use a key to find stored values. Cache reads use a key to find stored values."])).rows[0];
+      const first=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:"Cache reads use a key to find stored values. Cache reads use a key to find stored values."});
+      const second=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:"Cache reads use a key to find stored values. Cache reads use a key to find stored values."});
+      expect(first).toHaveLength(1);
+      expect(first[0].requiredKnowledgePoints).toHaveLength(1);
+      expect(second[0].id).toBe(first[0].id);
+      expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM personal_concepts WHERE user_id=$1 AND study_session_id=$2`,[userId,session.id])).rows[0].count).toBe(1);
+
+      const skill=(await postgres.query<any>(`SELECT id FROM canonical_skills ORDER BY name LIMIT 1`)).rows[0];
+      const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Baseline integrity') RETURNING id`,[userId])).rows[0];
+      const baseline=await createBaseline({userId,goalId:goal.id,skillId:skill.id,level:"familiar"});
+      expect(baseline.questions.length).toBeGreaterThan(0);
+      expect(new Set(baseline.questions.map((question:any)=>question.conceptId)).size).toBe(baseline.questions.length);
+      expect(baseline.questions.every((question:any)=>Boolean(question.knowledgePointId))).toBe(true);
+      expect(baseline.assessment.observedMastery).toBeNull();
+      let result=baseline;
+      for(const question of baseline.questions){
+        result=await submitBaselineQuestion(baseline.assessment.id,userId,{questionId:question.id,answer:"No relevant answer provided.",confidence:4});
+      }
+      expect(Number(result.assessment.observedMastery)).toBe(0);
+      const assessedPoints=result.questions.flatMap((question:any)=>question.knowledgePointResults??[]);
+      expect(assessedPoints.length).toBeGreaterThan(0);
+      expect(result.questions.every((question:any)=>(question.knowledgePointResults??[]).length===1)).toBe(true);
+      const uniquePoints=new Set(result.questions.flatMap((question:any)=>(question.knowledgePointResults??[]).map((point:any)=>`${question.conceptId}:${point.point.trim().toLowerCase().replace(/\s+/g," ")}`)));
+      expect(assessedPoints.length).toBe(uniquePoints.size);
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
   it("persists structured answers and keeps each knowledge point state independent, including retries",async()=>{
@@ -100,6 +133,11 @@ describe("PostgreSQL runtime integration", () => {
       expect(assessed?.confidence).toBe(.8);
       expect(assessed?.successRate).toBe(1);
       expect(assessed?.hintsUsed).toBe(1);
+      const oneDimension=await createAssessment(userId,tokenId,"deep_recall");
+      await submitRecall(oneDimension.questions[0].id,{answer:"Token bucket capacity stores tokens for bursts; refill rate governs sustained requests.",confidence:7,userId});
+      const dimensionReport=(await getAssessment(userId,oneDimension.assessment.id)).result;
+      expect(dimensionReport?.dimensionScores.depth).not.toBeNull();
+      expect(Object.entries(dimensionReport?.dimensionScores??{}).filter(([name])=>name!=="depth").every(([,score])=>score===null)).toBe(true);
       const storedRec=await postgres.query(`SELECT action_type FROM assessment_recommendations WHERE recall_attempt_id=$1`,[first.id]);
       expect(storedRec.rowCount).toBe(1);
       const deep=await createAssessment(userId,tokenId,"deep_recall");
@@ -113,8 +151,9 @@ describe("PostgreSQL runtime integration", () => {
 
       const httpConcept=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'HTTP request lifecycle','HTTP request behavior.',$3) RETURNING id`,[userId,session.rows[0].id,["Can explain method and status semantics."]]);
       const httpAssessment=await createAssessment(userId,httpConcept.rows[0].id,"rapid_fire");
-      const httpMcq=httpAssessment.questions.find((item:any)=>item.questionType==="mcq");
-      await submitRecall(httpMcq.id,{selectedOptionId:"a",confidence:4,userId});
+      const httpRecall=httpAssessment.questions.find((item:any)=>item.questionType==="rapid_recall");
+      expect(httpRecall).toBeDefined();
+      await submitRecall(httpRecall.id,{answer:"I do not know this yet.",confidence:4,userId});
       const resources=await recommendResources({userId,conceptId:httpConcept.rows[0].id,availableMinutes:30});
       expect(resources.length).toBeGreaterThan(0);
       expect(resources.length).toBeLessThanOrEqual(4);
@@ -164,7 +203,8 @@ describe("PostgreSQL runtime integration", () => {
       for(let index=0;index<3;index++){
         const run=await createAssessment(userId,concept.rows[0].id,"rapid_fire");
         const mcq=run.questions.find((item:any)=>item.questionType==="mcq");
-        const submission=await submitRecall(mcq.id,{selectedOptionId:"a",confidence:9,userId});
+        const question=mcq??run.questions.find((item:any)=>item.questionType==="rapid_recall");
+        const submission=await submitRecall(question.id,mcq?{selectedOptionId:"a",confidence:9,userId}:{answer:"I do not know this yet.",confidence:9,userId});
         triggeringAttempt=submission.attempt;
       }
       expect(triggeringAttempt.recommendation.actionType).toBe("remediation");
@@ -198,15 +238,16 @@ describe("PostgreSQL runtime integration", () => {
 
       const unrelated=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database B tree page splits','Maintains ordered database indexes.',$3) RETURNING id`,[userId,study.rows[0].id,["page split preserves sorted key order"]]);
       const unrelatedAssessment=await createAssessment(userId,unrelated.rows[0].id,"rapid_fire");
-      const unrelatedQuestion=unrelatedAssessment.questions.find((item:any)=>item.questionType==="mcq");
-      const unrelatedRecall=await submitRecall(unrelatedQuestion.id,{selectedOptionId:"a",confidence:4,userId});
+      const unrelatedQuestion=unrelatedAssessment.questions.find((item:any)=>item.questionType==="rapid_recall");
+      const unrelatedRecall=await submitRecall(unrelatedQuestion.id,{answer:"I do not know this yet.",confidence:4,userId});
       const insufficient=await createGroundedRemediation(userId,unrelatedRecall.attempt.id);
       expect(insufficient?.status).toBe("insufficient_sources");
       expect(insufficient?.content).toBeNull();
 
       const failedRun=await createAssessment(userId,concept.rows[0].id,"rapid_fire");
       const failedQuestion=failedRun.questions.find((item:any)=>item.questionType==="mcq");
-      const failedRecall=await submitRecall(failedQuestion.id,{selectedOptionId:"a",confidence:9,userId});
+      const failedCandidate=failedQuestion??failedRun.questions.find((item:any)=>item.questionType==="rapid_recall");
+      const failedRecall=await submitRecall(failedCandidate.id,failedQuestion?{selectedOptionId:"a",confidence:9,userId}:{answer:"I do not know this yet.",confidence:9,userId});
       const failedGeneration=await createGroundedRemediation(userId,failedRecall.attempt.id,{remediator:{name:"failing-test-generator",generate:async()=>{throw new Error("test generation failure");}}});
       expect(failedGeneration?.status).toBe("failed");
       expect(failedGeneration?.sources.length).toBeGreaterThan(0);

@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This phase establishes a small, deterministic domain model for goal-aware learning. MongoDB remains the only database. The LLM extracts concepts and evaluates answers, but it does not own identity, authorization, scheduling, learner state, or plan persistence.
+This reference describes the goal-aware learning model currently implemented with PostgreSQL. The evaluator provider extracts concepts and evaluates answers, but it does not own identity, authorization, scheduling, learner state, or plan persistence.
 
 ## Domain terms
 
@@ -45,6 +45,7 @@ The planner consumes `ReviewState` for due timing and `LearnerModelService` for 
 ## Observed, derived, and heuristic values
 
 - **Observed**: answer text, confidence, evaluation statuses, mistakes, timestamps, scheduler outcome, and stored mastery.
+- **Not assessed**: no submitted point or dimension result exists. It is represented by `NULL`; an observed score of `0` requires submitted evidence whose evaluated outcomes are all missing.
 - **Derived**: recall success rate, mistake count, due count, average mastery, weak concepts, and weak skills.
 - **Heuristic**: concept status thresholds and the blend used to update `Concept.mastery`. These are intentionally transparent approximations, not scientific mastery claims.
 

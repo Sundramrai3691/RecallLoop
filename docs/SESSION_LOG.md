@@ -25,6 +25,16 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - `npm test`: passed, 9 files and 39 tests. `git diff --check`: passed.
 - `npm run test:integration -w server`: blocked; migration setup could not connect to `127.0.0.1:5432`, so all 4 integration cases were skipped. The DB persistence assertions have not been run locally.
 - `npm run build`: passed for server and client production builds.
+
+## 2026-10-11 — Core learning integrity and content quality
+
+- Root causes confirmed in code: baseline generation joined concepts to all knowledge points and made one question per joined point, while submission evaluated every point on that concept. This produced redundant questions and inflated displayed point counts. Baseline score aggregation returned zero for empty evidence, and the baseline table prohibited `NULL`. Free recall prompts named a target point while evaluating every point; generic MCQs used unsupported filler distractors. Resource endpoints returned stored titles verbatim, including when a title duplicated its URL.
+- Baseline generation now creates one question per concept tied to a stable canonical point ID, and each new answer evaluates only that assigned point. Historical rows without a point ID retain their old all-points evaluation behavior. Completed mastery is calculated from unique submitted outcomes. No evidence stays `NULL`; migration `012_observed_mastery_is_nullable.sql` is additive and does not delete data. The result page deduplicates by canonical ID (with a label fallback for legacy rows) and derives displayed percentage and band from the same evidence.
+- Study extraction normalizes repeated labels/points within a response and persistence reuses matching concepts for the same owner/session inside an advisory-locked transaction. Historical user data is preserved. A read-only aggregate query found zero duplicate personal concept rows, zero repeated point labels within concepts, and zero resources whose title equals their URL in the configured local database.
+- Rapid recall evaluates the point named by its prompt. MCQs without a curated key and misconception distractors fall back to free recall; deterministic grading remains for curated MCQs. Question generation is currently built in, not LLM-driven. Local provider configuration is `mock`, with no API key configured; real-provider answer quality is unverified.
+- Raw YouTube/Vimeo URLs used as resource titles now receive a safe source label in recommendation and canonical-resource responses; stored URL, clickable destination, provider attribution, and reason are retained.
+- `npm run build`: passed. `npm test`: passed (10 files / 44 tests). `npm run test:integration -w server`: passed against live PostgreSQL (5/5, no skips). `git diff --check`: passed.
+- Remaining limits: personal knowledge points remain labels without canonical UUID links; older duplicate records are preserved and only hidden from repeated baseline presentation; templates and mock overlap evaluation are not evidence of pedagogical validity. Real-provider and manual browser checks remain unperformed.
 - Canonical UUID linkage is not present in the current personal knowledge-point model; parts validate against the question's existing point labels rather than inventing canonical IDs.
 
 ### Verification follow-up — 2026-10-09
