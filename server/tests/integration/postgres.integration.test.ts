@@ -1,10 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
-import { postgres, runPostgresMigration } from "../../src/db/postgres.js";
+import { postgres, runPostgresMigration, withTransaction } from "../../src/db/postgres.js";
 import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
 import { createBaseline,getBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
 import { createConceptsForSession } from "../../src/services/concept/conceptService.js";
-import { createSession,getAttempt,getSession,revealNextHint } from "../../src/repositories/legacyPostgresRepositories.js";
+import { createConcepts,createSession,getAttempt,getSession,revealNextHint,resolveCanonicalKnowledgePoint } from "../../src/repositories/legacyPostgresRepositories.js";
 import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
 import { recommendResources } from "../../src/services/resources/resourceRecommendationService.js";
@@ -14,6 +14,8 @@ import { getConceptState,getWeakSkills } from "../../src/services/learner/learne
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
 import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
+import { getRoleRoadmap } from "../../src/services/knowledge/knowledgeService.js";
+import { createStudySession } from "../../src/services/study/studySessionService.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -27,8 +29,8 @@ describe("PostgreSQL runtime integration", () => {
   it("applies relational schema and exposes core tables", async () => {
     const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations')`);
     expect(result.rows.length).toBe(13);
-    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name='part_id') OR (table_name='study_sessions' AND column_name='source_url'))`);
-    expect(structured.rows).toHaveLength(4);
+    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id')))`);
+    expect(structured.rows).toHaveLength(9);
   });
 
   it("persists topic, external source link, and material separately",async()=>{
@@ -37,6 +39,55 @@ describe("PostgreSQL runtime integration", () => {
       const session=await createSession(userId,{title:"Cache invalidation",sourceUrl:"https://docs.example.test/cache",rawMaterial:"A cache entry is stale when its backing value changes.",sourceType:"url"});
       const fetched=await getSession(session.id,userId);
       expect(serializeSession(fetched)).toMatchObject({title:"Cache invalidation",sourceUrl:"https://docs.example.test/cache",rawMaterial:"A cache entry is stale when its backing value changes."});
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("keeps canonical study handoffs, custom topics, and roadmap evidence linked by IDs",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Roadmap Test') RETURNING id`,[`roadmap-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const node=(await postgres.query<any>(`SELECT r.id AS role_id,t.id AS topic_id,c.id AS concept_id,c.name AS concept_name FROM roles r JOIN role_skills rs ON rs.role_id=r.id JOIN canonical_skills s ON s.id=rs.skill_id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN knowledge_points kp ON kp.concept_id=c.id WHERE c.status='active' ORDER BY c.name LIMIT 1`)).rows[0];
+      expect(node).toBeDefined();
+      const session=await createSession(userId,{title:node.concept_name,rawMaterial:"Database transactions group operations into an atomic unit.",sourceType:"notes",canonicalTopicId:node.topic_id,canonicalConceptId:node.concept_id});
+      expect(serializeSession(await getSession(session.id,userId))).toMatchObject({canonicalTopicId:node.topic_id,canonicalConceptId:node.concept_id});
+      const repeated=await createSession(userId,{title:node.concept_name,rawMaterial:"A repeated study session with the same canonical target.",canonicalTopicId:node.topic_id,canonicalConceptId:node.concept_id});
+      expect(repeated.canonicalConceptId).toBe(session.canonicalConceptId);
+      const custom=await createSession(userId,{title:"My private queue notes",rawMaterial:"A custom topic without a curated match."});
+      expect(custom.canonicalTopicId).toBeNull();
+      expect(custom.canonicalConceptId).toBeNull();
+      expect((await postgres.query<any>(`SELECT ss.canonical_concept_id,c.name,lower(regexp_replace(trim(c.name),'[[:space:]]+',' ','g'))=lower(regexp_replace(trim($2),'[[:space:]]+',' ','g')) AS exact_match FROM study_sessions ss JOIN canonical_concepts c ON c.id=ss.canonical_concept_id WHERE ss.id=$1`,[session.id,node.concept_name])).rows[0]).toMatchObject({canonical_concept_id:node.concept_id,exact_match:true});
+      const mappedPersonal=(await createConcepts(userId,session.id,[{name:node.concept_name,description:"Exact learner concept match",requiredKnowledgePoints:[],difficulty:3}]))[0];
+      expect(mappedPersonal.canonicalConceptId).toBe(node.concept_id);
+      const approximatePersonal=(await createConcepts(userId,session.id,[{name:`${node.concept_name} advanced`,description:"Only similar wording",requiredKnowledgePoints:[],difficulty:3}]))[0];
+      expect(approximatePersonal.canonicalConceptId).toBeNull();
+      const customPersonal=(await createConcepts(userId,custom.id,[{name:node.concept_name,description:"Matching label without selected identity",requiredKnowledgePoints:[],difficulty:3}]))[0];
+      expect(customPersonal.canonicalConceptId).toBeNull();
+
+      const initial=await getRoleRoadmap(node.role_id,userId);
+      const findConcept=()=>initial.skills.flatMap((skill:any)=>skill.topics.flatMap((topic:any)=>topic.concepts)).find((concept:any)=>concept.id===node.concept_id);
+      expect(findConcept().status).toBe("not_started");
+      await postgres.query(`UPDATE study_sessions SET status='completed',completed_at=now() WHERE id=$1`,[session.id]);
+      expect((await getRoleRoadmap(node.role_id,userId)).skills.flatMap((skill:any)=>skill.topics.flatMap((topic:any)=>topic.concepts)).find((concept:any)=>concept.id===node.concept_id).status).toBe("studied");
+
+      const point=(await postgres.query<any>(`SELECT kp.id,kp.statement FROM knowledge_points kp WHERE kp.concept_id=$1 AND (SELECT count(*) FROM knowledge_points duplicate WHERE duplicate.concept_id=kp.concept_id AND lower(regexp_replace(trim(duplicate.statement),'[[:space:]]+',' ','g'))=lower(regexp_replace(trim(kp.statement),'[[:space:]]+',' ','g')))=1 ORDER BY kp.id LIMIT 1`,[node.concept_id])).rows[0];
+      if(point){
+        const personal=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Canonical mapping test','Exact label mapping',$3) RETURNING id`,[userId,session.id,[point.statement]])).rows[0];
+        const attempt=(await postgres.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question) VALUES($1,$2,$3,'test','Exact point mapping') RETURNING id`,[userId,personal.id,session.id])).rows[0];
+        expect(await withTransaction((client)=>resolveCanonicalKnowledgePoint(client,attempt.id,point.statement))).toBe(point.id);
+        expect(await withTransaction((client)=>resolveCanonicalKnowledgePoint(client,attempt.id,`${point.statement} extra`))).toBeNull();
+      }
+
+      const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Canonical roadmap evidence') RETURNING id`,[userId])).rows[0];
+      const baseline=(await postgres.query<any>(`INSERT INTO baseline_assessments(user_id,goal_id,selected_level,baseline_source,status) VALUES($1,$2,'familiar','assessed','completed') RETURNING id`,[userId,goal.id])).rows[0];
+      const baselinePoint=(await postgres.query<any>(`SELECT id FROM knowledge_points WHERE concept_id=$1 ORDER BY id LIMIT 1`,[node.concept_id])).rows[0];
+      const baselineQuestion=(await postgres.query<any>(`INSERT INTO baseline_questions(assessment_id,concept_id,knowledge_point_id,level,question) VALUES($1,$2,$3,'L1','Roadmap evidence check') RETURNING id`,[baseline.id,node.concept_id,baselinePoint.id])).rows[0];
+      await submitBaselineQuestion(baseline.id,userId,{questionId:baselineQuestion.id,answer:"I can describe the required concept from memory.",confidence:6});
+      expect((await getRoleRoadmap(node.role_id,userId)).skills.flatMap((skill:any)=>skill.topics.flatMap((topic:any)=>topic.concepts)).find((concept:any)=>concept.id===node.concept_id).status).toBe("assessed");
+
+      const mismatched=(await postgres.query<any>(`SELECT id FROM topics WHERE id<>$1 ORDER BY id LIMIT 1`,[node.topic_id])).rows[0];
+      await expect(createStudySession({userId,title:node.concept_name,rawMaterial:"Valid study notes.",canonicalTopicId:mismatched.id,canonicalConceptId:node.concept_id})).rejects.toMatchObject({code:"CANONICAL_NODE_NOT_FOUND"});
+      await expect(createStudySession({userId,title:"Unrelated free-text title",rawMaterial:"Valid study notes.",canonicalTopicId:node.topic_id,canonicalConceptId:node.concept_id})).rejects.toMatchObject({code:"CANONICAL_NODE_NOT_FOUND"});
+      const counts=await postgres.query<any>(`SELECT count(*)::int AS count FROM canonical_concepts WHERE id=$1`,[node.concept_id]);
+      expect(counts.rows[0].count).toBe(1);
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 

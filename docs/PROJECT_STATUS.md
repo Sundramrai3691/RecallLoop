@@ -18,17 +18,18 @@ Presence of a test file alone does not mean it passed in this session.
 | Area | Status | Evidence |
 |---|---|---|
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
-| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`013`. |
+| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`014`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |
 | Canonical knowledge, baseline and learner summaries | IMPLEMENTED | Knowledge/baseline/learner services and migration `001`. |
+| Canonical roadmap-to-study identity | TESTED | Migration `014` adds optional session topic/concept links, exact-name personal-concept links and unique exact-match point evidence links; authenticated roadmap data exposes role/skill/topic/concept/point nodes, direct prerequisites, resources and persisted evidence statuses. Unit and PostgreSQL regressions passed in this session. Historical sessions remain unmapped; no browser trace was performed. |
 | Study sessions, recall, evaluation, scheduling | IMPLEMENTED | Study/recall/evaluator/scheduler services and core migration. |
 | Assessment sessions, hints, question selection | IMPLEMENTED | Question/assessment services, migration `004`–`008`. |
 | Structured multipart answers and per-point learner state | TESTED | Question part storage, part validation/evaluation, transactional point state in migration `011`; unit suite and PostgreSQL roundtrip/retry integration checks passed in the latest verification session. |
 | Resource recommendations and learning packs | IMPLEMENTED | Resource services and routes. |
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
-| Unit-level tests | TESTED | Latest `npm test`: 17 files, 74 passed; four opt-in live Gemini checks skipped by default. |
+| Unit-level tests | TESTED | Latest `npm test`: 18 files, 78 passed; four opt-in live Gemini checks skipped by default. |
 | Client and server production builds | TESTED | Latest `npm run build` passed for server TypeScript and client production build. |
-| PostgreSQL integration tests | TESTED | `npm run test:integration -w server`: 6/6 cases passed against PostgreSQL in the 2026-10-11 Phase 1 session. |
+| PostgreSQL integration tests | TESTED | Latest deterministic run `npm run test:integration -w server`: 7/7 passed against local PostgreSQL with LLM, embedding and remediation selectors set to mock for that process. A default run using local Gemini config had 3 existing recall/grounding cases fail on provider HTTP 503/429; the same cases passed with deterministic mock providers. |
 | Current developer API startup | UNKNOWN | PostgreSQL integration connected successfully; `npm run dev` was not run in this session. Startup probes PostgreSQL before listening. |
 | Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |

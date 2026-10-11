@@ -3,6 +3,7 @@ import { createSession, getSession, listConceptsForSession, listPending } from "
 import { completeStudyWrites } from "../../repositories/postgresRepositories.js";
 import { createConceptsForSession, persistPreparedConcepts, prepareConcepts } from "../concept/conceptService.js";
 import { recordLearningEvent } from "../events/learningEventService.js";
+import { query } from "../../db/postgres.js";
 
 const SOURCE_TYPES = ["manual", "notes", "url", "file"];
 
@@ -20,23 +21,31 @@ function looksLikeUrlOnlyMaterial(value: string): boolean {
   return Boolean(trimmed && isHttpUrl(trimmed));
 }
 
-export function validateStudySessionInput(input: { title: string; rawMaterial?: string; sourceUrl?: string }) {
+export function validateStudySessionInput(input: { title: string; rawMaterial?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string }) {
   const title = input.title?.trim();
   if (!title) throw new AppError("A topic/title is required", 400, "VALIDATION_ERROR");
   if (isHttpUrl(title) || /^www\./i.test(title)) throw new AppError("Enter a topic name here, not a URL. Add the link under Source link and paste usable notes or text below.", 400, "TOPIC_URL_NOT_ALLOWED");
   const sourceUrl = input.sourceUrl?.trim() || null;
   if (sourceUrl && !isHttpUrl(sourceUrl)) throw new AppError("Enter a valid http(s) source link.", 400, "INVALID_SOURCE_URL");
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  if (input.canonicalTopicId && !uuidPattern.test(input.canonicalTopicId.trim())) throw new AppError("The selected canonical topic ID is invalid.", 400, "INVALID_CANONICAL_RELATIONSHIP");
+  if (input.canonicalConceptId && !uuidPattern.test(input.canonicalConceptId.trim())) throw new AppError("The selected canonical concept ID is invalid.", 400, "INVALID_CANONICAL_RELATIONSHIP");
+  if (input.canonicalConceptId && !input.canonicalTopicId) throw new AppError("A canonical concept must include its parent topic.", 400, "INVALID_CANONICAL_RELATIONSHIP");
   const rawMaterial = input.rawMaterial?.trim() ?? "";
   if (!rawMaterial || looksLikeUrlOnlyMaterial(rawMaterial)) throw new AppError("Add notes or source text to extract concepts. A link is saved as provenance; RecallLoop does not fetch webpage or video contents.", 400, "STUDY_TEXT_REQUIRED");
-  return { title, sourceUrl, rawMaterial };
+  return { title, sourceUrl, rawMaterial, canonicalTopicId: input.canonicalTopicId?.trim() || null, canonicalConceptId: input.canonicalConceptId?.trim() || null };
 }
 
-export async function createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; userId: string }) {
-  const { title, sourceUrl, rawMaterial } = validateStudySessionInput(input);
+export async function createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string; userId: string }) {
+  const { title, sourceUrl, rawMaterial, canonicalTopicId, canonicalConceptId } = validateStudySessionInput(input);
+  if (canonicalTopicId) {
+    const validNode = await query(`SELECT t.id FROM topics t LEFT JOIN canonical_concepts c ON c.topic_id=t.id AND c.id=$2 WHERE t.id=$1 AND ($2::uuid IS NULL OR c.id IS NOT NULL) AND (($2::uuid IS NULL AND lower(trim(t.name))=lower(trim($3))) OR ($2::uuid IS NOT NULL AND lower(trim(c.name))=lower(trim($3))))`, [canonicalTopicId, canonicalConceptId,title]);
+    if (!validNode.rows[0]) throw new AppError("The selected canonical topic or concept is unavailable or does not belong to that topic.", 404, "CANONICAL_NODE_NOT_FOUND");
+  }
   const sourceType = input.sourceType ?? (input.rawMaterial ? "notes" : "manual");
   if (!SOURCE_TYPES.includes(sourceType)) throw new AppError("Invalid sourceType", 400, "VALIDATION_ERROR");
   const preparedConcepts = await prepareConcepts({ title, rawMaterial });
-  const session = await createSession(input.userId, { ...input, title, rawMaterial, sourceUrl, sourceType });
+  const session = await createSession(input.userId, { ...input, title, rawMaterial, sourceUrl, canonicalTopicId, canonicalConceptId, sourceType });
   const concepts = await persistPreparedConcepts({ studySessionId: session.id, concepts: preparedConcepts, userId: input.userId });
   await recordLearningEvent({ userId: input.userId, type: "STUDY_STARTED", entityType: "StudySession", entityId: session.id, payload: { title } });
   return { session, concepts };

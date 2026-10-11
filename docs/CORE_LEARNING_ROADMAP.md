@@ -47,6 +47,8 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** Curator-reviewed coverage for a bounded domain, mapping precision review, migration rollback/recovery plan, and observed completion of the roadmap-to-study flow.
 
+**Current delivery (2026-10-11):** Additive migration `014` links a newly selected canonical topic/concept to a study session; extracted personal concepts map only when their name exactly matches the learner-selected canonical concept; canonical point IDs attach to recall evidence only for a unique normalized exact statement match in the selected concept. New Study suggestions preserve IDs; the authenticated roadmap returns role â†’ skill â†’ topic â†’ concept â†’ point data, direct prerequisites, catalog resources and user-scoped study/assessment status. Completed sessions show `Studied`; submitted recall/baseline evidence shows `Assessed`; no mastery is inferred from session completion. Custom free-text topics and unmatched/ambiguous point labels remain explicitly unmapped. Existing history is not backfilled. Phase B remains partial until a manual browser trace and mapping-precision review are recorded.
+
 ## Phase C — Question quality
 
 **Learner problem:** A valid question schema does not ensure a useful, answerable question, and current built-in prompts are often generic.

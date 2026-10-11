@@ -76,6 +76,24 @@ export interface KnowledgeRole {
   skills: Array<{ id: string; name: string; priority: number; targetMastery: number }>;
 }
 
+export interface KnowledgeRoadmapRole extends KnowledgeRole {
+  skills: Array<{
+    id:string; name:string; description:string; priority:number; targetMastery:number;
+    status:"not_started"|"studied"|"assessed";
+    topics:Array<{
+      id:string; name:string; description:string;
+      status:"not_started"|"studied"|"assessed";
+      concepts:Array<{
+        id:string; name:string; description:string; difficulty:number;
+        status:"not_started"|"studied"|"assessed";
+        prerequisites:Array<{id:string;name:string;topicId:string;status:"not_started"|"studied"|"assessed"}>;
+        resources:Array<{id:string;title:string;url:string;provider:string;estimatedMinutes:number}>;
+        knowledgePoints:Array<{id:string;statement:string;importance:number;difficulty:number;evidence:{status:"correct"|"partial"|"missing"|"assessed"|"not_assessed";attemptCount:number}}>;
+      }>;
+    }>;
+  }>;
+}
+
 export interface BaselineQuestion {
   id: string;
   conceptId: string;
@@ -145,6 +163,8 @@ export interface StudySession {
   rawMaterial?: string;
   sourceType: SourceType;
   sourceUrl?: string | null;
+  canonicalTopicId?: string | null;
+  canonicalConceptId?: string | null;
   startedAt: string;
   completedAt: string | null;
   status: SessionStatus;
@@ -157,6 +177,7 @@ export interface Concept {
   studySessionId: string;
   name: string;
   description: string;
+  canonicalConceptId?: string | null;
   parentConceptId: string | null;
   requiredKnowledgePoints: string[];
   difficulty: number;
@@ -167,6 +188,7 @@ export interface Concept {
 
 export interface KnowledgePointResult {
   point: string;
+  canonicalKnowledgePointId?: string | null;
   status: KnowledgePointStatus;
   evidence: string;
   feedback: string;

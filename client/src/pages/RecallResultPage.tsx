@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, Lightbulb } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { AssessmentReport } from "../components/AssessmentReport";
 import { WhyThis } from "../components/WhyThis";
@@ -9,6 +9,9 @@ import { ApiError, type RecallAttempt, type ReviewState, type GroundedRemediatio
 function formatWhen(iso:string){return new Date(iso).toLocaleString();}
 
 export function RecallResultPage() {
+  const [searchParams]=useSearchParams();
+  const rawReturnTo=searchParams.get("returnTo")??"";
+  const returnTo=/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const {attemptId}=useParams();const navigate=useNavigate();const [recall,setRecall]=useState<RecallAttempt|null>(null);const [conceptName,setConceptName]=useState("");const [review,setReview]=useState<ReviewState|null>(null);const [dimensionScores,setDimensionScores]=useState<Record<string,number|null>>({});const [reviewMode,setReviewMode]=useState<"automatic"|"confirm"|"manual">("automatic");const [reviewDate,setReviewDate]=useState("");const [reviewSaved,setReviewSaved]=useState(false);const [nextError,setNextError]=useState<string|null>(null);const [remediation,setRemediation]=useState<GroundedRemediation|null>(null);const [error,setError]=useState<string|null>(null);
   useEffect(()=>{if(!attemptId)return;let cancelled=false;void(async()=>{try{const data=await api.getRecall(attemptId);if(cancelled)return;setRecall(data.recall);setConceptName(data.concept.name);if(data.recall.remediationId){const item=await api.getRemediation(data.recall.remediationId);if(!cancelled)setRemediation(item.remediation);}const concept=await api.getConcept(data.concept.id);if(cancelled)return;setReview(concept.review);setDimensionScores(concept.dimensionScores);const settings=await api.getSettings();if(cancelled)return;setReviewMode(settings.reviewMode);if(concept.review?.dueAt){const date=new Date(concept.review.dueAt);date.setMinutes(date.getMinutes()-date.getTimezoneOffset());setReviewDate(date.toISOString().slice(0,16));}}catch(err){if(!cancelled)setError(err instanceof ApiError&&err.status===404?"This recall result could not be found.":"We couldn’t load your recall result.");}})();return()=>{cancelled=true;};},[attemptId]);
   if(error)return <p className="error" role="alert">{error}</p>;if(!recall)return <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div>;if(!recall.evaluation)return <section className="card"><h1>This recall isn’t complete yet</h1><p className="muted">Submit your answer to see what it demonstrated.</p><Link className="btn btn-primary" to={`/recall/${recall.id}`}>Continue recall</Link></section>;
@@ -22,6 +25,6 @@ export function RecallResultPage() {
     {review?<section className="card review-next"><p className="eyebrow">SPACED REVIEW</p><h2>Next review: {formatWhen(review.dueAt)}</h2><p className="muted">{review.lastOutcome?`Based on this recall: ${review.lastOutcome.replaceAll("_"," ")}.`:"Your next review is scheduled."}</p>{reviewMode==="confirm"?<div><label htmlFor="confirm-review-date">Adjust the suggested date</label><input id="confirm-review-date" type="datetime-local" value={reviewDate} onChange={(event)=>{setReviewDate(event.target.value);setReviewSaved(false);}}/><button className="btn" type="button" onClick={()=>void saveReviewDate()}>Save review date</button>{reviewSaved?<p className="saved-state">Review date saved.</p>:null}{nextError?<p className="error" role="alert">{nextError}</p>:null}</div>:null}</section>:null}
     {remediation?.status==="verified"?<section className="card"><p className="eyebrow">FOCUSED REMEDIATION</p><h2>{remediation.improved?"You showed stronger evidence on your second try":"This point needs more practice"}</h2><Link to={`/remediations/${remediation.id}`}>Review the focused material</Link></section>:null}
     {recommendation?<section className="card next-step-action"><p className="eyebrow">NEXT BEST ACTION</p><h2>{recommendation.title}</h2><WhyThis reason={recommendation.reason}/><span className="metadata">About {recommendation.estimatedMinutes} minutes</span>{recommendation.actionType!=="none"?<button className="btn btn-primary" type="button" onClick={()=>void startRecommendation()}>Practice now <ArrowRight size={15}/></button>:null}{nextError?<p className="error" role="alert">{nextError}</p>:null}</section>:<section className="card"><p className="muted">There’s no additional activity to recommend from this recall yet.</p></section>}
-    <div className="actions"><Link className="btn" to="/dashboard">Done for now</Link></div>
+    <div className="actions">{returnTo?<Link className="btn" to={returnTo}>Return to roadmap</Link>:null}<Link className="btn" to="/dashboard">Done for now</Link></div>
   </AssessmentReport>;
 }

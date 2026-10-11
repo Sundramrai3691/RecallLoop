@@ -8,12 +8,17 @@ This reference follows `server/migrations/*.sql` in the migration order implemen
 erDiagram
   APP_USERS ||--o{ GOALS : owns
   APP_USERS ||--o{ STUDY_SESSIONS : owns
+  TOPICS ||--o{ STUDY_SESSIONS : selected_for
+  CANONICAL_CONCEPTS ||--o{ STUDY_SESSIONS : selected_for
   STUDY_SESSIONS ||--o{ PERSONAL_CONCEPTS : yields
+  CANONICAL_CONCEPTS ||--o{ PERSONAL_CONCEPTS : exact_match
   PERSONAL_CONCEPTS ||--o{ RECALL_ATTEMPTS : assessed_by
   RECALL_ATTEMPTS ||--o| RECALL_EVALUATIONS : evaluated_as
   RECALL_EVALUATIONS ||--o{ RECALL_KNOWLEDGE_POINT_RESULTS : explains
   APP_USERS ||--o{ LEARNER_KNOWLEDGE_POINT_STATES : demonstrates
   PERSONAL_CONCEPTS ||--o{ LEARNER_KNOWLEDGE_POINT_STATES : tracks
+  KNOWLEDGE_POINTS ||--o{ RECALL_KNOWLEDGE_POINT_RESULTS : exact_match
+  KNOWLEDGE_POINTS ||--o{ LEARNER_KNOWLEDGE_POINT_STATES : exact_match
   PERSONAL_CONCEPTS ||--o| REVIEW_STATES : scheduled_by
   GOALS ||--o{ LEARNER_SKILLS : targets
   GOALS ||--o| PLANS : planned_by
@@ -37,7 +42,7 @@ Authenticated data is scoped by `app_users.id`; user-owned tables carry `user_id
 |---|---|---|
 | Identity | `app_users` | Unique email; stores password hash and review preference. |
 | Goals/planning | `goals`, `learner_skills`, `plans`, `plan_tasks` | User-owned goals; plan unique per user/goal; task references goal, skill, concept, attempt; checks constrain task types/status/requiredness/minutes. |
-| Study/recall | `study_sessions`, `personal_concepts`, `recall_attempts`, `recall_evaluations`, `recall_knowledge_point_results`, `learner_knowledge_point_states`, `review_states`, `learning_events` | Session-owned topic, supplied material and optional external `source_url`; session-derived personal concepts; attempt/evaluation relationship; historical per-attempt point evidence and independently updated per-user/per-concept point mastery; one review row per user/concept; event history. |
+| Study/recall | `study_sessions`, `personal_concepts`, `recall_attempts`, `recall_evaluations`, `recall_knowledge_point_results`, `learner_knowledge_point_states`, `review_states`, `learning_events` | Session-owned topic, supplied material and optional external `source_url`; nullable selected `canonical_topic_id` and `canonical_concept_id`; personal concepts map to the selected canonical concept only on exact normalized name equality; attempt/evaluation relationship; historical per-attempt point evidence and independently updated per-user/per-concept point mastery. Optional canonical point links are set only by a unique exact normalized statement match scoped to the session's selected canonical concept; unmatched or ambiguous labels remain unmapped. |
 | Assessment | `questions`, `recall_dimension_results`, `assessment_sessions`, `assessment_recommendations` | Questions belong to personal concepts; optional `question_parts` JSONB describes structured parts; attempts optionally link to question/session and store optional part-keyed `structured_answers` JSONB; dimension evidence and session ordering are persisted. |
 | Canonical knowledge | `knowledge_domains`, `roles`, `canonical_skills`, `topics`, `canonical_concepts`, `knowledge_points`, `concept_prerequisites`, `knowledge_sources`, `concept_sources`, `role_skills` | Shared role/skill/topic/concept graph, prerequisites and provenance; cascading deletes within catalog relationships. |
 | Baseline | `baseline_assessments`, `baseline_questions`, `learner_knowledge_states` | User/goal-scoped assessment, question responses, and observed/self-declared state keyed to canonical concepts. |
@@ -45,7 +50,7 @@ Authenticated data is scoped by `app_users.id`; user-owned tables carry `user_id
 | Grounded remediation | `grounding_sources`, `grounding_chunks`, `grounded_remediations`, `grounded_remediation_chunks` | User-owned source text/chunks, processing state and embeddings, retrieval provenance, remediation and verification linkage. |
 | Import compatibility | `legacy_id_map` | Maps legacy IDs to PostgreSQL records during migration/import. |
 
-Schema is additive across migrations `001`–`013`; `003_core_domain.sql` creates core user-owned tables and is deliberately applied first by the custom ordering, followed by canonical schema/seed and feature migrations. Later migrations add assessment, planning, resource-link, grounding and structured-question columns/tables. Migration `011_structured_question_parts.sql` adds optional JSONB question/answer data, per-point attribution on historical result rows, and the independent point-state table. Migration `012_observed_mastery_is_nullable.sql` makes an observed baseline score nullable and clears the fabricated zero for assessed records with no submitted point evidence; it does not remove assessment or learner records. Migration `013_study_session_source_url.sql` adds a nullable, HTTP(S)-checked source provenance URL to existing sessions without rewriting historical rows. Do not assume alphabetical order equals application order.
+Schema is additive across migrations `001`–`014`; `003_core_domain.sql` creates core user-owned tables and is deliberately applied first by the custom ordering, followed by canonical schema/seed and feature migrations. Later migrations add assessment, planning, resource-link, grounding and structured-question columns/tables. Migration `011_structured_question_parts.sql` adds optional JSONB question/answer data, per-point attribution on historical result rows, and the independent point-state table. Migration `012_observed_mastery_is_nullable.sql` makes an observed baseline score nullable and clears the fabricated zero for assessed records with no submitted point evidence; it does not remove assessment or learner records. Migration `013_study_session_source_url.sql` adds a nullable, HTTP(S)-checked source provenance URL to existing sessions without rewriting historical rows. Migration `014_canonical_study_handoffs.sql` adds nullable canonical topic/concept links on sessions, exact-name personal-concept links and canonical point links on new exact-match recall evidence; it does not infer or rewrite historical mappings. Do not assume alphabetical order equals application order.
 
 Grounding vectors are stored as PostgreSQL `real[]` in migration `010`, with model name and dimension alongside each vector. Retrieval currently ranks a bounded set of a user's chunks in application code; this schema does not use pgvector or a vector index. Chunk rows cascade with their source, while cited chunks cannot be deleted while a remediation references them (`ON DELETE RESTRICT`).
 

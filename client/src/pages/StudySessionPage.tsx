@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, type Concept, type RecallAttempt, type StudySession } from "../types";
 
 export function StudySessionPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawReturnTo=searchParams.get("returnTo") ?? "";
+  const returnTo=/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const [session, setSession] = useState<StudySession | null>(null);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [pendingRecalls, setPendingRecalls] = useState<RecallAttempt[]>([]);
@@ -32,7 +35,7 @@ export function StudySessionPage() {
       const result = await api.completeStudySession(id);
       setSession(result.session);
       const first = result.recalls[0];
-      if (first) navigate(`/recall/${first.id}`);
+      if (first) navigate(`/recall/${first.id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not complete session");
     } finally {
@@ -46,6 +49,7 @@ export function StudySessionPage() {
   return (
     <div>
       <div className="hero">
+        {returnTo ? <Link className="back-link" to={returnTo}>Return to roadmap</Link> : null}
         <h1>{session.title}</h1>
         <p className="muted">
           Status: {session.status.replace("_", " ")}. {concepts.length} concept

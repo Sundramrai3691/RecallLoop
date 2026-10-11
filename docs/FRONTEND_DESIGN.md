@@ -16,6 +16,10 @@ Fraunces is used for headings and prominent statistics. IBM Plex Sans is used fo
 
 The shared app shell uses compact Lucide icons with text labels for Dashboard, New study, Goals, Today's plan, Learner, and Knowledge. The active route uses the accent tint. A theme control sits beside navigation, and the navigation wraps into a three-column layout at tablet and mobile widths.
 
+## Knowledge roadmap
+
+Role maps are navigable through their actual catalog hierarchy: role, focus skill, topic, concept, and knowledge point. Topic and concept nodes offer a Study action that carries canonical IDs into New Study; the form keeps those IDs only while the selected suggestion remains selected. Show direct prerequisite links and recorded catalog resources when present. Label progress with persisted evidence states (`Not started`, `Studied`, `Evidence available`) and do not turn session completion into mastery or a percentage.
+
 ## Dashboard Hierarchy
 
 The dashboard should lead with the next recall and its data-supported rationale, then show today's plan and active goal, followed by compact learner and activity context. Avoid equal-weight analytics cards. Daily activity visualizations require daily counts from the API; do not synthesize missing history.

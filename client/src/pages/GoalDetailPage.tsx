@@ -13,7 +13,7 @@ export function GoalDetailPage() {
   const [priority, setPriority] = useState(50);
   const [error, setError] = useState<string | null>(null);
   const [canonicalSkills, setCanonicalSkills] = useState<
-    Array<{ id: string; name: string }>
+    Array<{ id: string; name: string; roleId:string }>
   >([]);
   const [canonicalSkillId, setCanonicalSkillId] = useState("");
   const [level, setLevel] = useState("new");
@@ -41,7 +41,7 @@ export function GoalDetailPage() {
     api
       .knowledgeRoles()
       .then((result) =>
-        setCanonicalSkills(result.roles.flatMap((role) => role.skills)),
+        setCanonicalSkills(result.roles.flatMap((role) => role.skills.map((skill)=>({...skill,roleId:role.id})))),
       )
       .catch(() => undefined);
   }, []);
@@ -132,6 +132,7 @@ export function GoalDetailPage() {
         <button className="btn btn-primary" type="submit">
           Choose starting point
         </button>
+        {canonicalSkills.find((skill)=>skill.id===canonicalSkillId) ? <Link className="btn" to={`/knowledge/roles/${canonicalSkills.find((skill)=>skill.id===canonicalSkillId)!.roleId}#skill-${canonicalSkillId}`}>Open this skill&apos;s roadmap</Link> : <Link className="btn" to="/knowledge">Explore knowledge map</Link>}
       </form>
       {error ? <p className="error">{error}</p> : null}
       <form className="card" onSubmit={addSkill}>

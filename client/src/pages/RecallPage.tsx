@@ -1,11 +1,14 @@
 import { FormEvent, useEffect, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, type RecallAttempt } from "../types";
 
 export function RecallPage() {
   const { attemptId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const rawReturnTo=searchParams.get("returnTo") ?? "";
+  const returnTo=/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const [recall, setRecall] = useState<RecallAttempt | null>(null);
   const [conceptName, setConceptName] = useState("");
   const [answer, setAnswer] = useState("");
@@ -25,11 +28,11 @@ export function RecallPage() {
         setRecall(data.recall);
         setConceptName(data.concept.name);
         if (data.recall.submittedAt) {
-          navigate(`/recall/${attemptId}/result`, { replace: true });
+          navigate(`/recall/${attemptId}/result${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`, { replace: true });
         }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Recall not found"));
-  }, [attemptId, navigate]);
+  }, [attemptId, navigate, returnTo]);
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
@@ -39,7 +42,7 @@ export function RecallPage() {
     try {
       const parts=recall?.questionData?.parts;
       await api.submitRecall(attemptId, { answer:parts?undefined:answer, answers:parts?.map((part)=>({partId:part.id,answer:partAnswers[part.id]??""})), selectedOptionId: selectedOptionId || undefined, confidence });
-      navigate(`/recall/${attemptId}/result`);
+      navigate(`/recall/${attemptId}/result${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not submit recall");
     } finally {
@@ -64,6 +67,7 @@ export function RecallPage() {
 
   return (
     <form className="card" onSubmit={onSubmit}>
+      {returnTo ? <p><Link className="back-link" to={returnTo}>Return to roadmap</Link></p> : null}
       <p className="badge due">{recall.questionData?.title ?? recall.questionType} · ~{recall.questionData?.estimatedMinutes ?? 4} min</p>
       <h1>{conceptName}</h1>
       {recall.questionData?.context ? <><h2>Context</h2><p>{recall.questionData.context}</p></> : null}

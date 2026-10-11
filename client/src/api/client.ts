@@ -7,6 +7,7 @@ import {
   type LearnerSummary,
   type BaselineQuestion,
   type KnowledgeRole,
+  type KnowledgeRoadmapRole,
   type PlanTask,
   type RecallAttempt,
   type ReviewState,
@@ -119,6 +120,9 @@ export const api = {
     return request<{ roles: KnowledgeRole[] }>("/api/knowledge/roles");
   },
 
+  knowledgeRoadmaps() { return request<{ roles: KnowledgeRoadmapRole[] }>("/api/knowledge/roadmaps"); },
+  knowledgeRoleRoadmap(id:string) { return request<{ role: KnowledgeRoadmapRole }>(`/api/knowledge/roles/${id}/roadmap`); },
+
   createBaseline(input: { goalId: string; skillId: string; level: string; trustMe?: boolean }) {
     return request<{ baseline: { assessment: { id: string }; questions: BaselineQuestion[] } }>("/api/baseline", { method: "POST", body: JSON.stringify(input) });
   },
@@ -148,7 +152,7 @@ export const api = {
     return request<DashboardData>("/api/dashboard");
   },
 
-  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string }) {
+  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string }) {
     return request<{ session: StudySession; concepts: Concept[] }>("/api/study-sessions", {
       method: "POST",
       body: JSON.stringify(input),
