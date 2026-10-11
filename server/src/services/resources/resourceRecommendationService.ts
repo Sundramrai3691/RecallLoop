@@ -1,8 +1,17 @@
 import { query } from "../../db/postgres.js";
 import { displayResourceTitle } from "./resourceTitle.js";
 
-export interface ResourceReason { code:"coverage"|"goal_skill"|"learner_level"|"time_fit"|"trust"|"freshness"|"assessment_gap"; text:string; }
-export interface RecommendedResource { id:string; title:string; url:string; provider:string; resourceType:string; estimatedMinutes:number; difficulty:number; description:string; trustTier:number; freshness:string; conceptName:string; conceptsCovered:string[]; score:number; reasons:ResourceReason[]; reason:string; }
+export interface ResourceReason { code:"coverage"|"goal_skill"|"learner_level"|"time_fit"|"assessment_gap"; text:string; }
+export interface RecommendedResource { id:string; title:string; url:string; provider:string; resourceType:string; estimatedMinutes:number; difficulty:number; description:string; conceptName:string; conceptsCovered:string[]; score:number; reasons:ResourceReason[]; reason:string; }
+
+export function buildResourceReasons(input: { conceptName:string; goalRelevant:boolean; mastery:number|null; difficulty:number; appGap:boolean; availableMinutes:number; estimatedMinutes:number }): ResourceReason[] {
+  const reasons:ResourceReason[]=[{code:"coverage",text:`The resource catalog links this source to ${input.conceptName}.`}];
+  if(input.goalRelevant)reasons.push({code:"goal_skill",text:"Matches a skill on your active goal."});
+  if(input.mastery!==null)reasons.push({code:"learner_level",text:`Difficulty ${input.difficulty} is selected against observed mastery ${Math.round(input.mastery*100)}%.`});
+  if(input.appGap)reasons.push({code:"assessment_gap",text:"Application evidence is weaker or not recorded, so this applied resource may help."});
+  reasons.push({code:"time_fit",text:`Its catalog time estimate (~${input.estimatedMinutes} min) fits your ${input.availableMinutes}-minute window.`});
+  return reasons;
+}
 
 export async function recommendResources(input: { userId:string; conceptId?:string; goalId?:string; skillId?:string; availableMinutes?:number; limit?:number }) {
   const available=Math.max(0,Math.min(240,Math.floor(Number(input.availableMinutes??60))));
@@ -16,7 +25,7 @@ export async function recommendResources(input: { userId:string; conceptId?:stri
       dimensions=Object.fromEntries(results.rows.map((row)=>[row.dimension,Number(row.score)]));
     }
   }
-  const rows=await query<any>(`SELECT r.id,r.title,r.url,r.provider,r.resource_type AS "resourceType",r.estimated_minutes AS "estimatedMinutes",r.difficulty,r.description,r.trust_tier AS "trustTier",r.freshness,
+  const rows=await query<any>(`SELECT r.id,r.title,r.url,r.provider,r.resource_type AS "resourceType",r.estimated_minutes AS "estimatedMinutes",r.difficulty,r.description,
       MIN(c.name) AS "conceptName",ARRAY_AGG(DISTINCT c.name) AS "conceptsCovered",AVG(rc.coverage_strength)::float AS "coverageStrength",
       AVG(lks.observed_mastery)::float AS mastery,
       BOOL_OR(s.id IS NOT NULL) AS "goalRelevant",
@@ -28,10 +37,9 @@ export async function recommendResources(input: { userId:string; conceptId?:stri
     WHERE ($2::uuid IS NULL OR c.id=$2::uuid OR EXISTS(SELECT 1 FROM personal_concepts pc WHERE pc.id=$2::uuid AND pc.user_id=$1 AND lower(pc.name)=lower(c.name)))
       AND ($5::uuid IS NULL OR s.id=$5::uuid OR $5::uuid IS NULL)
     GROUP BY r.id
-    ORDER BY r.trust_tier ASC,r.estimated_minutes ASC`,[input.userId,input.conceptId??null,input.conceptId??null,input.goalId??null,input.skillId??null]);
+    ORDER BY r.estimated_minutes ASC,r.title ASC`,[input.userId,input.conceptId??null,input.conceptId??null,input.goalId??null,input.skillId??null]);
   const targetMastery=dimensions.recall??dimensions.explanation??null;
   const appGap=dimensions.application==null&&targetMastery!=null?true:dimensions.application!=null&&targetMastery!=null&&targetMastery-dimensions.application>=.2;
-  const currentYear=new Date().getFullYear();
   const ranked:RecommendedResource[]=[];
   for(const row of rows.rows){
     const minutes=Number(row.estimatedMinutes);
@@ -41,19 +49,11 @@ export async function recommendResources(input: { userId:string; conceptId?:stri
     const mastery=row.mastery==null?null:Number(row.mastery);
     const desiredDifficulty=mastery==null?3:Math.max(1,Math.min(5,Math.round(mastery*4)+1));
     const difficultyFit=1-Math.abs(Number(row.difficulty)-desiredDifficulty)/4;
-    const trustFit=(5-Number(row.trustTier))/4;
-    const year=Number.parseInt(String(row.freshness??""),10);
-    const freshnessFit=Number.isFinite(year)?Math.max(0,1-Math.max(0,currentYear-year)/6):.35;
     const timeFit=1-(minutes/Math.max(1,available))*.35;
     const goalRelevant=Boolean(row.goalRelevant);
-    const score=coverage*.34+(mastery==null?.5:1-mastery)*.2+difficultyFit*.14+trustFit*.14+freshnessFit*.08+timeFit*.1+(goalRelevant?.08:0)+(appGap&&/article|practitioner|tutorial/i.test(row.resourceType)?.04:0);
-    const reasons:ResourceReason[]=[{code:"coverage",text:`Covers ${row.conceptName} (${Math.round(coverage*100)}% coverage).`}];
-    if(goalRelevant)reasons.push({code:"goal_skill",text:"Matches a skill on your active goal."});
-    if(mastery!==null)reasons.push({code:"learner_level",text:`Difficulty ${row.difficulty} is selected against observed mastery ${Math.round(mastery*100)}%.`});
-    if(appGap)reasons.push({code:"assessment_gap",text:"Application evidence is weaker or not recorded, so this applied resource may help."});
-    reasons.push({code:"time_fit",text:`Fits your ${available}-minute window (${minutes} minutes).`},{code:"trust",text:`Source trust tier ${row.trustTier}.`});
-    if(Number.isFinite(year))reasons.push({code:"freshness",text:`Resource metadata marks it ${year}.`});
-    ranked.push({...row,title:displayResourceTitle(row.title,row.provider,row.url),estimatedMinutes:minutes,difficulty:Number(row.difficulty),trustTier:Number(row.trustTier),coverageStrength:coverage,mastery,score:Number(score.toFixed(4)),conceptsCovered:row.conceptsCovered,reasons,reason:reasons.map((reason)=>reason.text).join(" ")});
+    const score=coverage*.34+(mastery==null?.5:1-mastery)*.2+difficultyFit*.14+timeFit*.1+(goalRelevant?.08:0)+(appGap&&/article|practitioner|tutorial/i.test(row.resourceType)?.04:0);
+    const reasons=buildResourceReasons({conceptName:row.conceptName,goalRelevant,mastery,difficulty:Number(row.difficulty),appGap,availableMinutes:available,estimatedMinutes:minutes});
+    ranked.push({...row,title:displayResourceTitle(row.title,row.provider,row.url),estimatedMinutes:minutes,difficulty:Number(row.difficulty),coverageStrength:coverage,mastery,score:Number(score.toFixed(4)),conceptsCovered:row.conceptsCovered,reasons,reason:reasons.map((reason)=>reason.text).join(" ")});
   }
   ranked.sort((a,b)=>b.score-a.score||a.estimatedMinutes-b.estimatedMinutes);
   const selected:RecommendedResource[]=[];let total=0;

@@ -9,6 +9,7 @@ This index separates current implementation references from domain explanations,
 - [Data model](DATA_MODEL.md): PostgreSQL ownership, table groups, relationships, and transaction boundaries.
 - [Decision index](DECISIONS.md): durable architectural decisions and retrospective ADRs.
 - [Project status](PROJECT_STATUS.md): evidence-based implementation and verification status.
+- [Core learning roadmap](CORE_LEARNING_ROADMAP.md): prioritized learner-facing integrity and product phases with acceptance evidence.
 - [Session log](SESSION_LOG.md): append-only record of repository work sessions.
 - [Frontend design](FRONTEND_DESIGN.md): UI system and interaction patterns.
 

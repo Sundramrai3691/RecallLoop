@@ -85,6 +85,6 @@ export async function completeStudyWrites(userId: string, sessionId: string, con
     }
     await client.query(`INSERT INTO learning_events (user_id,type,entity_type,entity_id,payload) VALUES ($1,'STUDY_COMPLETED','StudySession',$2,$3)`, [userId,sessionId,JSON.stringify({ conceptCount: concepts.length })]);
     const row = sessionResult.rows[0];
-    return { session: { id: row.id, userId: row.user_id, title: row.title, rawMaterial: row.raw_material, sourceType: row.source_type, startedAt: row.started_at, completedAt: row.completed_at, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }, attempts };
+    return { session: { id: row.id, userId: row.user_id, title: row.title, rawMaterial: row.raw_material, sourceType: row.source_type, sourceUrl: row.source_url ?? null, startedAt: row.started_at, completedAt: row.completed_at, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }, attempts };
   });
 }

@@ -1,0 +1,126 @@
+# Core learning roadmap
+
+This plan sequences work needed to make the learning loop traceable from a learner's topic and material to evidence-backed next steps. Current implementation status is described in [Project Status](PROJECT_STATUS.md); roadmap items are not claims that the feature exists.
+
+## Phase 1 findings: confirmed behavior and limits
+
+| Reported symptom | Repository finding | Disposition |
+|---|---|---|
+| A YouTube URL appears as a topic/question | Confirmed: study title flowed into extraction, and empty material was allowed. The mock created generic points from the title; the LLM prompt explicitly allowed topic-only extraction. | Fixed for new sessions: URL topic rejection, text required, URL stored separately, extraction ignores URL tokens and runs before session insertion. |
+| Knowledge-point descriptions repeat | Exact repeated concepts/points are normalized within one extraction result and same-session persistence reuses matching concept names. The mock still derives points sentence by sentence, and personal points have no canonical IDs. Without the reported sample/session, the exact repeated display defect cannot be assigned to extraction versus legacy rows/rendering. | No legacy data was changed. This pass preserves current dedupe and adds a repeated-input integration regression; point identity/mapping and broader semantic dedupe remain in Phase B. |
+| Mastery and counts contradict | Confirmed presentation inconsistency: the learner overview rendered `null` average mastery as `0%`, despite the service returning zero assessed concepts and null average. Baseline already deduplicated stable canonical point IDs, but a single correct point could still receive a “Strong” band. | Fixed learner empty state; baseline API now counts unique evidence and labels fewer than three assessed points “Early signal,” even when observed point coverage is 100%. Reports distinguish that point coverage from established concept mastery. |
+| Questions are generic | Confirmed architecture: questions are deterministic built-in blueprints plus curated MCQs; the LLM provider is not used for question generation. Generic wording is a blueprint/content limitation, not evidence of live model quality. | Defined quality criteria and evaluator benchmark in Phase C; no unreviewed question bank generated here. |
+| Resource details look unsupported | Confirmed: the recommendation explanation converted stored `coverage_strength` into a percentage and displayed numeric trust tier and freshness year without a documented calibration/source-verification rule. Duration is persisted as `estimated_minutes`, not a measured duration. | Removed percentage, trust-tier and freshness claims; retained source title/URL and catalog relationship, and label duration as an approximate catalog estimate. |
+| End-to-end learning integrity is uncertain | Source shows connected study, extraction, recall, evaluation, learner-state, report and planner services. PostgreSQL tests exercise several slices, but source text extraction and live-provider/browser behavior have not yet had a complete manual trace. | No maturity claim. Phase A maturity requires a reviewed real-material trace and manual browser/provider evidence. |
+
+## Phase A — Data and content integrity
+
+**Learner problem:** A link can be mistaken for a topic, extraction can be synthetic or repetitive, reports can imply evidence where none exists, and resource rationale can overstate catalog metadata.
+
+**Dependencies:** Existing study sessions, concept extraction, canonical catalog, assessment/evaluation, learner evidence, and resource catalog.
+
+**Deliverables:** Keep topic, external source URL, and supplied text separate; reject URL-only sessions; preserve source provenance; validate extracted structures and retry safely; normalize exact duplicate concepts/points without merging merely similar concepts; preserve stable point IDs where a canonical mapping exists; align per-attempt evidence, unique-point counts, mastery bands, and empty states; present only supported resource claims; add provider diagnostics and regression tests.
+
+**Acceptance:** A URL never becomes a topic/question; no concepts are generated without supplied or retrieved text; retries do not duplicate concepts in one session; a missing score is “Not assessed” while measured zero remains 0%; reports count unique assessed points; source URLs remain clickable; resource reasons can be traced to persisted relations/evidence.
+
+**Automated tests:** URL/topic validation; source metadata roundtrip; extraction from supplied text and empty-input rejection; duplicate-label handling; unique assessed-point aggregation and null-vs-zero cases; existing structured and MCQ contracts; resource title/URL and rationale behavior; migration and ownership integration checks.
+
+**Manual validation:** Create with a custom topic plus article/video link and pasted notes; try the link as topic and as the only material; run one successful and one failed extraction; compare an unassessed learner report with a real zero-evidence result; open a recommended source.
+
+**Maturity evidence:** PostgreSQL-backed regressions pass on the current schema; no historical records are deleted; a reviewed sample of real study materials is traced to source, concepts, question, answer evidence, report and next action; live-provider and browser checks are recorded separately from mock coverage.
+
+**Current delivery in this pass:** Topic/source separation, saved source URL, required text, URL-leak guard, no empty mock extraction, extraction-before-session persistence, learner empty-state correction, removal of unsupported resource trust/freshness/coverage-percent claims, and provider status check. Canonical point identity remains incomplete.
+
+## Phase B — Canonical knowledge and roadmaps
+
+**Learner problem:** Catalog knowledge and personal extracted concepts are separate, so a custom study session does not reliably connect to a role or learning path.
+
+**Dependencies:** Phase A data integrity; canonical catalog quality and provenance; stable identity migration design.
+
+**Deliverables:** Role → topic → subtopic → concept → knowledge point navigation; clickable roadmap nodes; canonical-ID handoff to study and practice; custom-topic route that remains available; prerequisite edges; source provenance and explicit “unmapped” state; reviewed mappings from personal to canonical concepts and points.
+
+**Acceptance:** Starting study or practice from a roadmap preserves canonical IDs end-to-end; a custom topic remains usable without a false canonical match; prerequisites are visible and traversable; every mapped point has a reviewed source and mapping status.
+
+**Automated tests:** API contract and authorization tests for roadmap reads and handoffs; mapping uniqueness and prerequisite-cycle validation; persistence migration tests; custom and unmapped-topic cases.
+
+**Manual validation:** Navigate one role from overview to leaf topic, start study, return to roadmap, and confirm the selected node and progress remain connected; test an unmapped custom topic and a prerequisite chain.
+
+**Maturity evidence:** Curator-reviewed coverage for a bounded domain, mapping precision review, migration rollback/recovery plan, and observed completion of the roadmap-to-study flow.
+
+## Phase C — Question quality
+
+**Learner problem:** A valid question schema does not ensure a useful, answerable question, and current built-in prompts are often generic.
+
+**Dependencies:** Phase B stable concept/point IDs and Phase A traceable source text; licensed/curated content policy.
+
+**Deliverables:** A manageable curated question bank with verified answers; explicit objective, required answer ideas, misconception, blueprint, reference answer and rubric; misconception-driven distractors; optional real-provider generation constrained by source and schema; attribution/licence metadata; semantic deduplication and quality gates; structured and interactive response modes.
+
+**Acceptance:** Each question maps to a canonical point and objective, includes a reviewed key/rubric and source attribution, has a supported licence, and passes answerability, ambiguity, duplication and relevance checks. Generated items remain drafts until reviewed; no arbitrary 1,000-item batch is used as a quality proxy.
+
+**Automated tests:** Blueprint/schema validation; question-to-point mapping; key/distractor checks; semantic duplicate candidates; provider timeout/invalid output/retry behavior; deterministic mock fixtures; licensing metadata requirements.
+
+**Manual validation:** Experts answer a stratified sample without seeing keys, flag ambiguity and unsupported premises, and inspect generated distractors and source attribution.
+
+**Maturity evidence:** Versioned labeled evaluation set, reviewer agreement and release thresholds, measured defect rates, and documented item provenance.
+
+## Phase D — Evaluation and session reports
+
+**Learner problem:** Learners need feedback tied to answer evidence and a useful report, not a single score that obscures partial or missing ideas.
+
+**Dependencies:** Phase C reviewed objectives and answer rubrics; Phase B stable knowledge-point identity.
+
+**Deliverables:** Per-question feedback; answer-key/explanation reveal after submission; correct/partial/missing/incorrect distinctions; unique knowledge-point evidence; coherent study-session and assessment reports; a labeled evaluator benchmark of manageable size.
+
+**Acceptance:** Each shown result traces to submitted content and rubric; unassessed dimensions remain absent; independent structured parts remain independent; aggregates state their denominator and do not imply long-term mastery from one answer.
+
+**Automated tests:** Labeled evaluator fixtures, denominator/count tests, partial credit, no-evidence vs measured-zero, multi-part attribution, score/band consistency, and report serialization contracts.
+
+**Manual validation:** Compare evaluator output to human labels across correct, incomplete, incorrect, irrelevant and adversarial answers; inspect the learner explanation and next action.
+
+**Maturity evidence:** Benchmark results with error analysis and inter-rater notes; monitored regression set; review of real reports for clarity and consistency.
+
+## Phase E — Resources and remediation
+
+**Learner problem:** Catalog recommendations may be weakly sourced, and remediation must remain grounded in material the system actually has.
+
+**Dependencies:** Phase A truthful metadata; Phase B canonical mappings; Phase D stable, point-level gaps.
+
+**Deliverables:** Attributed resource hub with title, URL, type, provider, licence and provenance; recommendation rationale tied to catalog links and observed gaps; source-backed remediation and citations; targeted verification; broken-source detection and fallback behavior.
+
+**Acceptance:** Every link opens its recorded source; unknown metadata remains unknown; no uncalibrated trust/freshness/coverage percentages are asserted; generated remediation claims are supported by retrieved excerpts; verification measures a new attempt and does not assert improvement in advance.
+
+**Automated tests:** Metadata roundtrip, URL safety, retrieval/citation integrity, unsupported-claim handling, missing source and provider failures, fallback selection, and verification linkage.
+
+**Manual validation:** Open sources, inspect attribution/licence, compare remediation claims to cited excerpts, simulate unavailable sources, then complete targeted verification.
+
+**Maturity evidence:** Curator-reviewed source set, provenance audit, retrieval-grounding benchmark and broken-link monitoring.
+
+## Phase F — Planner and UX
+
+**Learner problem:** Roadmap, study, practice, plan changes and completion state need to feel like one coherent learner-controlled workflow.
+
+**Dependencies:** Phases B through E provide stable nodes, useful questions, evidence and resources.
+
+**Deliverables:** Connected roadmap-to-study planner; controlled plan edits; session status and revisit preferences; day/week calendar; next-step rationale and source links; clear recovery from incomplete sessions and provider failures.
+
+**Acceptance:** Every task points to a valid learning action and its source evidence; learner edits persist; plans respect available time and task state; incomplete or failed work is recoverable without duplicate evidence.
+
+**Automated tests:** Planner constraints, state transitions, task/resource links, authorization, rescheduling and idempotent retry paths.
+
+**Manual validation:** Build a weekly plan, alter availability, complete and miss tasks, revisit a session, and follow next-step links from a report.
+
+**Maturity evidence:** Usability sessions across novice and experienced learners, task completion/error measures, and evidence that plan reasons match the underlying state.
+
+## Later roadmap
+
+- **FSRS:** Evaluate a mature spaced-repetition scheduler only after evidence quality and outcome calibration are stable; compare against current deterministic scheduling on a replayable dataset.
+- **Advanced RAG / pgvector:** Consider indexed retrieval when corpus size and measured latency justify it; retain provenance and compare retrieval against labeled relevant excerpts.
+- **Practice engine:** Add richer coding, simulation and application tasks after question objectives and evaluation benchmarks are dependable.
+- **ForkSpace integration:** Define a documented integration boundary and consent/data-minimization model before connecting learner artifacts.
+- **Redis / BullMQ:** Add background jobs when measured provider latency or ingestion volume requires asynchronous processing; define retry/idempotency and dead-letter behavior.
+- **Observability:** Add privacy-conscious traces for provider, extraction, evaluation, retrieval and planner failures with redaction rules and actionable operational measures.
+- **Security hardening:** Review authentication, secret handling, data export/deletion, rate limits, URL handling, tenant isolation and dependency posture before external deployment.
+- **Learning Coach:** Build only on evidence-linked actions and make uncertainty and source provenance visible.
+- **MCP:** Expose a narrow, authenticated tool surface after stable APIs, ownership checks and audit behavior are established.
+
+Each later item needs a measurable problem statement and acceptance evidence before implementation; its inclusion here is not a commitment to a particular technology.

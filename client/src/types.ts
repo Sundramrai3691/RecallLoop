@@ -98,11 +98,9 @@ export interface ResourceRecommendation {
   estimatedMinutes: number;
   difficulty: number;
   description: string;
-  trustTier: number;
   conceptName: string;
   reason: string;
   conceptsCovered: string[];
-  freshness?: string;
   score?: number;
   reasons?: Array<{code:string;text:string}>;
 }
@@ -146,6 +144,7 @@ export interface StudySession {
   title: string;
   rawMaterial?: string;
   sourceType: SourceType;
+  sourceUrl?: string | null;
   startedAt: string;
   completedAt: string | null;
   status: SessionStatus;

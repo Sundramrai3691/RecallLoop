@@ -18,25 +18,32 @@ Presence of a test file alone does not mean it passed in this session.
 | Area | Status | Evidence |
 |---|---|---|
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
-| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, migrations `001`–`011`. |
+| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`013`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |
 | Canonical knowledge, baseline and learner summaries | IMPLEMENTED | Knowledge/baseline/learner services and migration `001`. |
 | Study sessions, recall, evaluation, scheduling | IMPLEMENTED | Study/recall/evaluator/scheduler services and core migration. |
 | Assessment sessions, hints, question selection | IMPLEMENTED | Question/assessment services, migration `004`–`008`. |
-| Structured multipart answers and per-point learner state | IMPLEMENTED | Question part storage, existing submit route, per-part validation/evaluation, transactional point state in migration `011`; covered by unit tests and a PostgreSQL integration test that could not run locally. |
+| Structured multipart answers and per-point learner state | TESTED | Question part storage, part validation/evaluation, transactional point state in migration `011`; unit suite and PostgreSQL roundtrip/retry integration checks passed in the latest verification session. |
 | Resource recommendations and learning packs | IMPLEMENTED | Resource services and routes. |
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
-| Unit-level tests | TESTED | Latest run passed: 9 files, 39 tests. |
-| Client and server production builds | TESTED | `npm run build` passed for server and client in the Phase 6B session. |
-| PostgreSQL integration tests | TESTED | Latest `npm run test:integration -w server` run passed all 4 cases against the configured PostgreSQL database. |
-| Current developer API startup | BLOCKED LOCALLY | Reported `ECONNREFUSED 127.0.0.1:5432`; `server/src/index.ts` probes PostgreSQL before listening. Start PostgreSQL, apply migrations, then rerun `npm run dev`. |
+| Unit-level tests | TESTED | `npm test`: 14 files, 53 tests passed in the 2026-10-11 Phase 1 session. |
+| Client and server production builds | TESTED | `npm run build` passed for server and client production builds in the 2026-10-11 Phase 1 session. |
+| PostgreSQL integration tests | TESTED | `npm run test:integration -w server`: 6/6 cases passed against PostgreSQL in the 2026-10-11 Phase 1 session. |
+| Current developer API startup | UNKNOWN | PostgreSQL integration connected successfully; `npm run dev` was not run in this session. Startup probes PostgreSQL before listening. |
 | Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |
-| Baseline point identity/count and no-evidence score semantics | IMPLEMENTED | Baseline generation now selects distinct concepts, counts unique submitted points, and stores no evidence as `NULL`; migration `012` is additive. Verified by PostgreSQL integration regression. |
+| Baseline point identity/count and no-evidence score semantics | TESTED | Baseline generation selects distinct concepts, counts unique submitted points, and stores no evidence as `NULL`; migration `012` is additive. No evidence displays “Not assessed”; measured 0 stays 0; fewer than three unique assessed points receive “Early signal,” not a mastery band. Verified by unit and PostgreSQL regressions. |
 | Study extraction retry idempotency | IMPLEMENTED | Extraction normalizes duplicate labels/points within one result and repository persistence reuses an existing concept for the same owner/session/name under an advisory transaction lock. Verified by PostgreSQL integration regression; existing historic duplicates are preserved. |
 | Question-generation quality | PARTIALLY TESTED | Built-in questions now bind rapid recall to the point named, and uncurated MCQs fall back to recall. Templates and curated MCQs have structural/unit coverage; provider-generated questions do not exist and pedagogical quality is not validated. |
 | Resource title fallback | IMPLEMENTED | A raw YouTube/Vimeo URL title is replaced with a source-based safe label while its URL and recommendation reason remain intact. Unit coverage added. |
 | Active evaluator provider | TESTED | Local `.env` was inspected without printing secrets: provider is `mock`; no LLM API key is configured. Real-provider evaluation remains unverified. |
+| Study topic/source identity | TESTED | New study input rejects URL-shaped topics and URL-only material; optional HTTP(S) source URL is stored and serialized separately from topic and raw material. Unit + PostgreSQL roundtrip regression. |
+| Extraction content integrity | TESTED | Extraction strips URL tokens, requires supplied text, rejects URL-shaped concept names, validates structured output, and executes before new session persistence; deterministic mock no longer invents concepts from an empty topic. Unit + PostgreSQL repeated-input regression. |
+| Learner overview with no observations | TESTED | No assessed concepts yields `averageMastery: null` from the service and the UI says “Not assessed” rather than `0%`. PostgreSQL summary regression; UI production build passed. |
+| Resource explanation integrity | TESTED | Recommendation no longer presents `coverage_strength` as a percentage or displays uncalibrated trust/freshness fields; stored duration remains labeled as an estimate. Unit and PostgreSQL resource checks passed. |
+| Safe provider configuration diagnostic | TESTED | `npm run config:check -w server` reports active LLM, question, embedding and remediation paths without printing credentials. Current observed config is mock/deterministic; live provider path is not verified. |
+| Generic question quality | PARTIALLY TESTED | Source confirms built-in deterministic blueprints and curated MCQs; LLM is not used to generate questions. Semantic quality remains a Phase C task. |
+| Manual browser workflow | UNKNOWN | This session did not exercise the browser UI. |
 
 ## Local verification commands
 
@@ -48,3 +55,12 @@ npm run dev
 ```
 
 The compose file defines PostgreSQL 16 on port 5432. If Docker is unavailable, provide a PostgreSQL instance matching `DATABASE_URL` in `.env`. Apply migrations before the first API run; startup itself only runs `SELECT 1`.
+
+## 2026-10-11 — Core learning pipeline repair, Phase 1
+
+- Inspected the study, evaluator, learner summary, baseline report, question, resource and provider paths. Confirmed URL/topic conflation and topic-only synthetic extraction; confirmed no-evidence learner summary displayed as `0%`; confirmed questions are built-in, not LLM-generated; confirmed resource explanation converted a stored strength value to a percent and exposed uncalibrated trust/freshness claims. Exact user-reported repeated display could not be reproduced from a supplied record; code deduplicates exact point text per extraction/session but point identities remain labels.
+- Added migration `013_study_session_source_url.sql` and its explicit sequence order. New study sessions distinguish title, optional HTTP(S) link and supplied text. URL-only topics/material are rejected; source URLs are stripped from extraction text; structured extraction is prepared before session persistence; session source URL roundtrips through repository and API serialization.
+- Empty mock extraction now yields no concept; the LLM prompt forbids topic-only concept invention; extracted URL names are rejected. Dedupe behavior preserves exact-normalized concepts/points without fuzzy-merging similar concepts.
+- Learner overview now distinguishes null/no evidence from measured zero. Resource recommendations no longer state coverage percentages, trust tiers or freshness years; duration is shown as an estimate. Safe provider diagnostic reports actual subsystem behavior without credentials. `.env.example` is restored to mock defaults and credential values were removed.
+- Roadmap and decision record added; flow, data model, README, status and session log updated. Phase B–F are planned, not claimed as delivered. Canonical UUID links for personal concepts/points, question-quality validation, real-provider checks and browser exercise remain incomplete.
+- Verification: `npm run build` passed; `npm test` passed (14 files / 53 tests); `npm run test:integration -w server` passed against PostgreSQL (6/6 tests, 0 skipped); provider diagnostic ran and reported mock/deterministic providers; `git diff --check` passed.

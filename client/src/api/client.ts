@@ -148,7 +148,7 @@ export const api = {
     return request<DashboardData>("/api/dashboard");
   },
 
-  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string }) {
+  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string }) {
     return request<{ session: StudySession; concepts: Concept[] }>("/api/study-sessions", {
       method: "POST",
       body: JSON.stringify(input),

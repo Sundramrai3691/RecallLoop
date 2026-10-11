@@ -28,3 +28,18 @@ export function isMockLlm(): boolean {
   if (!env.llmApiKey.trim()) return true;
   return false;
 }
+
+export function providerConfiguration() {
+  const llm = isMockLlm() ? "mock" : "openai-compatible";
+  const embedding = env.embeddingProvider === "mock" ? "deterministic-local" :
+    env.embeddingProvider === "openai-compatible" && env.embeddingApiKey.trim() ? "openai-compatible" : "not-configured";
+  const remediation = env.remediationProvider === "llm" && llm === "openai-compatible" ? "llm-grounded" : "deterministic-extractive";
+  const warnings: string[] = [];
+  if (env.llmProvider !== "mock" && !env.llmApiKey.trim()) warnings.push("LLM_API_KEY is empty; extraction and free-form grading use the deterministic mock.");
+  if (!new Set(["mock", "openai-compatible"]).has(env.llmProvider)) warnings.push("LLM_PROVIDER is not the documented value; configured non-mock values still select the generic OpenAI-compatible adapter.");
+  if (env.embeddingProvider === "openai-compatible" && !env.embeddingApiKey.trim()) warnings.push("EMBEDDING_PROVIDER selects openai-compatible but EMBEDDING_API_KEY is empty.");
+  if (env.remediationProvider === "llm" && llm !== "openai-compatible") warnings.push("REMEDIATION_PROVIDER=llm requires a configured non-mock LLM provider.");
+  if (!new Set(["mock", "openai-compatible"]).has(env.embeddingProvider)) warnings.push("Unknown EMBEDDING_PROVIDER; deterministic local embeddings are active.");
+  if (!new Set(["mock", "llm"]).has(env.remediationProvider)) warnings.push("Unknown REMEDIATION_PROVIDER; deterministic extractive remediation is active.");
+  return { llm, llmModel: env.llmModel, extractionAndGrading: llm, embeddings: embedding, embeddingModel: embedding === "openai-compatible" ? env.embeddingModel : null, remediation, warnings };
+}

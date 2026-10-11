@@ -1,5 +1,5 @@
 export function serializeSession(session: any) {
-  return { id: String(session.id ?? session._id), userId: session.userId, title: session.title, rawMaterial: session.rawMaterial, sourceType: session.sourceType, startedAt: session.startedAt, completedAt: session.completedAt ?? null, status: session.status, createdAt: session.createdAt, updatedAt: session.updatedAt };
+  return { id: String(session.id ?? session._id), userId: session.userId, title: session.title, rawMaterial: session.rawMaterial, sourceType: session.sourceType, sourceUrl: session.sourceUrl ?? null, startedAt: session.startedAt, completedAt: session.completedAt ?? null, status: session.status, createdAt: session.createdAt, updatedAt: session.updatedAt };
 }
 export function serializeConcept(concept: any) {
   return { id: String(concept.id ?? concept._id), studySessionId: String(concept.studySessionId), name: concept.name, description: concept.description, parentConceptId: concept.parentConceptId ? String(concept.parentConceptId) : null, requiredKnowledgePoints: concept.requiredKnowledgePoints, difficulty: concept.difficulty, mastery: Number(concept.mastery), createdAt: concept.createdAt, updatedAt: concept.updatedAt };

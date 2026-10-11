@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, FileText, Link as LinkIcon, StickyNote, Video } from "lucide-react";
+import { BookOpen, FileText, Link as LinkIcon, StickyNote } from "lucide-react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { PageHeader } from "../components/Ui";
@@ -7,9 +7,9 @@ import { ApiError, type KnowledgeRole } from "../types";
 
 const sourceOptions = [
   { value: "url", label: "Article or docs", Icon: LinkIcon },
-  { value: "file", label: "PDF or book", Icon: FileText },
+  { value: "file", label: "PDF/book text", Icon: FileText },
   { value: "notes", label: "My notes", Icon: StickyNote },
-  { value: "manual", label: "Video or other", Icon: Video },
+  { value: "manual", label: "Other notes", Icon: StickyNote },
 ] as const;
 
 export function NewStudyPage() {
@@ -17,6 +17,7 @@ export function NewStudyPage() {
   const [searchParams] = useSearchParams();
   const [title, setTitle] = useState(() => searchParams.get("topic") ?? "");
   const [rawMaterial, setRawMaterial] = useState("");
+  const [sourceUrl, setSourceUrl] = useState("");
   const [sourceType, setSourceType] = useState<string>("notes");
   const [roles, setRoles] = useState<KnowledgeRole[]>([]);
   const [focused, setFocused] = useState(false);
@@ -37,11 +38,17 @@ export function NewStudyPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (/^(?:https?:\/\/|www\.)/i.test(title.trim())) { setError("Enter a topic name here. Put the link in Source link below."); return; }
+    if (sourceUrl.trim()) {
+      try { const parsed = new URL(sourceUrl.trim()); if (!["http:", "https:"].includes(parsed.protocol)) throw new Error(); }
+      catch { setError("Enter a valid http(s) source link."); return; }
+    }
+    if (!rawMaterial.trim() || /^https?:\/\/\S+$/i.test(rawMaterial.trim())) { setError("Add notes or source text. RecallLoop saves links as provenance but does not fetch webpage or video contents."); return; }
     setBusy(true); setError(null);
     try {
-      const result = await api.createStudySession({ title: title.trim(), rawMaterial, sourceType });
+      const result = await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined });
       navigate(`/study/${result.session.id}`);
-    } catch (err) { setError(err instanceof ApiError ? "We couldn’t start this study session. Please try again." : "We couldn’t reach the study service. Please try again."); }
+    } catch (err) { setError(err instanceof ApiError ? err.message : "We couldn’t reach the study service. Please try again."); }
     finally { setBusy(false); }
   }
 
@@ -62,9 +69,12 @@ export function NewStudyPage() {
         {focused && suggestions.length > 0 ? <ul className="suggestion-list" id="topic-suggestions" role="listbox">{suggestions.map((item, index) => <li key={`${item.value}-${item.detail}`} id={`topic-option-${index}`} role="option" aria-selected={index === active}><button role="presentation" tabIndex={-1} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setTitle(item.value); setFocused(false); inputRef.current?.focus(); }}><span>{item.label}</span><small>{item.detail}</small></button></li>)}</ul> : null}</div>
       <p className="metadata">Suggestions come from the knowledge map. You can also enter your own topic.</p>
       <fieldset className="source-fieldset"><legend>How are you learning this?</legend><div className="source-options">{sourceOptions.map(({ value, label, Icon }) => <button key={value} type="button" className={`source-option ${sourceType === value ? "selected" : ""}`} aria-pressed={sourceType === value} onClick={() => setSourceType(value)}><Icon size={18}/><span>{label}</span></button>)}</div></fieldset>
-      <label htmlFor="material">Notes or material <span className="muted">(optional)</span></label>
-      <textarea id="material" rows={6} value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Jot down key ideas or paste a short excerpt to help identify concepts." />
-      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> You’ll be able to review extracted concepts before recall.</span><button className="btn btn-primary" disabled={busy || !title.trim()} type="submit">{busy ? "Starting session…" : "Continue to study"}</button></div>
+      <label htmlFor="source-url">Source link <span className="muted">(optional)</span></label>
+      <input id="source-url" type="url" inputMode="url" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://…" />
+      <p className="metadata">The link is saved with this session. Pages, video transcripts, and files are not fetched or uploaded; paste usable text below.</p>
+      <label htmlFor="material">Notes or source text</label>
+      <textarea id="material" rows={6} required value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Paste notes or a short source excerpt. Concepts and recall questions are based on this text." />
+      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> Local mock extraction is deterministic; it is not semantic LLM extraction.</span><button className="btn btn-primary" disabled={busy || !title.trim() || !rawMaterial.trim()} type="submit">{busy ? "Starting session…" : "Continue to study"}</button></div>
     </form>
   </div>;
 }

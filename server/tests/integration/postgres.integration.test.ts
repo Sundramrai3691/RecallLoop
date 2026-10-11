@@ -2,9 +2,9 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { postgres, runPostgresMigration } from "../../src/db/postgres.js";
 import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
-import { createBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
+import { createBaseline,getBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
 import { createConceptsForSession } from "../../src/services/concept/conceptService.js";
-import { getAttempt,revealNextHint } from "../../src/repositories/legacyPostgresRepositories.js";
+import { createSession,getAttempt,getSession,revealNextHint } from "../../src/repositories/legacyPostgresRepositories.js";
 import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
 import { recommendResources } from "../../src/services/resources/resourceRecommendationService.js";
@@ -13,7 +13,7 @@ import { generateGoalPlan,getTodayPlan } from "../../src/services/goal/goalServi
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
-import { serializeAttempt } from "../../src/lib/serialize.js";
+import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -27,18 +27,30 @@ describe("PostgreSQL runtime integration", () => {
   it("applies relational schema and exposes core tables", async () => {
     const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations')`);
     expect(result.rows.length).toBe(13);
-    const structured=await postgres.query<any>(`SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name='part_id'))`);
-    expect(structured.rows).toHaveLength(3);
+    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name='part_id') OR (table_name='study_sessions' AND column_name='source_url'))`);
+    expect(structured.rows).toHaveLength(4);
+  });
+
+  it("persists topic, external source link, and material separately",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Source Identity') RETURNING id`,[`source-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const session=await createSession(userId,{title:"Cache invalidation",sourceUrl:"https://docs.example.test/cache",rawMaterial:"A cache entry is stale when its backing value changes.",sourceType:"url"});
+      const fetched=await getSession(session.id,userId);
+      expect(serializeSession(fetched)).toMatchObject({title:"Cache invalidation",sourceUrl:"https://docs.example.test/cache",rawMaterial:"A cache entry is stale when its backing value changes."});
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
   it("keeps extracted concepts and points stable across repeated processing and scores unique baseline evidence",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Integrity Test') RETURNING id`,[`integrity-${randomUUID()}@test.local`])).rows[0].id;
     try{
-      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,raw_material) VALUES($1,'Cache notes',$2) RETURNING id`,[userId,"Cache reads use a key to find stored values. Cache reads use a key to find stored values."])).rows[0];
-      const first=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:"Cache reads use a key to find stored values. Cache reads use a key to find stored values."});
-      const second=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:"Cache reads use a key to find stored values. Cache reads use a key to find stored values."});
+      const suppliedText="https://video.example/watch?v=topic\nCache reads use a key to find stored values. Cache reads use a key to find stored values.";
+      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,raw_material) VALUES($1,'Cache notes',$2) RETURNING id`,[userId,suppliedText])).rows[0];
+      const first=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:suppliedText});
+      const second=await createConceptsForSession({userId,studySessionId:session.id,title:"Cache notes",rawMaterial:suppliedText});
       expect(first).toHaveLength(1);
+      expect(first[0].name).not.toContain("video.example");
       expect(first[0].requiredKnowledgePoints).toHaveLength(1);
+      expect(first[0].requiredKnowledgePoints.join(" ")).not.toContain("video.example");
       expect(second[0].id).toBe(first[0].id);
       expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM personal_concepts WHERE user_id=$1 AND study_session_id=$2`,[userId,session.id])).rows[0].count).toBe(1);
 
@@ -49,11 +61,15 @@ describe("PostgreSQL runtime integration", () => {
       expect(new Set(baseline.questions.map((question:any)=>question.conceptId)).size).toBe(baseline.questions.length);
       expect(baseline.questions.every((question:any)=>Boolean(question.knowledgePointId))).toBe(true);
       expect(baseline.assessment.observedMastery).toBeNull();
+      expect((await getBaseline(baseline.assessment.id,userId)).assessment.observedStatus).toBe("Not assessed");
       let result=baseline;
       for(const question of baseline.questions){
         result=await submitBaselineQuestion(baseline.assessment.id,userId,{questionId:question.id,answer:"No relevant answer provided.",confidence:4});
       }
       expect(Number(result.assessment.observedMastery)).toBe(0);
+      const baselineReport=(await getBaseline(baseline.assessment.id,userId)).assessment;
+      expect(baselineReport.observedEvidenceCount).toBeLessThan(3);
+      expect(baselineReport.observedStatus).toBe("Early signal");
       const assessedPoints=result.questions.flatMap((question:any)=>question.knowledgePointResults??[]);
       expect(assessedPoints.length).toBeGreaterThan(0);
       expect(result.questions.every((question:any)=>(question.knowledgePointResults??[]).length===1)).toBe(true);
@@ -111,6 +127,9 @@ describe("PostgreSQL runtime integration", () => {
       expect(unassessed?.confidence).toBeNull();
       expect(unassessed?.successRate).toBeNull();
       expect(unassessed?.hintsUsed).toBeNull();
+      const learnerSummary=await (await import("../../src/services/learner/learnerModelService.js")).getLearnerSummary(userId);
+      expect(learnerSummary.assessedConcepts).toBe(0);
+      expect(learnerSummary.averageMastery).toBeNull();
       const rapid=await createAssessment(userId,tokenId,"rapid_fire");
       expect(rapid.questions).toHaveLength(5);
       expect(new Set(rapid.questions.map((item:any)=>item.question.id)).size).toBe(5);
@@ -158,6 +177,8 @@ describe("PostgreSQL runtime integration", () => {
       expect(resources.length).toBeGreaterThan(0);
       expect(resources.length).toBeLessThanOrEqual(4);
       expect(resources.every((resource)=>resource.estimatedMinutes<=30)).toBe(true);
+      expect(resources.every((resource)=>!/% coverage|trust tier|metadata marks it/i.test(resource.reason))).toBe(true);
+      expect(resources.every((resource)=>/^https?:\/\//i.test(resource.url))).toBe(true);
       const pack=await buildLearningPack({userId,conceptId:httpConcept.rows[0].id,availableMinutes:60});
       expect(pack.estimatedTotalMinutes).toBeLessThanOrEqual(60);
       expect(pack.items.some((item)=>item.kind==="resource")).toBe(true);

@@ -1,6 +1,7 @@
 import { query, withTransaction } from "../../db/postgres.js";
 import { getEvaluator } from "../evaluator/index.js";
 import { AppError, notFound } from "../../utils/errors.js";
+import { summarizeBaselineEvidence } from "./baselineSemantics.js";
 
 const LEVELS = ["new", "familiar", "advanced"] as const;
 type BaselineLevel = (typeof LEVELS)[number];
@@ -61,7 +62,8 @@ export async function getBaseline(id: string, userId: string) {
   const assessment = await query(`SELECT id, goal_id AS "goalId", skill_id AS "skillId", selected_level AS "selectedLevel", baseline_source AS "baselineSource", baseline_confidence AS "baselineConfidence", status, observed_mastery AS "observedMastery", self_declared_mastery AS "selfDeclaredMastery", recommended_concept_id AS "recommendedConceptId", created_at AS "createdAt" FROM baseline_assessments WHERE id = $1 AND user_id = $2`, [id, userId]);
   if (!assessment.rows[0]) throw notFound("Baseline assessment not found", "BASELINE_NOT_FOUND");
   const questions = await query(`SELECT id, concept_id AS "conceptId", knowledge_point_id AS "knowledgePointId", level, question, answer, coverage, confidence, knowledge_point_results AS "knowledgePointResults", submitted_at AS "submittedAt" FROM baseline_questions WHERE assessment_id = $1 ORDER BY id`, [id]);
-  return { assessment: assessment.rows[0], questions: questions.rows };
+  const evidence = summarizeBaselineEvidence(questions.rows as any);
+  return { assessment: { ...assessment.rows[0], observedEvidenceCount: evidence.evidenceCount, observedStatus: evidence.status }, questions: questions.rows };
 }
 
 export async function submitBaselineQuestion(assessmentId: string, userId: string, input: { questionId: string; answer: string; confidence: number }) {

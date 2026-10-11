@@ -9,6 +9,7 @@
     "db:migrate": "tsx src/db/migrate.ts",
     "db:seed": "tsx src/db/seed.ts",
     "db:import-legacy": "tsx ../scripts/migrate-mongo-to-postgres.ts",
+    "config:check": "tsx src/scripts/checkConfig.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts --reporter=verbose",
     "test": "vitest run",
     "test:watch": "vitest"

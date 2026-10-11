@@ -19,7 +19,9 @@ npm run dev
 
 ## Environment
 
-`DATABASE_URL` configures PostgreSQL. The default `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`, and `REMEDIATION_PROVIDER=mock` run extraction, evaluation, embeddings, and remediation deterministically without API credentials. Real providers are opt-in through the corresponding provider setting and API key. See [.env.example](.env.example) and [Grounded Remediation](docs/GROUNDED_REMEDIATION.md).
+`DATABASE_URL` configures PostgreSQL. The defaults `LLM_PROVIDER=mock`, `EMBEDDING_PROVIDER=mock`, and `REMEDIATION_PROVIDER=mock` use deterministic local behavior without credentials. Run `npm run config:check -w server` to print active providers and warnings without printing keys.
+
+The only LLM adapter currently implemented is OpenAI-compatible chat completions. To opt in, set `LLM_PROVIDER=openai-compatible`, `LLM_API_KEY`, `LLM_MODEL`, and `LLM_BASE_URL` in the untracked local `.env`. This adapter handles concept extraction and free-form answer evaluation; assessment questions still come from built-in deterministic blueprints and curated MCQs. `EMBEDDING_PROVIDER=openai-compatible` separately enables the OpenAI-compatible `/embeddings` API and requires `EMBEDDING_API_KEY`, `EMBEDDING_MODEL`, and `EMBEDDING_BASE_URL`. `REMEDIATION_PROVIDER=llm` uses the configured LLM to draft remediation from retrieved excerpts; `mock` keeps deterministic extractive remediation. A syntactically compatible endpoint/model is not proof of successful provider access; live calls need separate verification. Never put credentials in tracked files or frontend variables. See [.env.example](.env.example) and [Grounded Remediation](docs/GROUNDED_REMEDIATION.md).
 
 ## Commands
 

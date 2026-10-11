@@ -95,7 +95,9 @@ Each concept needs at least one required knowledge point (atomic facts the learn
 Difficulty is 1-5.
 
 Topic: ${input.title}
-Material: ${input.rawMaterial || "(none — create one concept from the topic)"}`;
+Material: ${input.rawMaterial ?? ""}
+
+Use only the supplied material. Do not create concepts from the topic alone. The topic gives context; it is not source evidence.`;
 }
 
 export class LlmEvaluator implements Evaluator {

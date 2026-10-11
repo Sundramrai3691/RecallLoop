@@ -51,6 +51,7 @@ export function StudySessionPage() {
           Status: {session.status.replace("_", " ")}. {concepts.length} concept
           {concepts.length === 1 ? "" : "s"} extracted.
         </p>
+        {session.sourceUrl ? <p><a href={session.sourceUrl} target="_blank" rel="noreferrer">Open saved source link</a></p> : null}
       </div>
       {error ? <p className="error">{error}</p> : null}
       <div className="grid">
