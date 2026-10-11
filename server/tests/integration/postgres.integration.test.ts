@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { postgres, runPostgresMigration, withTransaction } from "../../src/db/postgres.js";
 import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
@@ -16,6 +16,8 @@ import { createTargetedVerification } from "../../src/services/question/assessme
 import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
 import { getRoleRoadmap } from "../../src/services/knowledge/knowledgeService.js";
 import { createStudySession } from "../../src/services/study/studySessionService.js";
+import { env } from "../../src/config/env.js";
+import { resetEvaluatorForTests } from "../../src/services/evaluator/index.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -163,6 +165,33 @@ describe("PostgreSQL runtime integration", () => {
       const counts=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[structured.id,userId,concept.id]);
       expect(counts.rows[0]).toMatchObject({evaluations:1,states:2});
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("keeps provider-failed study extraction and recall evaluation recoverable without partial evidence",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Provider Failure Test') RETURNING id`,[`provider-failure-${randomUUID()}@test.local`])).rows[0].id;
+    const previous={provider:env.llmProvider,key:env.llmApiKey,model:env.llmModel,baseUrl:env.llmBaseUrl};
+    const priorSessions=Number((await postgres.query<any>(`SELECT count(*)::int AS count FROM study_sessions WHERE user_id=$1`,[userId])).rows[0].count);
+    try{
+      env.llmProvider="openai-compatible";env.llmApiKey="integration-only-key";env.llmModel="test-model";env.llmBaseUrl="https://provider.invalid/v1";
+      vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({error:{code:"rate_limit_exceeded"}}),{status:429,headers:{"Retry-After":"60"}})));
+      resetEvaluatorForTests();
+      await expect(createStudySession({userId,title:"Cache invalidation",rawMaterial:"A cache entry becomes stale after its source value changes."})).rejects.toMatchObject({code:"LLM_RATE_LIMITED",retryAfterSeconds:60});
+      expect(Number((await postgres.query<any>(`SELECT count(*)::int AS count FROM study_sessions WHERE user_id=$1`,[userId])).rows[0].count)).toBe(priorSessions);
+
+      const session=await createSession(userId,{title:"Provider retry",rawMaterial:"A cache entry becomes stale after its source value changes."});
+      const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Cache invalidation','How cached values remain correct.',$3) RETURNING id`,[userId,session.id,["Cache invalidation removes or refreshes stale entries."]])).rows[0];
+      const assessment=await createAssessment(userId,concept.id,"deep_recall");
+      const attempt=assessment.questions.find((item:any)=>item.questionType!=="mcq"&&!item.question?.parts?.length);
+      expect(attempt).toBeDefined();
+      await expect(submitRecall(attempt.id,{userId,answer:"Cache invalidation removes or refreshes stale entries.",confidence:8})).rejects.toMatchObject({code:"LLM_RATE_LIMITED"});
+      expect((await getAttempt(attempt.id,userId))?.submittedAt).toBeNull();
+      expect((await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[attempt.id,userId,concept.id])).rows[0]).toMatchObject({evaluations:0,states:0});
+    }finally{
+      vi.unstubAllGlobals();
+      env.llmProvider=previous.provider;env.llmApiKey=previous.key;env.llmModel=previous.model;env.llmBaseUrl=previous.baseUrl;
+      resetEvaluatorForTests();
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
   });
 
   it("persists adaptive assessment, preferences, resources, packs, plans, and missed-task history",async()=>{

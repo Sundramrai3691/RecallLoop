@@ -8,7 +8,13 @@ export function errorHandler(
   _next: NextFunction,
 ): void {
   if (err instanceof AppError) {
-    res.status(err.status).json({ error: err.message, code: err.code });
+    if (err.retryAfterSeconds !== undefined) res.setHeader("Retry-After", String(err.retryAfterSeconds));
+    res.status(err.status).json({
+      error: err.message,
+      code: err.code,
+      ...(err.retryable !== undefined ? { retryable: err.retryable } : {}),
+      ...(err.retryAfterSeconds !== undefined ? { retryAfterSeconds: err.retryAfterSeconds } : {}),
+    });
     return;
   }
 

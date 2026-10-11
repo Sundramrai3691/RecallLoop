@@ -7,6 +7,7 @@ describe("OpenAI-compatible chat provider", () => {
   const original = { llmBaseUrl: env.llmBaseUrl, llmModel: env.llmModel, llmApiKey: env.llmApiKey };
 
   afterEach(() => {
+    vi.useRealTimers();
     env.llmBaseUrl = original.llmBaseUrl;
     env.llmModel = original.llmModel;
     env.llmApiKey = original.llmApiKey;
@@ -46,7 +47,7 @@ describe("OpenAI-compatible chat provider", () => {
   it.each([
     [401, "LLM_AUTHENTICATION_FAILED", /authentication failed/],
     [403, "LLM_ACCESS_DENIED", /denied access/],
-    [429, "LLM_RATE_LIMITED", /quota was exceeded/],
+    [429, "LLM_RATE_LIMITED", /temporarily rate-limited/],
     [503, "LLM_PROVIDER_FAILURE", /provider failed/],
     [400, "LLM_REQUEST_REJECTED", /rejected the request/],
   ])("surfaces provider HTTP %i as a specific safe error", async (status, code, message) => {
@@ -64,5 +65,41 @@ describe("OpenAI-compatible chat provider", () => {
     expect(error).toBeInstanceOf(AppError);
     expect((error as AppError).code).toBe("LLM_INVALID_RESPONSE");
     expect((error as Error).message).not.toContain(env.llmApiKey);
+  });
+
+  it("classifies quota exhaustion from a structured provider response without exposing its body", async () => {
+    const fetchMock = vi.fn(async () => Response.json({ error: { code: "insufficient_quota", message: "account secret details" } }, { status: 429 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const error = await new OpenAiCompatibleProvider().complete([{ role: "user", content: "test" }]).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 503, code: "LLM_QUOTA_EXHAUSTED" });
+    expect((error as Error).message).not.toContain("account secret details");
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("respects Retry-After and does not block the request for a long upstream delay", async () => {
+    const fetchMock = vi.fn(async () => new Response(JSON.stringify({ error: { code: "rate_limit_exceeded" } }), { status: 429, headers: { "Retry-After": "45" } }));
+    vi.stubGlobal("fetch", fetchMock);
+    const error = await new OpenAiCompatibleProvider().complete([{ role: "user", content: "test" }]).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 429, code: "LLM_RATE_LIMITED", retryable: true, retryAfterSeconds: 45 });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not treat an ambiguous RESOURCE_EXHAUSTED code as proof that quota is exhausted", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ error: { status: "RESOURCE_EXHAUSTED" } }), { status: 429, headers: { "Retry-After": "60" } })));
+    const error = await new OpenAiCompatibleProvider().complete([{ role: "user", content: "test" }]).catch((value: unknown) => value);
+    expect(error).toMatchObject({ status: 429, code: "LLM_RATE_LIMITED", retryAfterSeconds: 60 });
+  });
+
+  it("makes one bounded retry for a transient limit and returns success if it clears", async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({ error: { code: "rate_limit_exceeded" } }), { status: 429, headers: { "Retry-After": "0" } }))
+      .mockResolvedValueOnce(Response.json({ choices: [{ message: { content: "ok" } }] }));
+    vi.stubGlobal("fetch", fetchMock);
+    const promise = new OpenAiCompatibleProvider().complete([{ role: "user", content: "test" }]);
+    await vi.runAllTimersAsync();
+    await expect(promise).resolves.toBe("ok");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    vi.useRealTimers();
   });
 });

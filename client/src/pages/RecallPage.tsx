@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, type RecallAttempt } from "../types";
@@ -18,6 +18,8 @@ export function RecallPage() {
   const [hintBusy, setHintBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retryBlocked, setRetryBlocked] = useState(false);
+  const submitLock = useRef(false);
 
   useEffect(() => {
     if (!attemptId) return;
@@ -36,7 +38,8 @@ export function RecallPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!attemptId) return;
+    if (!attemptId || submitLock.current) return;
+    submitLock.current = true;
     setBusy(true);
     setError(null);
     try {
@@ -44,8 +47,33 @@ export function RecallPage() {
       await api.submitRecall(attemptId, { answer:parts?undefined:answer, answers:parts?.map((part)=>({partId:part.id,answer:partAnswers[part.id]??""})), selectedOptionId: selectedOptionId || undefined, confidence });
       navigate(`/recall/${attemptId}/result${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
     } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Could not submit recall");
+      let submissionState: "pending" | "submitted" | "unknown" = "unknown";
+      try {
+        const latest = await api.getRecall(attemptId);
+        submissionState = latest.recall.submittedAt ? "submitted" : "pending";
+        if (submissionState === "submitted") {
+          navigate(`/recall/${attemptId}/result${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
+          return;
+        }
+      } catch { /* Keep the entered response and report that the server state could not be confirmed. */ }
+      if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
+        setRetryBlocked(false);
+        const delay = err.retryAfterSeconds !== undefined ? ` Retry after ${err.retryAfterSeconds} seconds.` : " Please retry in a moment.";
+        setError(`The AI service is temporarily rate-limited. Your answer is still available, has not been evaluated, and remains pending.${delay}`);
+      } else if (err instanceof ApiError && err.code === "LLM_QUOTA_EXHAUSTED") {
+        setRetryBlocked(true);
+        setError("The configured AI provider has exhausted its available quota. Your answer has not been evaluated and remains pending. Check provider usage or try again when quota is available.");
+      } else if (err instanceof ApiError && ["LLM_AUTHENTICATION_FAILED", "LLM_ACCESS_DENIED"].includes(err.code)) {
+        setRetryBlocked(true);
+        setError("The AI provider credentials or permissions are invalid. Your answer has not been evaluated and remains pending. Contact the application administrator.");
+      } else {
+        setRetryBlocked(submissionState !== "pending");
+        setError(submissionState === "pending"
+          ? "Your answer has not been evaluated and remains pending. Your answer and confidence are preserved; please retry when the service is available."
+          : "We couldn’t confirm whether the submission completed. Your answer and confidence are preserved here. Check the recall status before retrying.");
+      }
     } finally {
+      submitLock.current = false;
       setBusy(false);
     }
   }
@@ -97,8 +125,8 @@ export function RecallPage() {
         <span className="muted">Certain</span>
       </div>
       <div className="actions">
-        <button className="btn btn-primary" disabled={busy||(recall.questionData?.parts?.length?!Object.values(partAnswers).some((value)=>value.trim()):false)} type="submit">
-          {busy ? "Evaluating…" : "Submit recall"}
+        <button className="btn btn-primary" disabled={busy||retryBlocked||(recall.questionData?.parts?.length?!Object.values(partAnswers).some((value)=>value.trim()):false)} type="submit">
+          {busy ? "Evaluating…" : retryBlocked ? "Retry unavailable" : "Submit recall"}
         </button>
       </div>
     </form>

@@ -283,11 +283,15 @@ export interface DashboardData {
 export class ApiError extends Error {
   status: number;
   code: string;
+  retryable?: boolean;
+  retryAfterSeconds?: number;
 
-  constructor(message: string, status: number, code: string) {
+  constructor(message: string, status: number, code: string, options: { retryable?: boolean; retryAfterSeconds?: number } = {}) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
+    this.retryable = options.retryable;
+    this.retryAfterSeconds = options.retryAfterSeconds;
   }
 }

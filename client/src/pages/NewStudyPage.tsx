@@ -27,7 +27,9 @@ export function NewStudyPage() {
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [retryBlocked, setRetryBlocked] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const submitLock = useRef(false);
 
   useEffect(() => { void api.knowledgeRoadmaps().then((result) => setRoles(result.roles)).catch(() => setRoles([])); }, []);
   const suggestions = useMemo(() => {
@@ -42,18 +44,35 @@ export function NewStudyPage() {
 
   async function onSubmit(event: FormEvent) {
     event.preventDefault();
+    if (submitLock.current) return;
     if (/^(?:https?:\/\/|www\.)/i.test(title.trim())) { setError("Enter a topic name here. Put the link in Source link below."); return; }
     if (sourceUrl.trim()) {
       try { const parsed = new URL(sourceUrl.trim()); if (!["http:", "https:"].includes(parsed.protocol)) throw new Error(); }
       catch { setError("Enter a valid http(s) source link."); return; }
     }
     if (!rawMaterial.trim() || /^https?:\/\/\S+$/i.test(rawMaterial.trim())) { setError("Add notes or source text. RecallLoop saves links as provenance but does not fetch webpage or video contents."); return; }
+    submitLock.current = true;
     setBusy(true); setError(null);
     try {
       const result = await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined });
       navigate(`/study/${result.session.id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
-    } catch (err) { setError(err instanceof ApiError ? err.message : "We couldn’t reach the study service. Please try again."); }
-    finally { setBusy(false); }
+    } catch (err) {
+      if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
+        setRetryBlocked(false);
+        const delay = err.retryAfterSeconds !== undefined ? ` Retry after ${err.retryAfterSeconds} seconds.` : " Please retry in a moment.";
+        setError(`The AI service is temporarily rate-limited. No study session was created. Your topic, source link, and notes are preserved.${delay}`);
+      } else if (err instanceof ApiError && err.code === "LLM_QUOTA_EXHAUSTED") {
+        setRetryBlocked(true);
+        setError("The configured AI provider has exhausted its available quota. No study session was created. Your topic, source link, and notes are preserved. Check provider usage or try again when quota is available.");
+      } else if (err instanceof ApiError && ["LLM_AUTHENTICATION_FAILED", "LLM_ACCESS_DENIED"].includes(err.code)) {
+        setRetryBlocked(true);
+        setError("The AI provider credentials or permissions are invalid. No study session was created; your form is preserved. Contact the application administrator.");
+      } else {
+        setRetryBlocked(true);
+        setError("We couldn’t confirm whether the study session was created. Your topic, source link, and notes are preserved. Check your study sessions before retrying.");
+      }
+    }
+    finally { submitLock.current = false; setBusy(false); }
   }
 
   function onTopicKeyDown(event: React.KeyboardEvent<HTMLInputElement>) {
@@ -78,7 +97,7 @@ export function NewStudyPage() {
       <p className="metadata">The link is saved with this session. Pages, video transcripts, and files are not fetched or uploaded; paste usable text below.</p>
       <label htmlFor="material">Notes or source text</label>
       <textarea id="material" rows={6} required value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Paste notes or a short source excerpt. Concepts and recall questions are based on this text." />
-      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> Local mock extraction is deterministic; it is not semantic LLM extraction.</span><button className="btn btn-primary" disabled={busy || !title.trim() || !rawMaterial.trim()} type="submit">{busy ? "Starting session…" : "Continue to study"}</button></div>
+      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> Local mock extraction is deterministic; it is not semantic LLM extraction.</span><button className="btn btn-primary" disabled={busy || retryBlocked || !title.trim() || !rawMaterial.trim()} type="submit">{busy ? "Starting session…" : retryBlocked ? "Retry unavailable" : "Continue to study"}</button></div>
     </form>
   </div>;
 }

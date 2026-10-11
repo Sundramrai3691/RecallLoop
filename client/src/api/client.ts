@@ -36,11 +36,12 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   }
 
   if (!res.ok) {
-    const payload = body as { error?: string; code?: string } | null;
+    const payload = body as { error?: string; code?: string; retryable?: boolean; retryAfterSeconds?: number } | null;
     throw new ApiError(
       payload?.error ?? "Request failed",
       res.status,
       payload?.code ?? "REQUEST_FAILED",
+      { retryable: payload?.retryable, retryAfterSeconds: payload?.retryAfterSeconds },
     );
   }
 
