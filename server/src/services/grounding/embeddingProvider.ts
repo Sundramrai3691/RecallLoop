@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { env } from "../../config/env.js";
 import { unavailable } from "../../utils/errors.js";
+import { providerHttpError } from "../../lib/llm/providerErrors.js";
 
 export interface EmbeddingProvider {
   readonly name: string;
@@ -34,22 +35,33 @@ export class OpenAiCompatibleEmbeddingProvider implements EmbeddingProvider {
   async embed(texts: string[]): Promise<number[][]> {
     let response: Response;
     try {
-      response = await fetch(`${this.baseUrl.replace(/\/$/, "")}/embeddings`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` }, body: JSON.stringify({ model: this.model, input: texts }) });
-    } catch { throw unavailable("Embedding provider is unreachable", "EMBEDDING_UNAVAILABLE"); }
-    if (!response.ok) throw unavailable(`Embedding provider returned HTTP ${response.status}`, "EMBEDDING_UNAVAILABLE");
-    const payload = await response.json() as { data?: Array<{ index: number; embedding: number[] }> };
+      response = await fetch(`${this.baseUrl.replace(/\/+$/, "")}/embeddings`, { method: "POST", signal: AbortSignal.timeout(30_000), headers: { "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey.trim()}` }, body: JSON.stringify({ model: this.model, input: texts }) });
+    } catch (error) {
+      if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) throw unavailable("Embedding provider request timed out after 30 seconds", "EMBEDDING_TIMEOUT");
+      throw unavailable("Embedding provider is unreachable", "EMBEDDING_UNAVAILABLE");
+    }
+    if (!response.ok) throw providerHttpError("Embedding", response.status);
+    let payload: { data?: Array<{ index?: number; embedding: number[] }> };
+    try { payload = await response.json() as typeof payload; }
+    catch { throw unavailable("Embedding provider returned a non-JSON response", "EMBEDDING_INVALID_RESPONSE"); }
     const rows = payload.data;
-    if (!rows || rows.length !== texts.length || rows.some((row) => !Array.isArray(row.embedding) || row.embedding.some((n) => !Number.isFinite(n)))) throw unavailable("Embedding provider returned invalid vectors", "EMBEDDING_INVALID_RESPONSE");
-    return [...rows].sort((a, b) => a.index - b.index).map((row) => row.embedding);
+    if (!rows || rows.length !== texts.length || rows.some((row) => !row || !Array.isArray(row.embedding) || !row.embedding.length || row.embedding.some((n) => !Number.isFinite(n)))) throw unavailable("Embedding provider returned invalid vectors", "EMBEDDING_INVALID_RESPONSE");
+    const indexed = rows.every((row) => Number.isInteger(row.index) && row.index! >= 0 && row.index! < texts.length) && new Set(rows.map((row) => row.index)).size === texts.length;
+    const unindexed = rows.every((row) => row.index === undefined);
+    if (!indexed && !unindexed) throw unavailable("Embedding provider returned invalid vector indices", "EMBEDDING_INVALID_RESPONSE");
+    const dimensions = rows[0].embedding.length;
+    if (rows.some((row) => row.embedding.length !== dimensions)) throw unavailable("Embedding provider returned inconsistent vector dimensions", "EMBEDDING_INVALID_RESPONSE");
+    return (indexed ? [...rows].sort((a, b) => a.index! - b.index!) : rows).map((row) => row.embedding);
   }
 }
 
 export function createEmbeddingProvider(): EmbeddingProvider {
+  if (env.embeddingProvider === "mock") return new DeterministicEmbeddingProvider();
   if (env.embeddingProvider === "openai-compatible") {
-    if (!env.embeddingApiKey || !env.embeddingModel || !env.embeddingBaseUrl) throw unavailable("Embedding provider is configured but its required environment variables are missing", "EMBEDDING_NOT_CONFIGURED");
+    if (!env.embeddingApiKey.trim() || !env.embeddingModel.trim() || !env.embeddingBaseUrl.trim()) throw unavailable("EMBEDDING_PROVIDER=openai-compatible requires EMBEDDING_API_KEY, EMBEDDING_MODEL, and EMBEDDING_BASE_URL.", "EMBEDDING_NOT_CONFIGURED");
     return new OpenAiCompatibleEmbeddingProvider(env.embeddingBaseUrl, env.embeddingModel, env.embeddingApiKey);
   }
-  return new DeterministicEmbeddingProvider();
+  throw unavailable(`Unsupported EMBEDDING_PROVIDER=${env.embeddingProvider}. Use mock or openai-compatible.`, "EMBEDDING_PROVIDER_UNSUPPORTED");
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {

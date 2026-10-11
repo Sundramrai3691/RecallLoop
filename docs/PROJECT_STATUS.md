@@ -26,8 +26,8 @@ Presence of a test file alone does not mean it passed in this session.
 | Structured multipart answers and per-point learner state | TESTED | Question part storage, part validation/evaluation, transactional point state in migration `011`; unit suite and PostgreSQL roundtrip/retry integration checks passed in the latest verification session. |
 | Resource recommendations and learning packs | IMPLEMENTED | Resource services and routes. |
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
-| Unit-level tests | TESTED | `npm test`: 14 files, 53 tests passed in the 2026-10-11 Phase 1 session. |
-| Client and server production builds | TESTED | `npm run build` passed for server and client production builds in the 2026-10-11 Phase 1 session. |
+| Unit-level tests | TESTED | Latest `npm test`: 17 files, 74 passed; four opt-in live Gemini checks skipped by default. |
+| Client and server production builds | TESTED | Latest `npm run build` passed for server TypeScript and client production build. |
 | PostgreSQL integration tests | TESTED | `npm run test:integration -w server`: 6/6 cases passed against PostgreSQL in the 2026-10-11 Phase 1 session. |
 | Current developer API startup | UNKNOWN | PostgreSQL integration connected successfully; `npm run dev` was not run in this session. Startup probes PostgreSQL before listening. |
 | Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
@@ -36,12 +36,15 @@ Presence of a test file alone does not mean it passed in this session.
 | Study extraction retry idempotency | IMPLEMENTED | Extraction normalizes duplicate labels/points within one result and repository persistence reuses an existing concept for the same owner/session/name under an advisory transaction lock. Verified by PostgreSQL integration regression; existing historic duplicates are preserved. |
 | Question-generation quality | PARTIALLY TESTED | Built-in questions now bind rapid recall to the point named, and uncurated MCQs fall back to recall. Templates and curated MCQs have structural/unit coverage; provider-generated questions do not exist and pedagogical quality is not validated. |
 | Resource title fallback | IMPLEMENTED | A raw YouTube/Vimeo URL title is replaced with a source-based safe label while its URL and recommendation reason remain intact. Unit coverage added. |
-| Active evaluator provider | TESTED | Local `.env` was inspected without printing secrets: provider is `mock`; no LLM API key is configured. Real-provider evaluation remains unverified. |
+| Active evaluator provider | PARTIALLY TESTED | Local `.env` now selects `openai-compatible` with Gemini 3.8 Flash and a configured key. Isolated extraction and evaluation smoke checks passed; earlier requests also timed out or returned HTTP 503, so stable provider availability is not established. See the latest session entry. |
 | Study topic/source identity | TESTED | New study input rejects URL-shaped topics and URL-only material; optional HTTP(S) source URL is stored and serialized separately from topic and raw material. Unit + PostgreSQL roundtrip regression. |
 | Extraction content integrity | TESTED | Extraction strips URL tokens, requires supplied text, rejects URL-shaped concept names, validates structured output, and executes before new session persistence; deterministic mock no longer invents concepts from an empty topic. Unit + PostgreSQL repeated-input regression. |
 | Learner overview with no observations | TESTED | No assessed concepts yields `averageMastery: null` from the service and the UI says “Not assessed” rather than `0%`. PostgreSQL summary regression; UI production build passed. |
 | Resource explanation integrity | TESTED | Recommendation no longer presents `coverage_strength` as a percentage or displays uncalibrated trust/freshness fields; stored duration remains labeled as an estimate. Unit and PostgreSQL resource checks passed. |
-| Safe provider configuration diagnostic | TESTED | `npm run config:check -w server` reports active LLM, question, embedding and remediation paths without printing credentials. Current observed config is mock/deterministic; live provider path is not verified. |
+| Safe provider configuration diagnostic | TESTED | `npm run config:check -w server` reports Gemini-compatible extraction/evaluation and embeddings plus LLM-grounded remediation without credentials. |
+| Provider selection and error handling | TESTED | LLM/embedding accept `mock` or `openai-compatible`; remediation accepts `mock` or `llm`. Unit tests cover strict selection, authentication/quota/server errors, malformed output, request shape, URL handling, and embedding dimensions. Live results are in the latest session entry. |
+| Current local provider configuration | TESTED | Non-secret `.env` selectors/model/base URL were aligned with the verified Gemini setup; existing key values were preserved. The safe config diagnostic reports the three configured Gemini-backed paths. |
+| Live Gemini capabilities | PARTIALLY TESTED | Isolated extraction/evaluation passed; the embedding endpoint returned 3072 finite dimensions; grounded remediation passed schema validation once; built-in question generation passed its deterministic check. Other requests timed out or returned HTTP 503. Live outcomes do not establish stable availability or pedagogical quality. |
 | Generic question quality | PARTIALLY TESTED | Source confirms built-in deterministic blueprints and curated MCQs; LLM is not used to generate questions. Semantic quality remains a Phase C task. |
 | Manual browser workflow | UNKNOWN | This session did not exercise the browser UI. |
 

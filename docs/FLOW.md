@@ -62,6 +62,8 @@ Study creation accepts a topic string, optional HTTP(S) `sourceUrl`, and supplie
 
 The service names above are confirmed in `server/src/services`. Not every single SQL query has a repository wrapper; several domain services query the shared database module directly. Transaction details are implemented by `server/src/db/postgres.ts::withTransaction` and the call sites.
 
+LLM extraction and free-form evaluation use `LLM_PROVIDER`; grounding source ingestion and retrieval use `EMBEDDING_PROVIDER`; structured grounded generation uses `REMEDIATION_PROVIDER`. The accepted values and Gemini-compatible endpoint example are documented in [Architecture](ARCHITECTURE.md). Selected real providers do not fall back to mock on missing credentials, provider failures, or malformed output. HTTP provider errors map to safe authentication, access, rate/quota, request, and provider-failure codes; response bodies and credentials are not logged.
+
 ### Structured question answer contract
 
 Questions that intentionally assess multiple required points can return `questionData.parts` (`id`, `label`, `prompt`, `knowledgePoints`, and `rubric`). The existing `POST /api/recalls/:id/submit` accepts `answers: [{ partId, answer }]` with the existing confidence/hint fields. The server rejects unknown and duplicate IDs, fills omitted parts as unanswered, and does not call the evaluator for blank parts. Blank parts receive `missing` evidence. MCQs continue through deterministic answer-key grading. Existing single-answer requests remain valid for legacy questions.

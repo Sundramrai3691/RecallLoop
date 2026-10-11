@@ -146,12 +146,13 @@ export class LlmEvaluator implements Evaluator {
         );
         return parse(text);
       } catch (err) {
+        if (err instanceof AppError) throw err;
         lastError = err;
       }
     }
     if (lastError instanceof AppError) throw lastError;
     throw unavailable(
-      "LLM returned invalid JSON after retry. Use mock mode or check the model.",
+      "LLM returned malformed or schema-invalid JSON after retry. Check the configured model and provider response format.",
       "INVALID_AI_JSON",
     );
   }

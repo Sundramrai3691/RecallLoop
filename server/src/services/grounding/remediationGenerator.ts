@@ -78,9 +78,10 @@ Retrieved excerpts with provenance: ${JSON.stringify(retrieved)}`;
 }
 
 export function createGroundedRemediator(): GroundedRemediator {
+  if (env.remediationProvider === "mock") return new DeterministicGroundedRemediator();
   if (env.remediationProvider === "llm") {
-    if (env.llmProvider === "mock" || !env.llmApiKey) throw unavailable("Remediation LLM is configured but LLM_PROVIDER and LLM_API_KEY are not configured", "REMEDIATION_LLM_NOT_CONFIGURED");
+    if (env.llmProvider !== "openai-compatible" || !env.llmApiKey.trim()) throw unavailable("REMEDIATION_PROVIDER=llm requires LLM_PROVIDER=openai-compatible and a nonempty LLM_API_KEY.", "REMEDIATION_LLM_NOT_CONFIGURED");
     return new LlmGroundedRemediator(createLlmProvider());
   }
-  return new DeterministicGroundedRemediator();
+  throw unavailable(`Unsupported REMEDIATION_PROVIDER=${env.remediationProvider}. Use mock or llm.`, "REMEDIATION_PROVIDER_UNSUPPORTED");
 }
