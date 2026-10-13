@@ -6,7 +6,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 | Reported symptom | Repository finding | Disposition |
 |---|---|---|
-| A YouTube URL appears as a topic/question | Confirmed: study title flowed into extraction, and empty material was allowed. The mock created generic points from the title; the LLM prompt explicitly allowed topic-only extraction. | Fixed for new sessions: URL topic rejection, text required, URL stored separately, extraction ignores URL tokens and runs before session insertion. |
+| A YouTube URL appears as a topic/question | Confirmed: study title flowed into extraction, and empty material was allowed. The mock created generic points from the title; the LLM prompt explicitly allowed topic-only extraction. | New-session input rejects URL topics and URL-only material; source links remain separate. Extraction strips URL tokens and rejects extracted URL tokens in concept names, descriptions, and knowledge-point statements before session insertion. Remediation output also rejects URLs. A read-only scan of local `recallloop` found 4 historical URL-only sessions, 4 contaminated concepts and 20 contaminated question rows; 17 submitted attempts are attached. These records remain unchanged pending a data-preserving review. |
 | Knowledge-point descriptions repeat | Exact repeated concepts/points are normalized within one extraction result and same-session persistence reuses matching concept names. The mock still derives points sentence by sentence, and personal points have no canonical IDs. Without the reported sample/session, the exact repeated display defect cannot be assigned to extraction versus legacy rows/rendering. | No legacy data was changed. This pass preserves current dedupe and adds a repeated-input integration regression; point identity/mapping and broader semantic dedupe remain in Phase B. |
 | Mastery and counts contradict | Confirmed presentation inconsistency: the learner overview rendered `null` average mastery as `0%`, despite the service returning zero assessed concepts and null average. Baseline already deduplicated stable canonical point IDs, but a single correct point could still receive a “Strong” band. | Fixed learner empty state; baseline API now counts unique evidence and labels fewer than three assessed points “Early signal,” even when observed point coverage is 100%. Reports distinguish that point coverage from established concept mastery. |
 | Questions are generic | Confirmed architecture: questions are deterministic built-in blueprints plus curated MCQs; the LLM provider is not used for question generation. Generic wording is a blueprint/content limitation, not evidence of live model quality. | Defined quality criteria and evaluator benchmark in Phase C; no unreviewed question bank generated here. |
@@ -29,7 +29,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** PostgreSQL-backed regressions pass on the current schema; no historical records are deleted; a reviewed sample of real study materials is traced to source, concepts, question, answer evidence, report and next action; live-provider and browser checks are recorded separately from mock coverage.
 
-**Current delivery in this pass:** Topic/source separation, saved source URL, required text, URL-leak guard, no empty mock extraction, extraction-before-session persistence, learner empty-state correction, removal of unsupported resource trust/freshness/coverage-percent claims, and provider status check. Canonical point identity remains incomplete.
+**Current delivery:** Topic/source separation, saved source URL, required text, URL-leak checks at input and structured extraction boundaries, URL rejection in generated remediation, no empty mock extraction, extraction-before-session persistence, learner empty-state correction, removal of unsupported resource trust/freshness/coverage-percent claims, and provider status check. Canonical point identity remains incomplete for personal labels. Existing-session contamination review and manual browser validation remain outstanding.
 
 ## Phase B — Canonical knowledge and roadmaps
 
@@ -71,7 +71,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Dependencies:** Phase C reviewed objectives and answer rubrics; Phase B stable knowledge-point identity.
 
-**Deliverables:** Per-question feedback; answer-key/explanation reveal after submission; correct/partial/missing/incorrect distinctions; unique knowledge-point evidence; coherent study-session and assessment reports; a labeled evaluator benchmark of manageable size.
+**Deliverables:** Per-question feedback; answer-key/explanation reveal after submission; correct/partial/missing/incorrect distinctions; unique knowledge-point evidence; single-write recoverable baseline and recall submissions; coherent study-session and assessment reports; a labeled evaluator benchmark of manageable size.
 
 **Acceptance:** Each shown result traces to submitted content and rubric; unassessed dimensions remain absent; independent structured parts remain independent; aggregates state their denominator and do not imply long-term mastery from one answer.
 

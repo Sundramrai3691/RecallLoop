@@ -22,6 +22,7 @@ const contentSchema = z.object({
 export function parseGroundedRemediation(raw: string): GroundedRemediation {
   const parsed = contentSchema.safeParse(parseJsonObject(raw));
   if (!parsed.success) throw new Error(`Grounded remediation failed validation: ${parsed.error.issues[0]?.message ?? "invalid structure"}`);
+  if (/(?:https?:\/\/|www\.)\S+/i.test(JSON.stringify(parsed.data))) throw new Error("Grounded remediation contains a URL in learner-facing content");
   return parsed.data;
 }
 

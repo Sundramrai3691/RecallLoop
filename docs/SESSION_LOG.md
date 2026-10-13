@@ -109,3 +109,38 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Added unit coverage that repeated query rows with the same canonical ID collapse while distinct IDs with identical text remain separate. PostgreSQL tests verify HTTP caching and another topic, API point count, repeated seed/migration stability, evidence-reference remapping across all three FK tables, and retention/audit of conflicting metadata.
 - Verification: `npm run build` passed; `npm test` passed (18 files, 83 passed, 4 opt-in live checks skipped); deterministic `npm run test:integration -w server` passed (10 cases) against the configured PostgreSQL database; `git diff --check` passed. The migration and integration fixture were applied transactionally as described; no learner evidence rows were deleted.
 - Browser check remaining: reload the Backend Engineer roadmap and confirm HTTP caching shows one point titled `Can distinguish freshness from validation.`; refresh once more to confirm it remains one after migration replay. This repair does not change question generation, hints, evaluation quality, or video fetching.
+## 2026-10-14 — Extraction and remediation URL containment
+
+- Preserved the existing uncommitted Phase 1 canonical-point repair in the working tree. Initial state was branch `main` at `8eecab6` (`origin/main`), with the migration `015` and related service, integration-test, and documentation changes already modified/untracked; there were no staged changes. No reset, cleanup, or commit was performed.
+- Reviewed the study creation and concept extraction path. Source URL tokens were removed from supplied text and URL-shaped concept names rejected, but URL tokens in extracted descriptions and required point statements could still persist and later appear in question prompts or feedback. The structured remediation parser also accepted URL tokens in generated learner-facing text.
+- Added fail-closed validation before session persistence for URL-bearing extracted names, descriptions, and knowledge-point statements. Added remediation-output validation rejecting URL tokens while retaining source links in separate provenance fields. Added unit regressions for URL stripping, provider output leakage in each concept field, and remediation title leakage.
+- Read-only historical contamination scan was limited to the expected local `recallloop` database; PostgreSQL refused the connection at `127.0.0.1:5432`, so historical records were not inspected or modified. `npm run test:integration -w server` likewise failed during migration setup with `ECONNREFUSED`; 10 integration tests were skipped, not passed.
+- Verification: `npm test` passed (19 files, 88 passed, 4 opt-in live checks skipped); `npm run build` passed for server and client; `git diff --check` passed. No live providers or credentials were used.
+- Remaining: restart the local PostgreSQL service, rerun the read-only historical scan and integration suite; perform browser checks for roadmap point rendering, source link separation, contaminated-output rejection, remediation citations, and the full study-to-assessment flow. Phase C question-quality benchmarking and manual review remain future work; no question-generation provider or educational-quality claim was added.
+
+## 2026-10-14 — Baseline evidence write integrity
+
+- Phase 3 source review found that `submitBaselineQuestion` evaluated an answer and then updated its row without checking `submitted_at`; a repeated request could replace submitted evidence. The completion/learner-state refresh also ran outside the answer write transaction, and concurrent submissions could each observe the other final answer as still pending, leaving an assessment incomplete despite all questions being submitted.
+- The new integration regression also reproduced a second defect: the baseline completion aggregate returned duplicate SQL column names while the code read separate `count` and `answered` properties. All submitted questions were persisted, but the completion refresh returned early and left the assessment pending.
+- Baseline submission now evaluates before writes, locks the user-owned assessment row, conditionally updates only an unanswered question, and refreshes assessment/learner state in the same transaction. Repeated submission returns a 409 `BASELINE_QUESTION_ALREADY_SUBMITTED` without replacing evidence. The client reconciles that response by reloading the assessment and advancing to the next unanswered question or result.
+- Added a PostgreSQL regression for refusing duplicate overwrite and for concurrent final answers completing one assessment. The integration suite could not execute in this session because the PostgreSQL service at `127.0.0.1:5432` refused connections; this new transaction behavior is implemented but not yet integration-tested.
+- Manual browser validation remains outstanding, including retry/reconciliation after a lost baseline response. No schema migration was needed; the correction uses the existing `submitted_at` field and assessment/question rows.
+
+## 2026-10-14 — Final verification follow-up
+
+- After the baseline integrity changes, `npm test` passed (19 files, 88 passed, 4 opt-in live-provider checks skipped) and `npm run build` passed for server and client.
+- `git diff --check` passed. Git emitted only its standard working-copy LF-to-CRLF notices for modified files.
+- PostgreSQL integration remains unverified in this run: `npm run test:integration -w server` failed at migration setup with `ECONNREFUSED 127.0.0.1:5432`; all 10 integration cases were skipped.
+
+## 2026-10-14 — Local PostgreSQL recovery and final data review
+
+- Docker reported the documented PostgreSQL 16 container healthy on port 5432. A guarded read-only preflight confirmed the configured target is the local `recallloop` database before running integration tests.
+- The first integration attempts caught and corrected a test fixture assumption and the baseline SQL aggregate's duplicate column names. Final deterministic `npm run test:integration -w server` passed 10/10. The baseline regression confirms repeated submission preserves the original answer and concurrent final answers lead to a completed assessment with all evidence.
+- A read-only scan found 9 canonical knowledge-point rows and 9 durable deduplication audit entries. For contamination, it found 4 URL-only study sessions, 4 concepts with URL-bearing name/description/points, 20 URL-bearing question rows, 29 associated recall attempts including 17 submitted attempts, and no separate source URL for those sessions. No URL-bearing titles or rows were found in resources or grounded remediation.
+- Historical contaminated sessions and derived concepts/questions were left unchanged. The source material is URL-only and 17 submitted attempts have evidence attached; rewriting or deleting these would risk changing historical learner outcomes. They need a dedicated provenance/evidence review before any targeted remediation.
+
+## 2026-10-14 — Verification after baseline aggregate correction
+
+- Final `npm test`: passed, 19 files / 88 passed, 4 opt-in live-provider checks skipped.
+- Final `npm run build`: passed for server TypeScript and client production bundle.
+- Deterministic `npm run test:integration -w server`: passed, 10/10 against local PostgreSQL. `git diff --check`: passed with only standard LF-to-CRLF warnings.

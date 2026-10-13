@@ -2,13 +2,18 @@ import { AppError } from "../../utils/errors.js";
 import { getEvaluator } from "../evaluator/index.js";
 import { extractedConceptSchema } from "../evaluator/schemas.js";
 import { createConcepts, getConcept, listConceptsForSession, mapConcept, updateConceptMastery } from "../../repositories/legacyPostgresRepositories.js";
+import type { Evaluator } from "../evaluator/types.js";
 
-export async function prepareConcepts(input: { title: string; rawMaterial?: string }) {
+const URL_TOKEN = /(?:https?:\/\/|www\.)\S+/i;
+
+export async function prepareConcepts(input: { title: string; rawMaterial?: string }, evaluator: Pick<Evaluator, "extractConcepts"> = getEvaluator()) {
   if (!input.rawMaterial?.trim()) throw new AppError("Study notes or source text are required before concepts can be extracted", 400, "STUDY_TEXT_REQUIRED");
   const sourceText = input.rawMaterial.replace(/(?:https?:\/\/|www\.)\S+/gi, " ").trim();
   if (!sourceText) throw new AppError("Add notes or source text; a link alone is not extractable content.", 400, "STUDY_TEXT_REQUIRED");
-  const extracted = await getEvaluator().extractConcepts({ title: input.title, rawMaterial: sourceText });
-  if (extracted.some((concept) => /^https?:\/\/|^www\./i.test(concept.name.trim()))) throw new AppError("Concept extraction returned a URL as a topic. Add usable source text and try again.", 502, "INVALID_EXTRACTED_TOPIC");
+  const extracted = await evaluator.extractConcepts({ title: input.title, rawMaterial: sourceText });
+  if (extracted.some((concept) => [concept.name, concept.description, ...concept.requiredKnowledgePoints].some((value) => URL_TOKEN.test(value)))) {
+    throw new AppError("Concept extraction returned a URL in learner-facing content. Review the supplied notes and try again.", 502, "INVALID_EXTRACTED_CONTENT");
+  }
   const validated = extracted.map((concept, index) => { const parsed = extractedConceptSchema.safeParse(concept); if (!parsed.success) throw new AppError(`Extracted concept ${index + 1} failed validation and was not stored`, 502, "INVALID_AI_JSON"); return parsed.data; });
   if (!validated.length) throw new AppError("No valid concepts were extracted", 502, "INVALID_AI_JSON");
   const merged = new Map<string, typeof validated[number]>();

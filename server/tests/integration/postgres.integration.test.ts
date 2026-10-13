@@ -159,7 +159,7 @@ describe("PostgreSQL runtime integration", () => {
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
-  it("keeps extracted concepts and points stable across repeated processing and scores unique baseline evidence",async()=>{
+  it("keeps extracted concepts stable and baseline submissions single-write under concurrency",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Integrity Test') RETURNING id`,[`integrity-${randomUUID()}@test.local`])).rows[0].id;
     try{
       const suppliedText="https://video.example/watch?v=topic\nCache reads use a key to find stored values. Cache reads use a key to find stored values.";
@@ -173,7 +173,7 @@ describe("PostgreSQL runtime integration", () => {
       expect(second[0].id).toBe(first[0].id);
       expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM personal_concepts WHERE user_id=$1 AND study_session_id=$2`,[userId,session.id])).rows[0].count).toBe(1);
 
-      const skill=(await postgres.query<any>(`SELECT id FROM canonical_skills ORDER BY name LIMIT 1`)).rows[0];
+      const skill=(await postgres.query<any>(`SELECT s.id FROM canonical_skills s JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN knowledge_points kp ON kp.concept_id=c.id GROUP BY s.id ORDER BY count(DISTINCT c.id) DESC,s.id LIMIT 1`)).rows[0];
       const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Baseline integrity') RETURNING id`,[userId])).rows[0];
       const baseline=await createBaseline({userId,goalId:goal.id,skillId:skill.id,level:"familiar"});
       expect(baseline.questions.length).toBeGreaterThan(0);
@@ -181,14 +181,25 @@ describe("PostgreSQL runtime integration", () => {
       expect(baseline.questions.every((question:any)=>Boolean(question.knowledgePointId))).toBe(true);
       expect(baseline.assessment.observedMastery).toBeNull();
       expect((await getBaseline(baseline.assessment.id,userId)).assessment.observedStatus).toBe("Not assessed");
+      expect(baseline.questions.length).toBeGreaterThanOrEqual(3);
       let result=baseline;
-      for(const question of baseline.questions){
+      const firstQuestion=baseline.questions[0];
+      result=await submitBaselineQuestion(baseline.assessment.id,userId,{questionId:firstQuestion.id,answer:"No relevant answer provided.",confidence:4});
+      await expect(submitBaselineQuestion(baseline.assessment.id,userId,{questionId:firstQuestion.id,answer:"A replacement answer must not overwrite submitted evidence.",confidence:10}))
+        .rejects.toMatchObject({code:"BASELINE_QUESTION_ALREADY_SUBMITTED",status:409});
+      expect((await getBaseline(baseline.assessment.id,userId)).questions.find((question:any)=>question.id===firstQuestion.id)?.answer).toBe("No relevant answer provided.");
+      for(const question of baseline.questions.slice(1,-2)){
         result=await submitBaselineQuestion(baseline.assessment.id,userId,{questionId:question.id,answer:"No relevant answer provided.",confidence:4});
       }
+      const finalQuestions=baseline.questions.slice(-2);
+      await Promise.all(finalQuestions.map((question:any)=>submitBaselineQuestion(baseline.assessment.id,userId,{questionId:question.id,answer:"No relevant answer provided.",confidence:4})));
+      result=await getBaseline(baseline.assessment.id,userId);
+      expect({status:result.assessment.status,submitted:result.questions.filter((question:any)=>question.submittedAt).length,total:result.questions.length})
+        .toEqual({status:"completed",submitted:result.questions.length,total:result.questions.length});
       expect(Number(result.assessment.observedMastery)).toBe(0);
       const baselineReport=(await getBaseline(baseline.assessment.id,userId)).assessment;
-      expect(baselineReport.observedEvidenceCount).toBeLessThan(3);
-      expect(baselineReport.observedStatus).toBe("Early signal");
+      expect(baselineReport.observedEvidenceCount).toBe(3);
+      expect(baselineReport.observedStatus).toBe("Needs work");
       const assessedPoints=result.questions.flatMap((question:any)=>question.knowledgePointResults??[]);
       expect(assessedPoints.length).toBeGreaterThan(0);
       expect(result.questions.every((question:any)=>(question.knowledgePointResults??[]).length===1)).toBe(true);

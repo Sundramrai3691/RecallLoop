@@ -11,6 +11,10 @@ describe("grounded remediation generation",()=>{
     expect(result.unsupportedAspects).toEqual([]);
   });
   it("rejects invalid structured provider output",()=>expect(()=>parseGroundedRemediation("{\"title\":\"x\"}")).toThrow("failed validation"));
+  it("rejects a source URL copied into remediation content", () => {
+    const remediation = { title:"Review https://video.example.test/watch", whyThis:"This gap needs another review.", explanation:"The learner should revisit this idea with a concise explanation.", keyPoints:["A useful learning point"], commonMistake:"Skipping the mechanism", checkYourself:["Explain the mechanism"], unsupportedAspects:[] };
+    expect(() => parseGroundedRemediation(JSON.stringify(remediation))).toThrow("contains a URL");
+  });
   it("fails safely when the retrieved context has no usable statements",async()=>{
     await expect(new DeterministicGroundedRemediator().generate({...input,sources:[{...input.sources[0],text:"short"}]})).rejects.toThrow("did not contain a usable statement");
   });

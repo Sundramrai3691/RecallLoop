@@ -49,6 +49,8 @@ The planner consumes `ReviewState` for due timing and `LearnerModelService` for 
 - **Derived**: recall success rate, mistake count, due count, average mastery, weak concepts, and weak skills.
 - **Heuristic**: concept status thresholds and the blend used to update `Concept.mastery`. These are intentionally transparent approximations, not scientific mastery claims.
 
+Baseline answers are evaluated before persistence. Once the answer and point evidence are committed, that question is immutable within the assessment: submission locks the assessment and updates only a question with no `submitted_at`. Concurrent final answers serialize before completion and learner-state aggregation. A provider failure before the transaction leaves the question unanswered and retryable.
+
 ## Why the boundaries matter
 
 Structured multi-part questions preserve evidence for each required point label in `learner_knowledge_point_states`. A correct part updates only its own state; missing or partial evidence for another part remains visible independently. Aggregate attempt coverage and concept mastery remain separate projections for existing scheduling and summaries.
