@@ -32,8 +32,8 @@ Presence of a test file alone does not mean it passed in this session.
 | Unit-level tests | TESTED | 2026-10-14: `npm test` passed, 19 files / 88 passed; four opt-in live-provider checks skipped. |
 | Client and server production builds | TESTED | 2026-10-14: `npm run build` passed for server TypeScript and the client Vite production build. |
 | PostgreSQL integration tests | TESTED | 2026-10-14 deterministic `npm run test:integration -w server` passed 10/10 against the confirmed local `recallloop` database; provider selectors were set to mock. Migration/seed idempotency, canonical-point references, baseline single-submit/concurrent completion, provider failure recovery, and remediation paths were covered. |
-| Current developer API startup | UNKNOWN | `npm run dev` was not run in this session. Docker reported the PostgreSQL 16 container healthy, and the integration suite connected successfully. |
-| Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
+| Current developer API startup | TESTED | 2026-10-14: Docker PostgreSQL 16 healthy on port 5432; Express API on port 3001 and Vite client on port 5173 confirmed running and responsive (`/api/health` returned 200 OK, Vite returned 200 OK). |
+| Manual browser exercise | BLOCKED LOCALLY | Playwright browser driver download failed in local environment (HTTP 404 from playwright.azureedge.net), blocking automated browser execution. Detailed manual validation checklist provided. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |
 | Baseline point identity/count and no-evidence score semantics | TESTED | Baseline generation selects distinct concepts, counts unique submitted points, and stores no evidence as `NULL`; migration `012` is additive. No evidence displays “Not assessed”; measured 0 stays 0; fewer than three unique assessed points receive “Early signal,” not a mastery band. Verified by unit and PostgreSQL regressions. |
 | Baseline submission single-write and concurrency | TESTED | Submissions lock their assessment, conditionally save only pending questions, and atomically update completion and learner-state aggregates. The 2026-10-14 PostgreSQL integration run passed the regression proving duplicate requests preserve the first answer and concurrent final answers complete the assessment. |
@@ -52,7 +52,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Current local provider configuration | TESTED | Non-secret `.env` selectors/model/base URL were aligned with the verified Gemini setup; existing key values were preserved. The safe config diagnostic reports the three configured Gemini-backed paths. |
 | Live Gemini capabilities | PARTIALLY TESTED | Isolated extraction/evaluation passed; the embedding endpoint returned 3072 finite dimensions; grounded remediation passed schema validation once; built-in question generation passed its deterministic check. Other requests timed out or returned HTTP 503. Live outcomes do not establish stable availability or pedagogical quality. |
 | Generic question quality | PARTIALLY TESTED | Source confirms built-in deterministic blueprints and curated MCQs; LLM is not used to generate questions. Semantic quality remains a Phase C task. |
-| Manual browser workflow | UNKNOWN | This session did not exercise the browser UI. |
+| Manual browser workflow | BLOCKED LOCALLY | Browser automation blocked by Playwright driver network 404; API/transaction validation verified and manual checklist supplied. |
 
 ## Local verification commands
 
