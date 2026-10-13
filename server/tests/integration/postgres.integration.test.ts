@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { postgres, runPostgresMigration, withTransaction } from "../../src/db/postgres.js";
 import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
 import { createBaseline,getBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
@@ -33,6 +34,71 @@ describe("PostgreSQL runtime integration", () => {
     expect(result.rows.length).toBe(13);
     const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id')))`);
     expect(structured.rows).toHaveLength(9);
+  });
+
+  it("deduplicates canonical seed rows, keeps topic identity, and remains stable across migration reruns",async()=>{
+    const targets=await postgres.query<any>(`SELECT r.id AS role_id,c.id AS concept_id,c.name AS concept_name,t.name AS topic_name,count(kp.id)::int AS point_rows,count(DISTINCT kp.id)::int AS distinct_ids,count(DISTINCT regexp_replace(lower(trim(kp.statement)),'[[:space:]]+',' ','g'))::int AS distinct_statements FROM roles r JOIN role_skills rs ON rs.role_id=r.id JOIN canonical_skills s ON s.id=rs.skill_id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id LEFT JOIN knowledge_points kp ON kp.concept_id=c.id WHERE r.name='Backend Engineer' AND ((t.name='HTTP' AND c.name='HTTP caching') OR (t.name='Caching' AND c.name='Cache-aside pattern')) GROUP BY r.id,c.id,c.name,t.name ORDER BY t.name`);
+    expect(targets.rows).toHaveLength(2);
+    expect(targets.rows.map((row:any)=>[row.topic_name,row.concept_name,row.point_rows,row.distinct_ids,row.distinct_statements])).toEqual([
+      ["Caching","Cache-aside pattern",1,1,1],
+      ["HTTP","HTTP caching",1,1,1],
+    ]);
+    const audit=await postgres.query<any>(`SELECT action,record_count,cardinality(record_ids)::int AS recorded_ids,metadata_variant_count,references_before FROM canonical_knowledge_point_deduplication_audit WHERE concept_id=$1 AND normalized_statement='can distinguish freshness from validation.'`,[targets.rows.find((row:any)=>row.concept_name==="HTTP caching").concept_id]);
+    expect(audit.rows[0]).toMatchObject({action:"deduplicated",record_count:audit.rows[0]?.recorded_ids,metadata_variant_count:1});
+    expect(Number(audit.rows[0]?.record_count)).toBeGreaterThan(1);
+
+    const totalBefore=Number((await postgres.query<any>(`SELECT count(*)::int AS count FROM knowledge_points`)).rows[0].count);
+    await runPostgresMigration();
+    const totalAfter=Number((await postgres.query<any>(`SELECT count(*)::int AS count FROM knowledge_points`)).rows[0].count);
+    expect(totalAfter).toBe(totalBefore);
+
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Roadmap Point Count') RETURNING id`,[`roadmap-points-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const roadmap=await getRoleRoadmap(targets.rows[0].role_id,userId);
+      const concept=roadmap.skills.flatMap((skill:any)=>skill.topics).flatMap((topic:any)=>topic.concepts).find((node:any)=>node.name==="HTTP caching");
+      expect(concept.knowledgePoints).toHaveLength(1);
+      expect(concept.knowledgePoints[0]).toMatchObject({statement:"Can distinguish freshness from validation."});
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("remaps all canonical-point evidence before deleting safe duplicates and retains metadata conflicts for review",async()=>{
+    const client=await postgres.connect();
+    try{
+      await client.query("BEGIN");
+      const concept=(await client.query<any>(`SELECT c.id FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id WHERE t.name='HTTP' AND c.name='HTTP caching' LIMIT 1`)).rows[0];
+      await client.query(`DROP INDEX IF EXISTS uq_knowledge_points_concept_statement_metadata`);
+      const duplicateA="00000000-0000-0000-0000-000000000001";
+      const duplicateB="00000000-0000-0000-0000-000000000002";
+      await client.query(`INSERT INTO knowledge_points(id,concept_id,statement,importance,difficulty) VALUES($1,$3,'Can distinguish freshness from validation.',80,3),($2,$3,'Can distinguish freshness from validation.',80,3)`,[duplicateA,duplicateB,concept.id]);
+
+      const userId=(await client.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Point Reference Test') RETURNING id`,[`point-refs-${randomUUID()}@test.local`])).rows[0].id;
+      const goalId=(await client.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Point reference fixture') RETURNING id`,[userId])).rows[0].id;
+      const assessmentId=(await client.query<any>(`INSERT INTO baseline_assessments(user_id,goal_id,selected_level,baseline_source) VALUES($1,$2,'familiar','assessed') RETURNING id`,[userId,goalId])).rows[0].id;
+      await client.query(`INSERT INTO baseline_questions(assessment_id,concept_id,knowledge_point_id,level,question) VALUES($1,$2,$3,'L1','Fixture baseline'),($1,$2,$4,'L2','Second fixture baseline')`,[assessmentId,concept.id,duplicateA,duplicateB]);
+
+      const sessionId=(await client.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'Point reference fixture') RETURNING id`,[userId])).rows[0].id;
+      const personalConceptId=(await client.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description) VALUES($1,$2,'Point reference fixture','Fixture concept') RETURNING id`,[userId,sessionId])).rows[0].id;
+      await client.query(`INSERT INTO learner_knowledge_point_states(user_id,concept_id,point,last_status,canonical_knowledge_point_id) VALUES($1,$2,'Can distinguish freshness from validation.','correct',$3)`,[userId,personalConceptId,duplicateA]);
+      const attemptId=(await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question) VALUES($1,$2,$3,'explain','Fixture recall') RETURNING id`,[userId,personalConceptId,sessionId])).rows[0].id;
+      const evaluationId=(await client.query<any>(`INSERT INTO recall_evaluations(recall_attempt_id,overall_coverage,feedback,suggested_recall_type,evaluator_version) VALUES($1,1,'Fixture evidence','explain','integration') RETURNING id`,[attemptId])).rows[0].id;
+      await client.query(`INSERT INTO recall_knowledge_point_results(evaluation_id,point,status,canonical_knowledge_point_id) VALUES($1,'Can distinguish freshness from validation.','correct',$2)`,[evaluationId,duplicateB]);
+
+      const conflictA="00000000-0000-0000-0000-000000000010";
+      const conflictB="00000000-0000-0000-0000-000000000011";
+      await client.query(`INSERT INTO knowledge_points(id,concept_id,statement,importance,difficulty) VALUES($1,$3,'Metadata conflict point.',50,2),($2,$3,'Metadata conflict point.',90,4)`,[conflictA,conflictB,concept.id]);
+
+      const migration=await readFile(new URL("../../migrations/015_deduplicate_canonical_knowledge_points.sql",import.meta.url),"utf8");
+      await client.query(migration);
+      const keeper=(await client.query<any>(`SELECT id FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')='can distinguish freshness from validation.' ORDER BY id LIMIT 1`,[concept.id])).rows[0].id;
+      const refs=await client.query<any>(`SELECT (SELECT count(*)::int FROM baseline_questions WHERE assessment_id=$1 AND knowledge_point_id=$2) AS baseline_refs,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$3 AND canonical_knowledge_point_id=$2) AS learner_refs,(SELECT count(*)::int FROM recall_knowledge_point_results WHERE evaluation_id=$4 AND canonical_knowledge_point_id=$2) AS recall_refs`,[assessmentId,keeper,userId,evaluationId]);
+      expect(refs.rows[0]).toEqual({baseline_refs:2,learner_refs:1,recall_refs:1});
+      expect(Number((await client.query<any>(`SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')='can distinguish freshness from validation.'`,[concept.id])).rows[0].count)).toBe(1);
+      expect(Number((await client.query<any>(`SELECT count(*)::int AS count FROM knowledge_points WHERE id IN ($1,$2)`,[conflictA,conflictB])).rows[0].count)).toBe(2);
+      expect((await client.query<any>(`SELECT action FROM canonical_knowledge_point_deduplication_audit WHERE concept_id=$1 AND normalized_statement='metadata conflict point.'`,[concept.id])).rows[0]?.action).toBe("manual_review");
+    }finally{
+      await client.query("ROLLBACK");
+      client.release();
+    }
   });
 
   it("persists topic, external source link, and material separately",async()=>{

@@ -37,6 +37,8 @@ flowchart TD
 
 The first curated seed includes Backend Engineer and System Design roles, backend fundamentals such as HTTP, SQL, caching, rate limiting, messaging, concurrency, operations, and system-design concepts.
 
+Canonical knowledge-point seed rows are scoped by concept ID. Migration `015` makes repeated seed execution idempotent using normalized statement plus curation metadata, preserves ambiguous metadata conflicts in an audit table, and remaps point evidence before removing exact duplicates. Display text alone is never used to merge points across concepts.
+
 ## Baseline assessment
 
 A learner selects a canonical skill and one of `new`, `familiar`, or `advanced`.

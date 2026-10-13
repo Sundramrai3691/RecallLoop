@@ -9,6 +9,10 @@ export function rollupRoadmapStatus(statuses: Array<"not_started" | "studied" | 
   return statuses.includes("assessed") ? "assessed" : statuses.includes("studied") ? "studied" : "not_started";
 }
 
+export function uniqueKnowledgePointsById<T extends { id: string }>(points: T[]): T[] {
+  return [...new Map(points.map((point) => [point.id, point])).values()];
+}
+
 export interface KnowledgeRole {
   id: string;
   name: string;
@@ -133,6 +137,7 @@ export async function getRoleRoadmap(roleId: string, userId: string) {
     if (row.concept_id && !conceptMap.has(row.concept_id)) { const status=stateByConcept.get(row.concept_id) ?? "not_started"; const concept={id:row.concept_id,name:row.concept_name,description:row.concept_description,difficulty:row.difficulty,status,prerequisites:prerequisitesByConcept.get(row.concept_id) ?? [],resources:resourcesByConcept.get(row.concept_id) ?? [],knowledgePoints:[]}; conceptMap.set(row.concept_id,concept); topicMap.get(row.topic_id).concepts.push(concept); }
     if (row.point_id) conceptMap.get(row.concept_id).knowledgePoints.push({id:row.point_id,statement:row.point_statement,importance:row.importance,difficulty:row.point_difficulty,evidence:stateByPoint.get(row.point_id) ?? {status:"not_assessed",attemptCount:0}});
   }
+  for (const concept of conceptMap.values()) concept.knowledgePoints=uniqueKnowledgePointsById(concept.knowledgePoints);
   for (const topic of topicMap.values()) topic.status=rollupRoadmapStatus([...(topic.concepts.map((concept:any)=>concept.status)),topic.status]);
   for (const skill of skillMap.values()) skill.status=rollupRoadmapStatus(skill.topics.map((topic:any)=>topic.status));
   return {...role,skills:[...skillMap.values()]};

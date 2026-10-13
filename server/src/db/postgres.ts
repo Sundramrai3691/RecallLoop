@@ -31,7 +31,7 @@ export async function runPostgresMigration() {
   const files = (await fs.readdir(migrationDirectory))
     .filter((file) => file.endsWith(".sql"))
     .sort((left, right) => {
-      const order = ["003_core_domain.sql", "001_phase3.sql", "002_seed_knowledge.sql", "004_question_engine.sql", "005_assessment_sessions.sql", "006_plan_time_budget.sql", "007_adaptive_planning.sql", "008_application_practice.sql", "009_plan_resource_link.sql", "010_grounded_remediation.sql", "011_structured_question_parts.sql", "012_observed_mastery_is_nullable.sql", "013_study_session_source_url.sql", "014_canonical_study_handoffs.sql"];
+      const order = ["003_core_domain.sql", "001_phase3.sql", "002_seed_knowledge.sql", "004_question_engine.sql", "005_assessment_sessions.sql", "006_plan_time_budget.sql", "007_adaptive_planning.sql", "008_application_practice.sql", "009_plan_resource_link.sql", "010_grounded_remediation.sql", "011_structured_question_parts.sql", "012_observed_mastery_is_nullable.sql", "013_study_session_source_url.sql", "014_canonical_study_handoffs.sql", "015_deduplicate_canonical_knowledge_points.sql"];
       return order.indexOf(left) - order.indexOf(right);
     });
   for (const file of files) {

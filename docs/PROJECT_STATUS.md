@@ -18,9 +18,10 @@ Presence of a test file alone does not mean it passed in this session.
 | Area | Status | Evidence |
 |---|---|---|
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
-| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`014`. |
+| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`015`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |
 | Canonical knowledge, baseline and learner summaries | IMPLEMENTED | Knowledge/baseline/learner services and migration `001`. |
+| Canonical knowledge-point seed integrity | TESTED | Verified the local DB had 48 identical rows for each of 9 seeded canonical points (432 rows / 9 unique concept-statement identities); migration `015` consolidated them to 9 rows, remapped 21 baseline-question point references, retained an audit of all 9 duplicate groups, and added a uniqueness index. PostgreSQL regressions verify HTTP caching plus a separate topic, migration rerun idempotency, role-roadmap count, evidence-FK preservation, and manual-review retention for metadata conflicts. |
 | Canonical roadmap-to-study identity | TESTED | Migration `014` adds optional session topic/concept links, exact-name personal-concept links and unique exact-match point evidence links; authenticated roadmap data exposes role/skill/topic/concept/point nodes, direct prerequisites, resources and persisted evidence statuses. Unit and PostgreSQL regressions passed in this session. Historical sessions remain unmapped; no browser trace was performed. |
 | Study sessions, recall, evaluation, scheduling | IMPLEMENTED | Study/recall/evaluator/scheduler services and core migration. |
 | Recoverable real-provider 429 handling | TESTED | OpenAI-compatible LLM errors distinguish transient rate limits from quota exhaustion using safe structured fields; short transient retry is bounded to one, long `Retry-After` is returned to the client, and auth/quota/permanent errors are not retried. Recall and study forms preserve inputs and report pending/not-created state. PostgreSQL injected-429 tests cover both provider-dependent paths and confirm no partial evaluation evidence or session insert. |
@@ -28,9 +29,9 @@ Presence of a test file alone does not mean it passed in this session.
 | Structured multipart answers and per-point learner state | TESTED | Question part storage, part validation/evaluation, transactional point state in migration `011`; unit suite and PostgreSQL roundtrip/retry integration checks passed in the latest verification session. |
 | Resource recommendations and learning packs | IMPLEMENTED | Resource services and routes. |
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
-| Unit-level tests | TESTED | This verification: `npm test` passed, 18 files / 82 passed; four opt-in live-provider checks skipped. |
+| Unit-level tests | TESTED | This verification: `npm test` passed, 18 files / 83 passed; four opt-in live-provider checks skipped. |
 | Client and server production builds | TESTED | This verification: `npm run build` passed for server TypeScript and client production build. |
-| PostgreSQL integration tests | TESTED | This verification: `npm run test:integration -w server` passed, 8/8 against the local PostgreSQL instance selected by `DATABASE_URL`; process provider selectors were set to deterministic mock, and the new failure-path test used a stubbed 429 response. No live provider request was made. |
+| PostgreSQL integration tests | TESTED | This verification: deterministic `npm run test:integration -w server` passed (10/10) against the local PostgreSQL instance selected by `DATABASE_URL`; both provider 429s and knowledge-point duplicate cleanup were tested without live provider calls. |
 | Current developer API startup | UNKNOWN | PostgreSQL integration connected successfully; `npm run dev` was not run in this session. Startup probes PostgreSQL before listening. |
 | Manual browser exercise | UNKNOWN | No browser exercise was performed in this documentation session. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |
