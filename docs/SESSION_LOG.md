@@ -153,3 +153,25 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - New study input and source separation verified: validated that topic URLs are rejected with TOPIC_URL_NOT_ALLOWED (HTTP 400), URL-only study text is rejected with STUDY_TEXT_REQUIRED (HTTP 400), and upstream LLM timeout/failure fails closed without inserting partial study sessions or misleading concepts. Confirmed NewStudyPage React state preserves topic, source URL, and notes on error.
 - Baseline submission single-write, concurrency, and client recovery verified: confirmed baselineService.ts transactional locking (SELECT ... FOR UPDATE), single-write conditional update (WHERE submitted_at IS NULL), and 409 BASELINE_QUESTION_ALREADY_SUBMITTED rejection on duplicate submission. Confirmed BaselinePage.tsx automatically reloads the assessment on 409 to advance to the next unanswered question or result view.
 - Historical URL contamination audit completed: traced all relationships across the 4 URL-only sessions (web sockets, Concurrency, and two Scalability sessions). Found 4 derived personal concepts, 20 questions with URL-bearing prompts, 29 total recall attempts, 17 submitted attempts, 17 evaluations, 17 point results, and 3 learner knowledge-point states. Found 0 URL titles in resources and 0 grounded remediations. Because the raw material consists entirely of bare YouTube URLs without notes/transcripts and 17 submitted evaluations depend on them, synthetic rewriting or deletion was rejected to prevent altering historical learner evidence.
+
+## 2026-10-14 — Question quality and assessment report integrity
+
+- Curated question quality and progressive hints:
+  - Inspected `mcqBank.ts` and identified missing curated coverage for canonical concepts (including "Component boundary tradeoffs"). Authored misconception-grounded MCQs across all 9 canonical concepts with distinct keys, plausibly grounded distractors, teaching explanations, and progressive hints.
+  - Repaired `buildQuestion` in `questionService.ts`: unified the point evaluation check to `evaluatedPoint` (via `mappedPoint`), eliminating false fallbacks to generic rapid recall or leaky prompts ("Which statement best captures this key idea about X: Y?"), and wired question-specific progressive hints into curated MCQs.
+- Assessment report and mastery semantics:
+  - Audited `getAssessment` in `assessmentService.ts`: previously returned only binary `correct` and `total` counts, omitting partial, incorrect, and unanswered counts, and lacked point-level evidence aggregation.
+  - Implemented `summarizeAssessmentEvidence`:
+    - Tracks granular counts: `correct`, `partial`, `incorrect`, `unanswered`, and `total`.
+    - Aggregates unique knowledge points across session attempts with conservative rollup (`correct`=2, `partial`=1, `missing`=0).
+    - Enforces maturity thresholds: compares `uniqueAssessedPoints` against `totalConceptPoints` and labels sessions with fewer than 3 unique points or partial concept coverage as "Early signal — not concept mastery", keeping unassessed concepts distinct from measured zero and preventing a 1/1 single question from being conflated with concept mastery.
+    - Returns `points: { correct, partial, missing }` for structured downstream reporting.
+  - Updated client API schema in `client.ts` and UI in `AssessmentPage.tsx`: connected `points={result.points}` to `<AssessmentReport>`, displaying outcome breakdowns (e.g. `2 correct · 1 partial · 1 incorrect`) and explicit maturity banners.
+- Integration test environment configuration:
+  - Updated `server/vitest.integration.config.ts` to inject deterministic mock provider environment variables (`LLM_PROVIDER="mock"`, `LLM_API_KEY=""`, `EMBEDDING_PROVIDER="mock"`, `REMEDIATION_PROVIDER="mock"`), preventing integration tests from inheriting OpenAI-compatible / Gemini credentials from `.env` and timing out on network calls.
+- Verification:
+  - `npm test`: passed (20 files, 94 passed, 4 opt-in live checks skipped).
+  - `npm run test:integration -w server`: passed against local PostgreSQL (10/10).
+  - `npm run build`: passed for both server TypeScript and client Vite bundle.
+  - `git diff --check`: passed with zero whitespace or line-ending errors.
+- Outstanding limits: manual browser verification of Rapid Fire and Assessment Report views remains outstanding. No live-provider educational quality benchmarking or production readiness is claimed without learner evaluation.

@@ -117,9 +117,6 @@ export function selectAssessment(input: {
 export function buildQuestion(conceptName: string, questionType: QuestionType, knowledgePoints: string[], difficulty = 2, variant = 0, wordingVariant = 0): QuestionDraft {
   const points = knowledgePoints.length ? knowledgePoints : [`Explain the main mechanism behind ${conceptName}`, `Describe when ${conceptName} is useful`, `Identify an important tradeoff of ${conceptName}`];
   const targetPoint = points[Math.abs(variant) % points.length];
-  if (questionType === "mcq" && !findBuiltinMcq(conceptName, targetPoint, variant)) {
-    return buildQuestion(conceptName, "rapid_recall", points, difficulty, variant, wordingVariant);
-  }
   const lowerConcept=conceptName.toLowerCase();
   const mappedPoint=lowerConcept.includes("token bucket")?points.find((point)=>/burst|token|sustained rate/i.test(point)):
     lowerConcept.includes("distributed rate")?points.find((point)=>/coordination|instance|shared state|distributed/i.test(point)):
@@ -127,6 +124,9 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
     lowerConcept.includes("cache-aside")?points.find((point)=>/cache.aside|cache miss|populate/i.test(point)):
     lowerConcept.includes("dead letter")?points.find((point)=>/dead letter|fail|retry/i.test(point)):undefined;
   const evaluatedPoint=mappedPoint ?? targetPoint;
+  if (questionType === "mcq" && !findBuiltinMcq(conceptName, evaluatedPoint, variant)) {
+    return buildQuestion(conceptName, "rapid_recall", points, difficulty, variant, wordingVariant);
+  }
   const byType: Partial<Record<QuestionType, { level: AssessmentLevel; prompt: string; title: string; minutes: number; context?: string }>> = {
     mcq: { level: "recognition", title: "Quick Check", minutes: 1, prompt: `Which statement best captures this key idea about ${conceptName}: ${targetPoint}?` },
     rapid_recall: { level: "recall", title: "Rapid Fire", minutes: 1, prompt: `In one or two sentences, explain this point about ${conceptName}: ${targetPoint}` },
@@ -160,7 +160,16 @@ export function buildQuestion(conceptName: string, questionType: QuestionType, k
   const mcqPrompt=curated?.prompt ?? null;
   const questionKnowledgePoints = options || questionType === "rapid_recall" ? [evaluatedPoint] : points;
   const parts = questionType === "short_explanation" ? createStructuredParts(questionKnowledgePoints, conceptName) : null;
-  return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: parts ? "Answer each part separately." : mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: questionKnowledgePoints, parts, hints: ["Recall the key mechanism involved.", `Connect your answer to: ${evaluatedPoint}`, "Check the main tradeoff or a concrete use case." ] };
+  const hints = curated ? [
+    `Recall the key mechanism behind ${conceptName}.`,
+    `Focus on distinguishing the core guarantee from misconceptions about ${evaluatedPoint}.`,
+    `Review the underlying principle: ${curated.explanation.slice(0, 90).trimEnd()}…`
+  ] : [
+    "Recall the key mechanism involved.",
+    `Connect your answer to: ${evaluatedPoint}`,
+    "Check the main tradeoff or a concrete use case."
+  ];
+  return { questionType, assessmentLevel: spec.level, difficulty, title: spec.title, context: spec.context ?? "", prompt: parts ? "Answer each part separately." : mcqPrompt ?? selectedPrompt, estimatedMinutes: spec.minutes, source: "builtin", options, correctOptionId: options ? "correct" : null, explanation: options ? curated?.explanation ?? `The selected statement is the required knowledge point: ${evaluatedPoint}` : "", knowledgePoints: questionKnowledgePoints, parts, hints };
 }
 
 export function buildTargetedVerificationQuestion(conceptName:string,knowledgePoint:string,variant=0):QuestionDraft {

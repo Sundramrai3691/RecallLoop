@@ -67,10 +67,99 @@ export async function createTargetedVerification(userId:string,remediationId:str
   return getAttempt(attemptId,userId);
 }
 
+export interface AssessmentEvidenceSummary {
+  correct: number;
+  partial: number;
+  incorrect: number;
+  unanswered: number;
+  total: number;
+  uniqueAssessedPoints: number;
+  totalConceptPoints: number;
+  pointCoverage: number;
+  maturityStatus: "Early signal" | "Strong" | "Developing" | "Needs work" | "Not assessed";
+  conceptMastery: number | null;
+  points: {
+    correct: Array<{ point: string; status: "correct" | "partial" | "missing"; feedback: string }>;
+    partial: Array<{ point: string; status: "correct" | "partial" | "missing"; feedback: string }>;
+    missing: Array<{ point: string; status: "correct" | "partial" | "missing"; feedback: string }>;
+  };
+}
+
+export function summarizeAssessmentEvidence(
+  questions: any[],
+  requiredKnowledgePoints: string[] = [],
+  conceptMastery: number | null = null
+): AssessmentEvidenceSummary {
+  const total = questions.length;
+  const submitted = questions.filter((q) => Boolean(q?.submittedAt));
+  const correct = submitted.filter((q) => q.resultStatus === "correct").length;
+  const partial = submitted.filter((q) => q.resultStatus === "partial").length;
+  const incorrect = submitted.filter((q) => q.resultStatus === "incorrect").length;
+  const unanswered = total - submitted.length;
+
+  const unique = new Map<string, { point: string; status: "correct" | "partial" | "missing"; feedback: string }>();
+  for (const q of submitted) {
+    const results = q.evaluation?.knowledgePointResults ?? [];
+    for (const r of results) {
+      const label = String(r.point ?? "").trim();
+      const norm = label.toLowerCase().replace(/\s+/g, " ");
+      if (!norm) continue;
+      const prev = unique.get(norm);
+      const rank = (s: string) => (s === "correct" ? 2 : s === "partial" ? 1 : 0);
+      if (!prev || rank(r.status) < rank(prev.status)) {
+        unique.set(norm, {
+          point: label,
+          status: r.status,
+          feedback: r.feedback ?? "",
+        });
+      }
+    }
+  }
+
+  const pointList = [...unique.values()];
+  const points = {
+    correct: pointList.filter((p) => p.status === "correct"),
+    partial: pointList.filter((p) => p.status === "partial"),
+    missing: pointList.filter((p) => p.status === "missing"),
+  };
+
+  const uniqueAssessedPoints = unique.size;
+  const totalConceptPoints = requiredKnowledgePoints.length;
+  const pointCoverage = totalConceptPoints > 0
+    ? Number((uniqueAssessedPoints / totalConceptPoints).toFixed(4))
+    : uniqueAssessedPoints > 0 ? 1 : 0;
+
+  let maturityStatus: "Early signal" | "Strong" | "Developing" | "Needs work" | "Not assessed";
+  if (uniqueAssessedPoints === 0) {
+    maturityStatus = "Not assessed";
+  } else if (uniqueAssessedPoints < 3 || (totalConceptPoints > 0 && uniqueAssessedPoints < totalConceptPoints)) {
+    maturityStatus = "Early signal";
+  } else {
+    const score = pointList.reduce((sum, p) => sum + (p.status === "correct" ? 1 : p.status === "partial" ? 0.5 : 0), 0) / uniqueAssessedPoints;
+    maturityStatus = score >= 0.7 ? "Strong" : score >= 0.35 ? "Developing" : "Needs work";
+  }
+
+  return {
+    correct,
+    partial,
+    incorrect,
+    unanswered,
+    total,
+    uniqueAssessedPoints,
+    totalConceptPoints,
+    pointCoverage,
+    maturityStatus,
+    conceptMastery,
+    points,
+  };
+}
+
 export async function getAssessment(userId: string, assessmentId: string) {
   const sessionResult = await query<any>(`SELECT * FROM assessment_sessions WHERE id=$1 AND user_id=$2`,[assessmentId,userId]);
   const session = sessionResult.rows[0];
   if (!session) throw notFound("Assessment not found","ASSESSMENT_NOT_FOUND");
+  const conceptResult = await query<any>(`SELECT name, required_knowledge_points, mastery FROM personal_concepts WHERE id=$1 AND user_id=$2`,[session.concept_id,userId]);
+  const conceptRow = conceptResult.rows[0];
   const rows = await query<any>(`SELECT id,assessment_position,submitted_at FROM recall_attempts WHERE assessment_session_id=$1 ORDER BY assessment_position`,[assessmentId]);
   const questions=[];
   for (const row of rows.rows) questions.push(await getAttempt(row.id,userId));
@@ -79,7 +168,26 @@ export async function getAssessment(userId: string, assessmentId: string) {
   const dimensions = await query<any>(`SELECT d.dimension,AVG(d.score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.assessment_session_id=$1 GROUP BY d.dimension`,[assessmentId]);
   const recommendationResult=complete?await query<any>(`SELECT rec.action_type AS "actionType",rec.title,rec.reason,rec.estimated_minutes AS "estimatedMinutes",rec.priority FROM recall_attempts r JOIN assessment_recommendations rec ON rec.recall_attempt_id=r.id WHERE r.assessment_session_id=$1 ORDER BY rec.priority DESC,r.assessment_position LIMIT 1`,[assessmentId]):{rows:[]};
   const scores = Object.fromEntries(DIMENSIONS.map((name) => [name,dimensions.rows.find((item) => item.dimension === name)?.score ?? null]));
-  const submitted = questions.filter((item:any) => item?.submittedAt);
-  const correct = submitted.filter((item:any) => item.resultStatus === "correct").length;
-  return { assessment: { id: session.id, conceptId:session.concept_id, mode: session.mode, status: complete ? "completed" : "in_progress", current: Math.min(rows.rows.findIndex((item:any) => !item.submitted_at)+1 || questions.length,questions.length), total: questions.length }, questions, result: complete ? { correct, total: questions.length, dimensionScores: scores, weakArea: Object.entries(scores).filter(([,score])=>score!==null).sort((a:any,b:any)=>a[1]-b[1])[0]?.[0] ?? null, recommendation:recommendationResult.rows[0]??null } : null };
+  const summary = summarizeAssessmentEvidence(
+    questions,
+    conceptRow?.required_knowledge_points ?? [],
+    conceptRow ? Number(conceptRow.mastery) : null
+  );
+  return {
+    assessment: {
+      id: session.id,
+      conceptId: session.concept_id,
+      mode: session.mode,
+      status: complete ? "completed" : "in_progress",
+      current: Math.min(rows.rows.findIndex((item:any) => !item.submitted_at)+1 || questions.length,questions.length),
+      total: questions.length
+    },
+    questions,
+    result: complete ? {
+      ...summary,
+      dimensionScores: scores,
+      weakArea: Object.entries(scores).filter(([,score])=>score!==null).sort((a:any,b:any)=>a[1]-b[1])[0]?.[0] ?? null,
+      recommendation: recommendationResult.rows[0] ?? null
+    } : null
+  };
 }

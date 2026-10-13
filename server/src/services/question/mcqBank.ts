@@ -56,6 +56,36 @@ const BANK: Array<{ matches: string[]; build: (concept: string, point: string,va
     distractors: ["Retry the message forever at the front of the queue until it succeeds.","Acknowledge the message before validation so it cannot be inspected later.","Increase the visibility timeout until the invalid payload becomes valid."],
     explanation: "Dead-letter handling isolates poison messages after bounded retries, preserving the main queue and enabling diagnosis.",
   }) },
+  { matches: ["http caching", "freshness from validation", "can distinguish freshness from validation"], build: () => ({
+    prompt: "How does HTTP cache freshness differ from cache validation?",
+    correct: "Freshness serves a cached response without contacting the origin server, while validation sends a conditional request to check if a stale response is still usable.",
+    distractors: ["Validation serves a response directly from local cache, while freshness requires an origin roundtrip for every request.","Freshness and validation are identical directives that both force origin revalidation on every cache read.","Validation only applies to POST mutations, while freshness only applies to WebSocket connections."],
+    explanation: "Freshness (e.g. Cache-Control max-age) permits local reuse without origin checks; validation (e.g. ETag/If-None-Match) re-checks stale entries with origin 304 responses.",
+  }) },
+  { matches: ["http request lifecycle", "headers and body", "can explain method, status, headers, and body roles"], build: () => ({
+    prompt: "In the HTTP request and response lifecycle, how are headers and body semantics divided?",
+    correct: "Headers convey protocol metadata, routing, and control directives, while the body carries the serialized resource payload.",
+    distractors: ["The body contains status codes and routing metadata, while headers store the primary data payload.","Headers are only valid for authentication tokens, while all caching directives belong in the body.","Methods configure TCP socket flags, while headers only configure client-side display themes."],
+    explanation: "HTTP headers provide structured metadata and framing directives; the body conveys the entity payload representation.",
+  }) },
+  { matches: ["isolation and atomicity", "atomicity and isolation", "acid transactions"], build: () => ({
+    prompt: "In database transaction semantics, what distinct guarantees do atomicity and isolation provide?",
+    correct: "Atomicity guarantees all operations commit together or abort completely, while isolation prevents concurrent transactions from observing intermediate state.",
+    distractors: ["Atomicity controls concurrent read locking, while isolation guarantees data is flushed to non-volatile disk.","Isolation ensures aborted transactions roll back, while atomicity coordinates multi-region read replicas.","Atomicity and isolation both describe TLS encryption of query parameters between client and database."],
+    explanation: "Atomicity ensures all-or-nothing completion under failure; isolation prevents race conditions and dirty reads across concurrent execution.",
+  }) },
+  { matches: ["idempotent operations", "idempotency key", "safe retries"], build: () => ({
+    prompt: "Why is an idempotency key required to safely retry a payment or order mutation over a flaky network?",
+    correct: "It enables the server to recognize duplicate retry attempts and return the original result without executing the side effect twice.",
+    distractors: ["It encrypts the payload so that intermediate HTTP proxies cannot inspect payment card details.","It automatically converts SQL insert statements into read-only select queries on the database server.","It forces the client's HTTP library to decrease the connection timeout on each retry attempt."],
+    explanation: "Idempotency keys uniquely identify a single logical operation, allowing servers to safely deduplicate retries and return the original execution outcome.",
+  }) },
+  { matches: ["component boundary tradeoffs", "scale and failure", "justify a boundary", "boundary reasoning"], build: () => ({
+    prompt: "When designing service architecture, which factor best justifies splitting a component across a network boundary?",
+    correct: "Differing scale requirements, independent failure domains, or distinct security boundaries that outweigh network overhead.",
+    distractors: ["Network boundaries eliminate latency and serialize all concurrent database transactions.","Splitting components ensures that downstream crashes cannot affect client requests without retries.","Every function in a codebase should run in a separate network service regardless of operational complexity."],
+    explanation: "Network boundaries introduce latency and partial-failure modes; they are justified by independent scaling, blast-radius containment, or team ownership boundaries.",
+  }) },
 ];
 
 export function findBuiltinMcq(conceptName: string, knowledgePoint: string,variant=0): BuiltinMcq | null {

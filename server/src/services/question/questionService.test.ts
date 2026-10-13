@@ -101,4 +101,26 @@ describe("question engine primitives", () => {
     expect(evaluated.knowledgePointResults[0].evidence).toBe("");
     await expect(evaluateStructuredParts(parts,mapped,async()=>{throw new Error("provider unavailable");})).rejects.toThrow("provider unavailable");
   });
+  it("provides curated MCQs with progressive hints and misconception distractors for all canonical concepts",()=>{
+    const canonicalCases = [
+      { concept: "HTTP caching", point: "Can distinguish freshness from validation.", promptSnippet: "cache freshness", explanationSnippet: "Cache-Control" },
+      { concept: "HTTP request lifecycle", point: "Can explain method, status, headers, and body roles.", promptSnippet: "lifecycle", explanationSnippet: "metadata" },
+      { concept: "Isolation and atomicity", point: "Can describe atomic commit and isolation tradeoffs.", promptSnippet: "guarantees", explanationSnippet: "all-or-nothing" },
+      { concept: "Idempotent operations", point: "Can design a safe repeated operation.", promptSnippet: "idempotency", explanationSnippet: "deduplicate" },
+      { concept: "Component boundary tradeoffs", point: "Can justify a boundary using scale and failure reasoning.", promptSnippet: "boundary", explanationSnippet: "blast-radius" },
+    ];
+    for (const testCase of canonicalCases) {
+      const mcq = findBuiltinMcq(testCase.concept, testCase.point);
+      expect(mcq).not.toBeNull();
+      expect(mcq!.prompt.toLowerCase()).toContain(testCase.promptSnippet);
+      expect(mcq!.distractors).toHaveLength(3);
+      expect(mcq!.explanation).toContain(testCase.explanationSnippet);
+
+      const draft = buildQuestion(testCase.concept, "mcq", [testCase.point]);
+      expect(draft.questionType).toBe("mcq");
+      expect(draft.hints).toHaveLength(3);
+      expect(draft.hints[1]).toContain("misconceptions");
+      expect(draft.explanation).toBe(mcq!.explanation);
+    }
+  });
 });

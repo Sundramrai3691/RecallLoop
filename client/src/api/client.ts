@@ -15,6 +15,7 @@ import {
   type StudySession,
   type User,
   type ResourceRecommendation,
+  type KnowledgePointResult,
 } from "../types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -210,7 +211,30 @@ export const api = {
   },
 
   getAssessment(id: string) {
-    return request<{ assessment: { id: string; conceptId: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[]; result: null | { correct: number; total: number; dimensionScores: Record<string, number | null>; weakArea: string | null; recommendation: NonNullable<RecallAttempt["recommendation"]> | null } }>(`/api/assessments/${id}`);
+    return request<{
+      assessment: { id: string; conceptId: string; mode: string; status: string; current: number; total: number };
+      questions: RecallAttempt[];
+      result: null | {
+        correct: number;
+        partial: number;
+        incorrect: number;
+        unanswered: number;
+        total: number;
+        uniqueAssessedPoints: number;
+        totalConceptPoints: number;
+        pointCoverage: number;
+        maturityStatus: "Early signal" | "Strong" | "Developing" | "Needs work" | "Not assessed";
+        conceptMastery: number | null;
+        points: {
+          correct: KnowledgePointResult[];
+          partial: KnowledgePointResult[];
+          missing: KnowledgePointResult[];
+        };
+        dimensionScores: Record<string, number | null>;
+        weakArea: string | null;
+        recommendation: NonNullable<RecallAttempt["recommendation"]> | null;
+      };
+    }>(`/api/assessments/${id}`);
   },
 
   getConcept(id: string) {
