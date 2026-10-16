@@ -1,6 +1,6 @@
 # Project status
 
-Status is based on checked-in source and commands run as of 2026-10-14. This is not a claim about any deployed environment or production usage.
+Status is based on checked-in source and commands run as of 2026-10-17. This is not a claim about any deployed environment or production usage.
 
 ## Status definitions
 
@@ -33,7 +33,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Client and server production builds | TESTED | 2026-10-14: `npm run build` passed for server TypeScript and the client Vite production build. |
 | PostgreSQL integration tests | TESTED | 2026-10-14 deterministic `npm run test:integration -w server` passed 10/10 against the confirmed local `recallloop` database with deterministic mock providers configured in Vitest integration configuration. |
 | Current developer API startup | TESTED | 2026-10-14: Docker PostgreSQL 16 healthy on port 5432; Express API on port 3001 and Vite client on port 5173 confirmed running and responsive (`/api/health` returned 200 OK, Vite returned 200 OK). |
-| Manual browser exercise | BLOCKED LOCALLY | Playwright browser driver download failed in local environment (HTTP 404 from playwright.azureedge.net), blocking automated browser execution. Detailed manual validation checklist provided. |
+| Browser E2E: canonical knowledge and study input integrity | TESTED | `npm run test:e2e` passed in Firefox. It registered and cleaned up a unique test learner, navigated Knowledge â†’ Backend Engineer, checked HTTP caching renders one point with the expected statement, confirmed the adjacent Caching topic, and compared the authenticated roadmap API result with the visible UI. It also submitted a URL as the topic and URL-only study notes through New Study, checked both rejection messages and retained form input, and verified no session was persisted. The valid extraction/source URL and persisted output journey remains unverified in a browser. |
 | Production deployment, uptime, data population | UNKNOWN | No deployment/runtime telemetry is available in the repository. |
 | Baseline point identity/count and no-evidence score semantics | TESTED | Baseline generation selects distinct concepts, counts unique submitted points, and stores no evidence as `NULL`; migration `012` is additive. No evidence displays “Not assessed”; measured 0 stays 0; fewer than three unique assessed points receive “Early signal,” not a mastery band. Verified by unit and PostgreSQL regressions. |
 | Baseline submission single-write and concurrency | TESTED | Submissions lock their assessment, conditionally save only pending questions, and atomically update completion and learner-state aggregates. The 2026-10-14 PostgreSQL integration run passed the regression proving duplicate requests preserve the first answer and concurrent final answers complete the assessment. |
@@ -52,7 +52,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Current local provider configuration | TESTED | Non-secret `.env` selectors/model/base URL were aligned with the verified Gemini setup; existing key values were preserved. The safe config diagnostic reports the three configured Gemini-backed paths. |
 | Live Gemini capabilities | PARTIALLY TESTED | Isolated extraction/evaluation passed; the embedding endpoint returned 3072 finite dimensions; grounded remediation passed schema validation once; built-in question generation passed its deterministic check. Other requests timed out or returned HTTP 503. Live outcomes do not establish stable availability or pedagogical quality. |
 | Generic question quality | PARTIALLY TESTED | Source confirms built-in deterministic blueprints and curated MCQs; LLM is not used to generate questions. Semantic quality remains a Phase C task. |
-| Manual browser workflow | BLOCKED LOCALLY | Browser automation blocked by Playwright driver network 404; API/transaction validation verified and manual checklist supplied. |
+| Browser automation for other learner workflows | PARTIALLY TESTED | Browser automation is now available via Selenium + Firefox. Canonical roadmap rendering and invalid study input paths are covered; valid extraction, grounded remediation, baseline recovery, Rapid Fire, and assessment reports currently have service/API/PostgreSQL evidence but no browser E2E coverage. |
 
 ## Local verification commands
 
@@ -61,7 +61,10 @@ docker compose up -d postgres
 npm run db:migrate -w server
 npm run db:seed -w server
 npm run dev
+npm run test:e2e
 ```
+
+The E2E command expects the API and Vite client to be running and uses a uniquely named learner in the local `recallloop` database, which it deletes after the scenario.
 
 The compose file defines PostgreSQL 16 on port 5432. If Docker is unavailable, provide a PostgreSQL instance matching `DATABASE_URL` in `.env`. Apply migrations before the first API run; startup itself only runs `SELECT 1`.
 

@@ -28,6 +28,7 @@ The only LLM adapter currently implemented is OpenAI-compatible chat completions
 ```bash
 npm run dev
 npm test
+npm run test:e2e
 npm run test:integration -w server
 npm run build
 npm run db:migrate -w server
@@ -35,6 +36,8 @@ npm run db:seed -w server
 ```
 
 `npm test` runs database-independent unit tests. `npm run test:integration -w server` requires PostgreSQL and applies the relational integration checks.
+
+`npm run test:e2e` drives Firefox through the registered learner's Knowledge map and New Study form. It checks that the Backend Engineer HTTP-caching point count and text match the authenticated roadmap API, adjacent topics render, URL topics and URL-only notes are rejected, and rejected submissions create no study session. It requires the API and Vite client to be running, Firefox installed, and the local `recallloop` PostgreSQL database; it creates and deletes one uniquely named E2E learner account.
 
 ## Architecture
 
