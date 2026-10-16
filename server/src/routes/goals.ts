@@ -7,6 +7,7 @@ import {
   generateGoalPlanHandler,
   getGoalHandler,
   getGoalPlanHandler,
+  getGoalReadinessHandler,
   listGoalsHandler,
   listSkillsHandler,
   updateGoalHandler,
@@ -28,5 +29,6 @@ goalRouter.post("/:goalId/skills", createSkillHandler);
 goalRouter.get("/:goalId/skills", listSkillsHandler);
 goalRouter.post("/:goalId/plan/generate", generateGoalPlanHandler);
 goalRouter.get("/:goalId/plan", getGoalPlanHandler);
+goalRouter.get("/:goalId/readiness", getGoalReadinessHandler);
 goalRouter.patch("/skills/:id", updateSkillHandler);
 goalRouter.delete("/skills/:id", deleteSkillHandler);

@@ -8,6 +8,7 @@ import {
   generateGoalPlan,
   getGoal,
   getGoalPlan,
+  getGoalReadiness,
   getTodayPlan,
   listGoals,
   listSkills,
@@ -115,6 +116,14 @@ export async function getGoalPlanHandler(req: AuthenticatedRequest, res: Respons
   try {
     const result = await getGoalPlan(req.user!.id, req.params.goalId);
     res.json(result);
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getGoalReadinessHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
+  try {
+    res.json(await getGoalReadiness(req.user!.id, req.params.goalId));
   } catch (error) {
     next(error);
   }

@@ -74,6 +74,12 @@ Every plan task is `must`, `recommended`, or `optional`. Due recall and critical
 
 Missed tasks remain in history with `missed` status. A new plan selects due recall, critical remediation, and high-value goal work within today's budget rather than copying the entire backlog. The plan reports how many previous-day missed activities match selected work (`carriedForwardCount`) and how many are deferred (`deferredCount`).
 
+Planner calendar days use UTC because the application has no per-user time-zone setting and PostgreSQL stores review/plan timestamps as instants. Generation, current-day reads, overdue marking, prior-day backlog, and replacement of today's planned tasks all use the same UTC day boundary. An overdue recall is placed at the current instant so it remains visible in the current UTC-day list. Whole-day scheduler intervals are independent of this calendar boundary.
+
+## My Readiness
+
+`GET /api/goals/:goalId/readiness` keeps learner-declared goal relevance separate from demonstrated evidence. It lists the learner's goal skills by priority and maps a skill only when its normalized name exactly matches a canonical skill. For mapped skills, active canonical knowledge points are counted as strength (`mastery >= 0.7`), weakness (`mastery < 0.7`), or unassessed from each user's most recently updated canonical point state. Unmapped names are explicitly marked unassessed. Latest evidence time is shown when available. The view does not infer confidence, combine skills into a readiness score, or represent company/interview weighting; exact-name mapping can leave custom skill labels unmapped.
+
 ## Data and implementation boundaries
 
 The existing PostgreSQL tables remain the source of truth. Small additive migrations store review preference, repetition reason, requiredness, stable question uniqueness, recommendations, and resource links. Grounded remediation adds a narrow source/chunk store and bounded similarity ranking; it does not add queues, agents, a separate database, or an unrestricted crawling subsystem.

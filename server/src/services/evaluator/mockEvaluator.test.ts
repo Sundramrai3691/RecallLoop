@@ -14,4 +14,13 @@ describe("deterministic local concept extraction", () => {
     expect(concepts[0].requiredKnowledgePoints.join(" ")).toContain("underlying data changes");
     expect(concepts[0].name).not.toMatch(/^https?:/i);
   });
+
+  it("removes a single Markdown heading before naming its extracted concept", async () => {
+    const concepts = await evaluator.extractConcepts({
+      title: "HTTP caching",
+      rawMaterial: "# HTTP caching.\n\nCan distinguish freshness from validation.",
+    });
+    expect(concepts[0].name).toBe("HTTP caching");
+    expect(concepts[0].requiredKnowledgePoints).toContain("Can distinguish freshness from validation.");
+  });
 });

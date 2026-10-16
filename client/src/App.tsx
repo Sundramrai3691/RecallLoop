@@ -22,6 +22,7 @@ import { ResourcesPage } from "./pages/ResourcesPage";
 import { GroundedRemediationPage } from "./pages/GroundedRemediationPage";
 import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
+import { ReadinessPage } from "./pages/ReadinessPage";
 
 export function App() {
   return (
@@ -43,6 +44,7 @@ export function App() {
         <Route path="/goals" element={<GoalsPage />} />
         <Route path="/goals/new" element={<NewGoalPage />} />
         <Route path="/goals/:id" element={<GoalDetailPage />} />
+        <Route path="/goals/:id/readiness" element={<ReadinessPage />} />
         <Route path="/plan" element={<PlanPage />} />
         <Route path="/plan/today" element={<PlanPage />} />
         <Route path="/learner" element={<LearnerPage />} />

@@ -177,6 +177,7 @@ export function GoalDetailPage() {
         ))}
       </section>
       <p className="actions">
+        <Link className="btn" to={`/goals/${goal.id}/readiness`}>My Readiness</Link>
         <Link className="btn btn-primary" to={`/plan?goalId=${goal.id}`}>
           Generate today&apos;s plan
         </Link>

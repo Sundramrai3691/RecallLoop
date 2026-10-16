@@ -176,6 +176,76 @@ try {
     return { status: response.status, body: await response.json() };
   }
 
+  await driver.get(`${clientUrl}/knowledge/roles/${apiRole.role.id}`);
+  await driver.wait(until.elementLocated(By.id(`concept-${concept.id}`)), 10000);
+  const canonicalArticle = await driver.findElement(By.id(`concept-${concept.id}`));
+  const canonicalStudyLink = await canonicalArticle.findElement(By.xpath(".//a[normalize-space()='Study concept']"));
+  await canonicalStudyLink.click();
+  await driver.wait(until.urlContains("/study/new?"), 10000);
+  const handoffUrl = new URL(await driver.getCurrentUrl());
+  assert.equal(handoffUrl.searchParams.get("topicId"), http.id);
+  assert.equal(handoffUrl.searchParams.get("conceptId"), concept.id, "Roadmap study link should preserve the selected canonical concept ID");
+  await driver.wait(until.elementLocated(By.id("study-topic")), 10000);
+  const canonicalTitleInput = await driver.findElement(By.id("study-topic"));
+  assert.equal(await canonicalTitleInput.getAttribute("value"), "HTTP caching");
+  await driver.findElement(By.id("material")).sendKeys("# HTTP caching.\n\nCan distinguish freshness from validation.");
+  await driver.findElement(By.css("button[type='submit']")).click();
+  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+\?/i), 15000);
+  const canonicalSessionId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+  const canonicalStudy = await learnerApi("GET", `/api/study-sessions/${canonicalSessionId}`);
+  assert.equal(canonicalStudy.status, 200);
+  assert.equal(canonicalStudy.body.session.canonicalTopicId, http.id);
+  assert.equal(canonicalStudy.body.session.canonicalConceptId, concept.id);
+  const mappedPersonalConcept = canonicalStudy.body.concepts.find((item) => item.name === "HTTP caching");
+  assert.ok(mappedPersonalConcept, "The extracted concept should retain the canonical concept name");
+  assert.equal(mappedPersonalConcept.canonicalConceptId, concept.id);
+  assert.ok(mappedPersonalConcept.requiredKnowledgePoints.includes(concept.knowledgePoints[0].statement), "The exact canonical point statement should survive extraction");
+  const canonicalPointCountBefore = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
+  assert.equal(canonicalPointCountBefore.rows[0].count, 1);
+
+  const canonicalPractice = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
+  assert.equal(canonicalPractice.status, 201);
+  await driver.get(`${clientUrl}/assessments/${canonicalPractice.body.assessment.id}`);
+  await driver.wait(until.elementLocated(By.id("assessment-answer")), 10000);
+  await driver.findElement(By.id("assessment-answer")).sendKeys("I do not know this yet.");
+  await driver.findElement(By.css("form.question-card button[type='submit']")).click();
+  await driver.wait(until.elementLocated(By.css(".report-hero")), 10000);
+  const canonicalAssessment = await learnerApi("GET", `/api/assessments/${canonicalPractice.body.assessment.id}`);
+  const canonicalAttemptId = canonicalAssessment.body.questions[0].id;
+  const pointEvidence = await pool.query(
+    `SELECT r.canonical_knowledge_point_id
+     FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id
+     JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id
+     WHERE a.id=$1`,
+    [canonicalAttemptId],
+  );
+  assert.ok(pointEvidence.rows.some((row) => row.canonical_knowledge_point_id === concept.knowledgePoints[0].id), "The assessed response should retain the canonical point UUID");
+  const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
+  assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
+  const learnerSummary = await learnerApi("GET", "/api/learner/summary");
+  const diagnosedWeakness = learnerSummary.body.weakConcepts.find((item) => item.conceptId === mappedPersonalConcept.id);
+  assert.ok(diagnosedWeakness, "The weak recall should surface as persisted learner evidence");
+  assert.equal(diagnosedWeakness.mastery, 0);
+
+  await driver.get(`${clientUrl}/learner`);
+  const weakConceptLink = await driver.wait(until.elementLocated(By.xpath("//a[contains(@class,'learner-concept')][.//strong[normalize-space()='HTTP caching']]")), 10000);
+  await weakConceptLink.click();
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Focused resources']")), 10000);
+  await driver.wait(until.elementLocated(By.css("article.resource-card")), 10000);
+  const focusedResources = await learnerApi("GET", `/api/resources/recommendations?conceptId=${mappedPersonalConcept.id}&availableMinutes=60`);
+  assert.equal(focusedResources.status, 200);
+  assert.ok(focusedResources.body.resources.length > 0);
+  const renderedResourceCards = await driver.findElements(By.css("article.resource-card"));
+  assert.equal(renderedResourceCards.length, focusedResources.body.resources.length, "The resource screen should render the API's diagnosed-concept recommendations");
+  for (const resource of focusedResources.body.resources) {
+    assert.ok(resource.conceptsCovered.includes("HTTP caching"), "A recommended source must map to the diagnosed canonical concept");
+    assert.ok(/^https?:\/\//i.test(resource.url));
+    const card = await driver.findElement(By.xpath(`//article[contains(@class,'resource-card')][.//h2[normalize-space()=${JSON.stringify(resource.title)}]]`));
+    assert.equal(await card.findElement(By.css(".resource-provider")).getText(), resource.provider);
+    const sourceLink = await card.findElement(By.xpath(".//a[contains(.,'Open resource')]"));
+    assert.equal(await sourceLink.getAttribute("href"), resource.url);
+    assert.ok((await card.findElement(By.css(".resource-why")).getText()).includes("HTTP caching"));
+  }
   const studyTitle = "E2E cache notes";
   const studySourceUrl = "https://example.com/cache-reference";
   const studyMaterial = "Freshness tells a cache how long a response may be reused. Validation asks the origin server whether a stale response has changed.";
@@ -192,6 +262,12 @@ try {
   assert.equal(createdStudy.body.session.sourceUrl, studySourceUrl, "The source URL should persist as separate provenance");
   assert.equal(createdStudy.body.session.rawMaterial, studyMaterial, "Only supplied notes should be the extraction material");
   assert.ok(createdStudy.body.concepts.length > 0, "Valid notes should persist extracted concepts");
+  await driver.get(`${clientUrl}/resources?conceptId=${createdStudy.body.concepts[0].id}`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Focused resources']")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//*[normalize-space()='No matching resources yet']")), 10000);
+  const noMatch = await learnerApi("GET", `/api/resources/recommendations?conceptId=${createdStudy.body.concepts[0].id}&availableMinutes=60`);
+  assert.deepEqual(noMatch.body.resources, [], "A custom concept without catalog coverage should return an empty recommendation list");
+  await driver.get(`${clientUrl}/study/${createdSessionId}`);
   const extractedText = createdStudy.body.concepts.flatMap((item) => [item.name, item.description, ...item.requiredKnowledgePoints]).join(" ");
   assert.doesNotMatch(extractedText, /https?:\/\/|www\.|example\.com/i, "URLs must not leak into extracted concept data");
   await driver.wait(until.elementLocated(By.xpath(`//h1[normalize-space()='${studyTitle}']`)), 10000);
@@ -218,6 +294,70 @@ try {
     weeklyTimeBudgetMinutes: 120,
   });
   assert.equal(goalResponse.status, 201, `Could not create E2E goal: ${JSON.stringify(goalResponse.body)}`);
+  const dailyPlanGoalId = goalResponse.body.goal.id;
+  const skillResponse = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/skills`, { name: "HTTP caching", description: "Evidence-backed E2E focus", priority: 90 });
+  assert.equal(skillResponse.status, 201);
+  const canonicalSkillForReadiness = await pool.query("SELECT cs.name FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills cs ON cs.id=t.skill_id WHERE cc.id=$1", [concept.id]);
+  assert.ok(canonicalSkillForReadiness.rows[0]?.name);
+  const mappedSkillResponse = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/skills`, { name: canonicalSkillForReadiness.rows[0].name, description: "Canonical readiness focus", priority: 80 });
+  assert.equal(mappedSkillResponse.status, 201);
+  const customSkillResponse = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/skills`, { name: "Uncatalogued systems topic", description: "No canonical mapping", priority: 35 });
+  assert.equal(customSkillResponse.status, 201);
+  const readiness = await learnerApi("GET", `/api/goals/${dailyPlanGoalId}/readiness`);
+  assert.equal(readiness.status, 200);
+  const mappedReadiness = readiness.body.skills.find((skill) => skill.name === canonicalSkillForReadiness.rows[0].name);
+  assert.equal(mappedReadiness.status, "mapped");
+  assert.ok(mappedReadiness.assessedPoints > 0, "Readiness should derive assessed coverage from submitted canonical point evidence");
+  assert.ok(mappedReadiness.weaknesses > 0, "The incorrect recall response should remain a measured weakness");
+  const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
+  assert.equal(unmappedReadiness.status, "unmapped");
+  await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Not assessed: this goal skill has no exact canonical skill mapping yet.')]") ), 10000);
+  const userIdResult = await pool.query("SELECT id FROM app_users WHERE email=$1", [email]);
+  const pendingRecallResponse = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
+  assert.equal(pendingRecallResponse.status, 201);
+  const pendingRecall = await learnerApi("GET", `/api/assessments/${pendingRecallResponse.body.assessment.id}`);
+  const pendingRecallAttemptId = pendingRecall.body.questions[0].id;
+  await pool.query(
+    `INSERT INTO review_states (user_id,concept_id,state,due_at,interval_days)
+     VALUES ($1,$2,'review',now() - interval '1 day',1)
+     ON CONFLICT (user_id,concept_id) DO UPDATE SET due_at=EXCLUDED.due_at,interval_days=EXCLUDED.interval_days`,
+    [userIdResult.rows[0].id, mappedPersonalConcept.id],
+  );
+  const generatedPlan = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/plan/generate`, { availableMinutes: 60 });
+  assert.equal(generatedPlan.status, 201);
+  const scheduledRecall = generatedPlan.body.tasks.find((task) => task.recallAttemptId === pendingRecallAttemptId);
+  assert.ok(scheduledRecall, "A due review state and unanswered recall attempt should produce a recall task");
+  assert.equal(scheduledRecall.requiredness, "must");
+  const utcToday = new Date(); utcToday.setUTCHours(0, 0, 0, 0);
+  assert.ok(new Date(scheduledRecall.scheduledFor) >= utcToday, "An overdue recall should be rescheduled into the UTC day so it remains visible today");
+  await driver.get(`${clientUrl}/plan?goalId=${dailyPlanGoalId}`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='A learning journey for today']")), 10000);
+  const visiblePlan = await driver.findElement(By.tagName("body")).getText();
+  assert.ok(visiblePlan.includes("Required") && visiblePlan.includes("Done for now"), "The UI should render the required recall and its completion action");
+  const completedResponse = await learnerApi("PATCH", `/api/plan/tasks/${scheduledRecall.id}`, { status: "completed" });
+  assert.equal(completedResponse.status, 200);
+  await driver.navigate().refresh();
+  await driver.wait(until.elementLocated(By.xpath("//*[normalize-space()='Completed']")), 10000);
+  const doneTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [scheduledRecall.id]);
+  assert.equal(doneTask.rows[0].status, "completed", "The completion action should persist to PostgreSQL");
+  const skippable = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id);
+  assert.ok(skippable, "Evidence should generate another task for skip and overdue workflow checks");
+  const visibleAfterCompletion = await driver.findElement(By.tagName("body")).getText();
+  assert.ok(visibleAfterCompletion.includes("Skip"), "The UI should retain a skip action for remaining planned work");
+  const skippedResponse = await learnerApi("PATCH", `/api/plan/tasks/${skippable.id}`, { status: "missed" });
+  assert.equal(skippedResponse.status, 200);
+  const skippedTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [skippable.id]);
+  assert.equal(skippedTask.rows[0].status, "missed", "Skip should persist the existing missed status");
+  const overdueCandidate = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id && task.id !== skippable.id);
+  assert.ok(overdueCandidate, "The E2E budget should include a separate task for overdue transition coverage");
+  await pool.query("UPDATE plan_tasks SET status='planned',scheduled_for=$2 WHERE id=$1", [overdueCandidate.id, new Date(utcToday.getTime() - 1000)]);
+  await driver.navigate().refresh();
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='A learning journey for today']")), 10000);
+  const overdueTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [overdueCandidate.id]);
+  assert.equal(overdueTask.rows[0].status, "missed", "The today-plan read should mark prior UTC-day planned work overdue");
+
   const canonicalSkill = await pool.query(
     `SELECT s.id,s.name,count(DISTINCT c.id)::int AS concepts
      FROM canonical_skills s JOIN role_skills rs ON rs.skill_id=s.id
@@ -475,7 +615,7 @@ try {
   assert.equal(verifiedRemediation.body.remediation.status, "verified");
   assert.equal(verifiedRemediation.body.remediation.improved, true, "The targeted browser answer should demonstrate improved evidence");
 
-  console.log("PASS browser E2E: roadmap, valid/rejected study, baseline recovery/completion, Rapid Fire/report, grounded remediation citation and verification");
+  console.log("PASS browser E2E: canonical roadmap-to-study/evidence, resource handoff and empty state, readiness mapping, UTC daily-plan completion/skip/overdue, baseline recovery/completion, Rapid Fire/report, grounded remediation citation/verification");
 } catch (error) {
   if (driver) {
     const currentUrl = await driver.getCurrentUrl().catch(() => "unavailable");

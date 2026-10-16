@@ -66,9 +66,12 @@ export async function deleteSkill(userId: string, skillId: string) {
   return { deleted: true };
 }
 
-async function dueRecallTasks(userId: string) {
-  const result = await query<any>(`SELECT r.concept_id AS "conceptId", r.id AS "recallAttemptId", c.name, rs.due_at AS "scheduledFor",rs.due_at::date < CURRENT_DATE AS overdue FROM review_states rs JOIN personal_concepts c ON c.id=rs.concept_id AND c.user_id=rs.user_id JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id AND r.submitted_at IS NULL WHERE rs.user_id=$1 AND rs.due_at <= now() ORDER BY rs.due_at`, [userId]);
-  return result.rows.map((row) => ({ title: `Recall · ${row.name}`, description: "Retrieve this concept from memory, then check what needs work.", taskType: "recall", category: "must_do", requiredness: "must", sequenceOrder: row.overdue ? 10 : 20, priority: row.overdue ? 100 : 95, estimatedMinutes: 10, scheduledFor: row.scheduledFor, source: "scheduler", conceptId: row.conceptId, recallAttemptId: row.recallAttemptId, reason: row.overdue ? "Overdue recall." : "Due for review today." }));
+function utcDayStart(date = new Date()) {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
+}
+async function dueRecallTasks(userId: string, dayStart: Date) {
+  const result = await query<any>(`SELECT r.concept_id AS "conceptId", r.id AS "recallAttemptId", c.name, rs.due_at AS "scheduledFor",rs.due_at < $2 AS overdue FROM review_states rs JOIN personal_concepts c ON c.id=rs.concept_id AND c.user_id=rs.user_id JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id AND r.submitted_at IS NULL WHERE rs.user_id=$1 AND rs.due_at <= now() ORDER BY rs.due_at`, [userId, dayStart]);
+  return result.rows.map((row) => ({ title: `Recall · ${row.name}`, description: "Retrieve this concept from memory, then check what needs work.", taskType: "recall", category: "must_do", requiredness: "must", sequenceOrder: row.overdue ? 10 : 20, priority: row.overdue ? 100 : 95, estimatedMinutes: 10, scheduledFor: row.overdue ? new Date() : row.scheduledFor, source: "scheduler", conceptId: row.conceptId, recallAttemptId: row.recallAttemptId, reason: row.overdue ? "Overdue recall." : "Due for review today." }));
 }
 async function weakConceptTasks(userId: string) {
   const result = await query<any>(`SELECT c.id AS "conceptId",c.name,c.mastery,
@@ -91,13 +94,16 @@ async function optionalTasks(userId:string){const result=await query<any>(`SELEC
 
 export async function generateGoalPlan(userId: string, goalId: string, requestedMinutes?: number) {
   const goal = await ownedGoal(userId, goalId);
-  const due = await dueRecallTasks(userId);
+  const start = utcDayStart();
+  const previousStart = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const end = new Date(start.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const due = await dueRecallTasks(userId, start);
   const weak = await weakConceptTasks(userId);
   const learn = await learningTasks(userId, goalId);
   const optional=await optionalTasks(userId);
   const dailyAverage = Math.ceil(goal.weeklyTimeBudgetMinutes / 7);
   const budget = Math.max(0, Math.min(240, Number.isFinite(requestedMinutes) ? Math.floor(requestedMinutes!) : dailyAverage));
-  const missed = await query<any>(`SELECT task_type AS "taskType",concept_id AS "conceptId",skill_id AS "skillId",title FROM plan_tasks WHERE user_id=$1 AND status='missed' AND scheduled_for::date=CURRENT_DATE-1 ORDER BY priority DESC`,[userId]);
+  const missed = await query<any>(`SELECT task_type AS "taskType",concept_id AS "conceptId",skill_id AS "skillId",title FROM plan_tasks WHERE user_id=$1 AND status='missed' AND scheduled_for >= $2 AND scheduled_for < $3 ORDER BY priority DESC`,[userId,previousStart,start]);
   const goalConcept = weak[0] ? await query<any>(`SELECT c.id AS "conceptId" FROM personal_concepts c JOIN learner_skills s ON s.user_id=c.user_id AND lower(s.name)=lower(c.name) WHERE c.id=$1 AND c.user_id=$2 AND s.goal_id=$3 LIMIT 1`,[weak[0].conceptId,userId,goalId]) : {rows:[]};
   const packConcept = goalConcept.rows[0] ?? null;
   const pack=packConcept?await buildLearningPack({userId,conceptId:packConcept.conceptId,goalId,availableMinutes:budget}):null;
@@ -106,9 +112,8 @@ export async function generateGoalPlan(userId: string, goalId: string, requested
   const candidates: any[] = [...due,...weak.filter((item:any)=>item.requiredness==="must"||item.conceptId!==packConceptId),...learn,...packTasks,...optional].sort((a, b) => a.sequenceOrder - b.sequenceOrder || b.priority - a.priority);
   const fit = fitTasksToBudget(candidates,budget,goalId);
   const selected = fit.tasks;
-  const start = new Date(); const end = new Date(start); end.setDate(end.getDate() + 7);
   const plan = await planRepository.upsert(userId, goalId, start, end, budget, fit.plannedMinutes);
-  await planTaskRepository.replaceForPlan(userId, plan.id, selected);
+  await planTaskRepository.replaceForPlan(userId, plan.id, selected, start);
   const carriedForwardCount=missed.rows.filter((old:any)=>selected.some((task:any)=>old.conceptId&&old.conceptId===task.conceptId||old.skillId&&old.skillId===task.skillId)).length;
   return { plan: { id: plan.id, goalId: plan.goalId, userId: plan.userId, startDate: plan.startDate, endDate: plan.endDate, status: plan.status }, timeBudget: { availableMinutes: budget, plannedMinutes: fit.plannedMinutes, remainingMinutes: fit.remainingMinutes }, backlog: { carriedForwardCount, deferredCount: Math.max(0,missed.rows.length-carriedForwardCount) }, tasks: (await planTaskRepository.listForPlan(userId, plan.id)).map(serializeTask) };
 }
@@ -119,8 +124,41 @@ export async function getGoalPlan(userId: string, goalId: string) {
   if (!plan) return { plan: null, tasks: [] };
   return { plan: { id: plan.id, goalId: plan.goalId, userId: plan.userId, startDate: plan.startDate, endDate: plan.endDate, status: plan.status }, tasks: (await planTaskRepository.listForPlan(userId, plan.id)).map(serializeTask) };
 }
+export async function getGoalReadiness(userId: string, goalId: string) {
+  const goal = await ownedGoal(userId, goalId);
+  const result = await query<any>(`WITH evidence AS (
+      SELECT DISTINCT ON (canonical_knowledge_point_id) canonical_knowledge_point_id, mastery::float AS mastery, updated_at
+      FROM learner_knowledge_point_states
+      WHERE user_id=$1 AND canonical_knowledge_point_id IS NOT NULL
+      ORDER BY canonical_knowledge_point_id, updated_at DESC, attempt_count DESC
+    )
+    SELECT ls.id AS "skillId",ls.name,ls.priority,cs.id AS "canonicalSkillId",cs.name AS "canonicalSkillName",
+      count(DISTINCT kp.id)::int AS "totalPoints",
+      count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NOT NULL)::int AS "assessedPoints",
+      count(DISTINCT kp.id) FILTER (WHERE e.mastery >= .7)::int AS strengths,
+      count(DISTINCT kp.id) FILTER (WHERE e.mastery < .7)::int AS weaknesses,
+      count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NULL)::int AS "unassessedPoints",
+      max(e.updated_at) AS "latestEvidenceAt"
+    FROM learner_skills ls
+    LEFT JOIN canonical_skills cs ON lower(trim(cs.name))=lower(trim(ls.name))
+    LEFT JOIN topics t ON t.skill_id=cs.id
+    LEFT JOIN canonical_concepts cc ON cc.topic_id=t.id AND cc.status='active'
+    LEFT JOIN knowledge_points kp ON kp.concept_id=cc.id
+    LEFT JOIN evidence e ON e.canonical_knowledge_point_id=kp.id
+    WHERE ls.user_id=$1 AND ls.goal_id=$2
+    GROUP BY ls.id,ls.name,ls.priority,cs.id,cs.name ORDER BY ls.priority DESC,ls.name`, [userId,goalId]);
+  return { goal: { id: goal.id, title: goal.title }, evidenceSource: "Latest submitted recall evidence mapped to canonical knowledge points.", skills: result.rows.map((row) => ({
+    skillId: row.skillId, name: row.name, priority: row.priority,
+    relevance: "learner_priority",
+    canonicalSkill: row.canonicalSkillId ? { id: row.canonicalSkillId, name: row.canonicalSkillName } : null,
+    status: !row.canonicalSkillId ? "unmapped" : Number(row.totalPoints) === 0 ? "unassessed" : "mapped",
+    totalPoints: Number(row.totalPoints), assessedPoints: Number(row.assessedPoints),
+    strengths: Number(row.strengths), weaknesses: Number(row.weaknesses),
+    unassessedPoints: Number(row.unassessedPoints), latestEvidenceAt: row.latestEvidenceAt,
+  })) };
+}
 export async function getTodayPlan(userId: string) {
-  const start = new Date(); start.setHours(0, 0, 0, 0); const end = new Date(); end.setHours(23, 59, 59, 999);
+  const start = utcDayStart(); const end = new Date(start.getTime() + 24 * 60 * 60 * 1000 - 1);
   await planTaskRepository.markMissed(userId, start);
   let tasks = await planTaskRepository.listToday(userId, start, end);
   if (!tasks.length) { const active = (await goalRepository.list(userId)).find((goal) => goal.status === "active"); if (active) return generateGoalPlan(userId, active.id); }
@@ -128,7 +166,8 @@ export async function getTodayPlan(userId: string) {
   const budgetResult = tasks[0] ? await query<any>(`SELECT available_minutes AS "availableMinutes", planned_minutes AS "plannedMinutes" FROM plans WHERE id=$1`,[tasks[0].planId]) : { rows: [] };
   const budgetRow = budgetResult.rows[0];
   const timeBudget = budgetRow?.availableMinutes != null ? { availableMinutes: budgetRow.availableMinutes, plannedMinutes: budgetRow.plannedMinutes, remainingMinutes: budgetRow.availableMinutes-budgetRow.plannedMinutes } : null;
-  const missed=await query<any>(`SELECT task_type AS "taskType",concept_id AS "conceptId",skill_id AS "skillId" FROM plan_tasks WHERE user_id=$1 AND status='missed' AND scheduled_for::date=CURRENT_DATE-1`,[userId]);
+  const previousStart = new Date(start.getTime() - 24 * 60 * 60 * 1000);
+  const missed=await query<any>(`SELECT task_type AS "taskType",concept_id AS "conceptId",skill_id AS "skillId" FROM plan_tasks WHERE user_id=$1 AND status='missed' AND scheduled_for >= $2 AND scheduled_for < $3`,[userId,previousStart,start]);
   const carriedForwardCount=missed.rows.filter((old:any)=>tasks.some((task:any)=>old.conceptId&&old.conceptId===task.conceptId||old.skillId&&old.skillId===task.skillId)).length;
   return { plan: { generatedAt: new Date().toISOString() }, timeBudget, backlog:{carriedForwardCount,deferredCount:Math.max(0,missed.rows.length-carriedForwardCount)}, tasks: tasks.map(serializeTask) };
 }

@@ -20,7 +20,7 @@ function splitMaterial(material: string): string[] {
     .split(/^#{1,3}\s+/m)
     .map((c) => c.trim())
     .filter((c) => c.length > 20);
-  if (headingChunks.length > 1) return headingChunks.slice(0, 6);
+  if (headingChunks.length > 1 || /^#{1,3}\s+/m.test(material)) return headingChunks.slice(0, 6);
 
   const paragraphs = material
     .split(/\n\s*\n/)

@@ -47,7 +47,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** Curator-reviewed coverage for a bounded domain, mapping precision review, migration rollback/recovery plan, and observed completion of the roadmap-to-study flow.
 
-**Current delivery (2026-10-11; browser trace verified 2026-10-17):** Additive migration `014` links a newly selected canonical topic/concept to a study session; extracted personal concepts map only when their name exactly matches the learner-selected canonical concept; canonical point IDs attach to recall evidence only for a unique normalized exact statement match in the selected concept. New Study suggestions preserve IDs; the authenticated roadmap returns role â†’ skill â†’ topic â†’ concept â†’ point data, direct prerequisites, catalog resources and user-scoped study/assessment status. Completed sessions show `Studied`; submitted recall/baseline evidence shows `Assessed`; no mastery is inferred from session completion. Custom free-text topics and unmatched/ambiguous point labels remain explicitly unmapped. Existing history is not backfilled. The Firefox E2E trace confirmed the HTTP caching UI count/text agrees with the authenticated roadmap API and that the adjacent Caching topic renders. Phase B remains partial pending mapping-precision review and browser traces of the remaining handoff flow.
+**Current delivery (2026-10-11; browser trace verified 2026-10-17):** Additive migration `014` links a newly selected canonical topic/concept to a study session; extracted personal concepts map only when their name exactly matches the learner-selected canonical concept; canonical point IDs attach to recall evidence only for a unique normalized exact statement match in the selected concept. New Study suggestions preserve IDs; the authenticated roadmap returns role → skill → topic → concept → point data, direct prerequisites, catalog resources and user-scoped study/assessment status. Completed sessions show `Studied`; submitted recall/baseline evidence shows `Assessed`; no mastery is inferred from session completion. Custom free-text topics and unmatched/ambiguous point labels remain explicitly unmapped. Existing history is not backfilled. Firefox E2E now follows a canonical concept through study and submitted recall, verifies its mapped point evidence, unchanged canonical point count, and rendered roadmap identity. Phase B remains partial pending broader mapping-precision review.
 
 ## Phase C — Question quality
 
@@ -114,6 +114,8 @@ This plan sequences work needed to make the learning loop traceable from a learn
 **Manual validation:** Build a weekly plan, alter availability, complete and miss tasks, revisit a session, and follow next-step links from a report.
 
 **Maturity evidence:** Usability sessions across novice and experienced learners, task completion/error measures, and evidence that plan reasons match the underlying state.
+
+**Current delivery (2026-10-17):** Firefox verifies the resource handoff and safe no-match state, canonical roadmap-to-study evidence, and daily-plan due recall with complete/skip/overdue persistence. Planner day boundaries use UTC consistently because no user time-zone preference exists. A first goal-scoped My Readiness view reports exact-matched canonical point evidence without a composite score; usability and broader mapping precision remain unmeasured.
 
 ## Later roadmap
 

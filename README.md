@@ -37,7 +37,7 @@ npm run db:seed -w server
 
 `npm test` runs database-independent unit tests. `npm run test:integration -w server` requires PostgreSQL and applies the relational integration checks.
 
-`npm run test:e2e` starts isolated mock-provider API and Vite processes on ports 3101 and 5174, then drives Firefox through the learner journeys. It checks canonical roadmap rendering, rejected and valid study inputs with source URL separation, baseline duplicate/lost-response recovery and completion, a Rapid Fire round with progressive hints and its assessment report, and grounded remediation citation rendering plus targeted verification. It requires Firefox and the local `recallloop` PostgreSQL database with migrations and seed data applied; the script creates and deletes one uniquely named E2E learner account and stops its child processes.
+`npm run test:e2e` starts isolated mock-provider API and Vite processes on ports 3101 and 5174, then drives Firefox through the learner journeys. It checks canonical roadmap-to-study point identity and evidence mapping, rejected and valid study inputs with source URL separation, diagnosed resource recommendations plus the safe no-match state, evidence-backed readiness mapping and unassessed custom skills, UTC daily-plan due recall/completion/skip/overdue transitions, baseline duplicate/lost-response recovery and completion, a Rapid Fire round with progressive hints and its assessment report, and grounded remediation citation rendering plus targeted verification. It requires Firefox and the local `recallloop` PostgreSQL database with migrations and seed data applied; the script creates and deletes one uniquely named E2E learner account and stops its child processes.
 
 ## Architecture
 

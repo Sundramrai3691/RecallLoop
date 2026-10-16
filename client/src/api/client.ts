@@ -87,6 +87,10 @@ export const api = {
     return request<{ skills: Skill[] }>(`/api/goals/${goalId}/skills`);
   },
 
+  goalReadiness(goalId: string) {
+    return request<{ goal: { id: string; title: string }; evidenceSource: string; skills: Array<{ skillId: string; name: string; priority: number; relevance: string; canonicalSkill: { id: string; name: string } | null; status: "unmapped" | "unassessed" | "mapped"; totalPoints: number; assessedPoints: number; strengths: number; weaknesses: number; unassessedPoints: number; latestEvidenceAt: string | null }> }>(`/api/goals/${goalId}/readiness`);
+  },
+
   createSkill(goalId: string, input: { name: string; description: string; priority: number }) {
     return request<{ skill: Skill }>(`/api/goals/${goalId}/skills`, {
       method: "POST",

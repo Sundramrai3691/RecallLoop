@@ -97,7 +97,7 @@ export interface PlanRepository {
 }
 
 export interface PlanTaskRepository {
-  replaceForPlan(userId: string, planId: string, tasks: Array<Record<string, unknown>>): Promise<void>;
+  replaceForPlan(userId: string, planId: string, tasks: Array<Record<string, unknown>>, dayStart: Date): Promise<void>;
   listForPlan(userId: string, planId: string): Promise<PlanTaskRecord[]>;
   listToday(userId: string, start: Date, end: Date): Promise<PlanTaskRecord[]>;
   markMissed(userId: string, before: Date): Promise<void>;
