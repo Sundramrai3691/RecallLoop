@@ -208,6 +208,41 @@ describe("PostgreSQL runtime integration", () => {
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
+  it("rolls back the final baseline answer when learner-state persistence fails",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Baseline Rollback Test') RETURNING id`,[`baseline-rollback-${randomUUID()}@test.local`])).rows[0].id;
+    const triggerName=`fail_baseline_state_${randomUUID().replaceAll("-","")}`;
+    let triggerCreated=false;
+    let functionCreated=false;
+    try{
+      const skill=(await postgres.query<any>(`SELECT s.id FROM canonical_skills s JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN knowledge_points kp ON kp.concept_id=c.id GROUP BY s.id ORDER BY count(DISTINCT c.id) DESC,s.id LIMIT 1`)).rows[0];
+      const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Baseline rollback fixture') RETURNING id`,[userId])).rows[0];
+      const baseline=await createBaseline({userId,goalId:goal.id,skillId:skill.id,level:"familiar"});
+      expect(baseline.questions.length).toBeGreaterThanOrEqual(3);
+      for(const question of baseline.questions.slice(0,-1)){
+        await submitBaselineQuestion(baseline.assessment.id,userId,{questionId:question.id,answer:"No relevant answer provided.",confidence:4});
+      }
+      const pending=baseline.questions.at(-1)!;
+      await postgres.query(`CREATE FUNCTION ${triggerName}() RETURNS trigger LANGUAGE plpgsql AS $$ BEGIN IF NEW.user_id='${userId}'::uuid THEN RAISE EXCEPTION 'forced baseline learner-state persistence failure'; END IF; RETURN NEW; END $$`);
+      functionCreated=true;
+      await postgres.query(`CREATE TRIGGER ${triggerName} BEFORE INSERT ON learner_knowledge_states FOR EACH ROW EXECUTE FUNCTION ${triggerName}()`);
+      triggerCreated=true;
+
+      await expect(submitBaselineQuestion(baseline.assessment.id,userId,{questionId:pending.id,answer:"This answer should roll back with the failed transaction.",confidence:6}))
+        .rejects.toThrow("forced baseline learner-state persistence failure");
+      const persisted=await getBaseline(baseline.assessment.id,userId);
+      expect(persisted.assessment.status).toBe("pending");
+      expect(persisted.questions.find((question:any)=>question.id===pending.id)).toMatchObject({answer:null,submittedAt:null});
+      expect(persisted.questions.filter((question:any)=>question.submittedAt)).toHaveLength(baseline.questions.length-1);
+      expect(Number((await postgres.query<any>(`SELECT count(*)::int AS count FROM learner_knowledge_states WHERE user_id=$1`,[userId])).rows[0].count)).toBe(0);
+    }finally{
+      if(triggerCreated){
+        await postgres.query(`DROP TRIGGER IF EXISTS ${triggerName} ON learner_knowledge_states`);
+      }
+      if(functionCreated)await postgres.query(`DROP FUNCTION IF EXISTS ${triggerName}()`);
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
+  });
+
   it("persists structured answers and keeps each knowledge point state independent, including retries",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Structured Test') RETURNING id`,[`structured-${randomUUID()}@test.local`])).rows[0].id;
     try{

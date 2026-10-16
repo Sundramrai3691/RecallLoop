@@ -58,7 +58,7 @@ Grounding vectors are stored as PostgreSQL `real[]` in migration `010`, with mod
 
 - Numeric mastery, coverage, confidence, difficulty, priority, and hint-count fields have explicit `CHECK` bounds in migrations.
 - `recall_evaluations.recall_attempt_id` is unique, so one attempt has at most one normalized evaluation.
-- `review_states` is unique by `(user_id, concept_id)`; `plans` by `(user_id, goal_id)`.
+- `review_states` is unique by `(user_id, concept_id)` and persists `interval_days` as an integer number of whole days; scheduler due dates use that same rounded interval. `plans` is unique by `(user_id, goal_id)`.
 - `learner_knowledge_point_states` is unique by `(user_id, concept_id, point)`, so evidence for one point cannot overwrite another point's learner state. Existing concepts store their required points as text; the current schema does not link those personal point labels to canonical `knowledge_points` UUIDs.
 - Canonical `knowledge_points` are unique by `(concept_id, normalized statement, importance, difficulty)` after migration `015`. Same-concept duplicate statements with matching curation metadata are consolidated after evidence FKs are remapped; groups with conflicting importance/difficulty are retained and logged with `action='manual_review'`. Audit IDs have no FK to deleted points so the cleanup report remains durable.
 - `study_sessions.source_url` is optional provenance only. `raw_material` is the text actually supplied for extraction; the application does not claim to fetch the external URL. Topic title and source link remain separate fields.

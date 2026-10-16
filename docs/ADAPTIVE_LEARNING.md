@@ -53,7 +53,7 @@ A Learning Pack combines fitting resources with explanation, application, and qu
 - `confirm`: show the recommended date and allow the learner to confirm or change it.
 - `manual`: keep `ReviewState` authoritative, but do not add optional future reviews to the plan automatically. Due recalls remain visible.
 
-The scheduler owns due dates and review state. The planner consumes due recalls; it does not calculate new review intervals.
+The scheduler owns due dates and review state. Review intervals are whole days to match the persisted `review_states.interval_days` column; a hard outcome rounds the 1.5× interval to the nearest whole day before calculating the due date. The planner consumes due recalls; it does not calculate new review intervals.
 
 ## Learner Model
 

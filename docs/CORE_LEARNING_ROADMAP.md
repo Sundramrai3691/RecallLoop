@@ -29,7 +29,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** PostgreSQL-backed regressions pass on the current schema; no historical records are deleted; a reviewed sample of real study materials is traced to source, concepts, question, answer evidence, report and next action; live-provider and browser checks are recorded separately from mock coverage.
 
-**Current delivery:** Topic/source separation, saved source URL, required text, URL-leak checks at input and structured extraction boundaries, URL rejection in generated remediation, no empty mock extraction, extraction-before-session persistence, learner empty-state correction, removal of unsupported resource trust/freshness/coverage-percent claims, and provider status check. Canonical point identity remains incomplete for personal labels. Firefox E2E now covers canonical roadmap/API agreement and rejects URL topics and URL-only notes without creating orphan sessions. Valid provider-backed extraction/source separation, remediation browser flow, and historical contamination review remain outstanding; historical records remain preserved pending evidence review.
+**Current delivery:** Topic/source separation, saved source URL, required text, URL-leak checks at input and structured extraction boundaries, URL rejection in generated remediation, no empty mock extraction, extraction-before-session persistence, learner empty-state correction, removal of unsupported resource trust/freshness/coverage-percent claims, and provider status check. Firefox E2E covers valid extraction with separate source provenance, URL-safe extracted content and prompts, plus URL-topic and URL-only-note rejection without orphan sessions. Baseline recovery/completion, Rapid Fire hints/submission/report, and grounded remediation citation/verification are also exercised in the browser. Live-provider material review and historical contamination review remain outstanding; historical records remain preserved pending evidence review.
 
 ## Phase B — Canonical knowledge and roadmaps
 
@@ -80,6 +80,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 **Manual validation:** Compare evaluator output to human labels across correct, incomplete, incorrect, irrelevant and adversarial answers; inspect the learner explanation and next action.
 
 **Maturity evidence:** Benchmark results with error analysis and inter-rater notes; monitored regression set; review of real reports for clarity and consistency.
+**Current delivery (2026-10-17):** Assessment reports expose outcome counts, point-level feedback and maturity status; Firefox verified the rendered report against the API summary. Baseline duplicate/lost-response recovery, completion and atomic learner-state updates have PostgreSQL and browser regressions, including a forced rollback case. Recall review intervals now round to whole days to match the persisted integer schema; the browser trace found and verified the prior fractional-interval failure. Human-labeled evaluator benchmarking and review remain open.
 
 ## Phase E — Resources and remediation
 
@@ -96,6 +97,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 **Manual validation:** Open sources, inspect attribution/licence, compare remediation claims to cited excerpts, simulate unavailable sources, then complete targeted verification.
 
 **Maturity evidence:** Curator-reviewed source set, provenance audit, retrieval-grounding benchmark and broken-link monitoring.
+**Current delivery (2026-10-17):** User-provided source ingestion, scoped retrieval, validated grounded remediation generation and targeted verification are implemented and PostgreSQL-tested. Firefox verified displayed explanation/key ideas, the original source URL citation, and a completed targeted recall that marks the remediation verified with improved evidence. Manual comparison of claims to sources, provider-quality review, and broken-source behavior remain open.
 
 ## Phase F — Planner and UX
 

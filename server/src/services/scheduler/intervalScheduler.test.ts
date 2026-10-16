@@ -19,6 +19,7 @@ describe("nextIntervalDays", () => {
   it("uses the MVP interval policy", () => {
     expect(nextIntervalDays("again", 10)).toBe(1);
     expect(nextIntervalDays("hard", 0)).toBe(1);
+    expect(nextIntervalDays("hard", 1)).toBe(2);
     expect(nextIntervalDays("hard", 2)).toBe(3);
     expect(nextIntervalDays("good", 0)).toBe(2);
     expect(nextIntervalDays("good", 3)).toBe(6);

@@ -20,7 +20,7 @@ export function nextIntervalDays(
     case "again":
       return 1;
     case "hard":
-      return Math.max(1, previous * 1.5);
+      return Math.max(1, Math.round(previous * 1.5));
     case "good":
       return Math.max(2, previous * 2);
     case "easy":
