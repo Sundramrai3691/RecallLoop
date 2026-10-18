@@ -1,6 +1,6 @@
 # Project status
 
-Status is based on checked-in source and commands run as of 2026-10-17. This is not a claim about any deployed environment or production usage.
+Status is based on checked-in source and commands run as of 2026-10-18. This is not a claim about any deployed environment or production usage.
 
 ## Status definitions
 
@@ -28,6 +28,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Assessment sessions, hints, question selection | TESTED | Question/assessment services, migration `004`–`008`. Enriched with `summarizeAssessmentEvidence` providing question outcome breakdown (correct, partial, incorrect, unanswered), conservative point-level evidence rollup, unique point coverage, and maturity status (`Early signal` vs `Strong`/`Developing`/`Needs work`). |
 | Offline assessment quality contract benchmark | TESTED | Scripted fixtures exercise 7 labeled answer shapes (adequate, partial, misconception, vague, terminology error, irrelevant, prompt-injection-shaped), plus malformed/schema-invalid output, strict structured point mapping, and blank multipart answers. These are contract checks against scripted outputs, not model grading accuracy. MCQ answer selection remains deterministic application logic. |
 | Structured multipart answers and per-point learner state | TESTED | Question part storage, part validation/evaluation, transactional point state in migration `011`; unit suite and PostgreSQL roundtrip/retry integration checks passed in the latest verification session. |
+| Canonical HTTP question bank v1 | TESTED | Migration `016` adds stable identities, immutable revisions, canonical point mapping, and exact revision references on learner snapshots/attempts. A 24-item original HTTP pilot is validated offline and seeded by exact canonical concept/point resolution. Assessment selection uses current published/valid/engineering-reviewed-or-SME-reviewed entries and fails explicitly on missing bank coverage; existing grading/evidence paths remain in use. Local tests/build/E2E results are recorded in the 2026-10-18 session entry. Independent SME review and human-labeled evaluator quality remain outstanding. |
 | Resource recommendations and learning packs | IMPLEMENTED | Resource services and routes. |
 | Grounding ingestion, retrieval, remediation and verification | IMPLEMENTED | Grounding services/routes and migration `010`. |
 | Unit-level tests | TESTED | 2026-10-17: `npm test` passed, 21 files / 106 passed; four opt-in live-provider checks skipped. |

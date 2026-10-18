@@ -22,6 +22,7 @@ export interface QuestionDraft {
   knowledgePoints: string[];
   parts: StructuredQuestionPart[] | null;
   hints: string[];
+  rubric?: Array<{ id: string; label: string; weight: number; fullCredit: string; partialCredit: string; insufficient: string }>;
 }
 
 export function createStructuredParts(points: string[], conceptName: string): StructuredQuestionPart[] | null {
@@ -207,6 +208,6 @@ export function evaluateMcq(input: { selectedOptionId: string; correctOptionId: 
 }
 
 export async function upsertQuestion(client: PoolClient, conceptId: string, draft: QuestionDraft) {
-  const result = await client.query<{ id: string }>(`INSERT INTO questions (concept_id,question_type,assessment_level,difficulty,title,context,prompt,estimated_minutes,source,options,correct_option_id,explanation,knowledge_points,hints,question_parts) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) ON CONFLICT (concept_id,question_type,prompt) DO UPDATE SET assessment_level=EXCLUDED.assessment_level,difficulty=EXCLUDED.difficulty,title=EXCLUDED.title,context=EXCLUDED.context,estimated_minutes=EXCLUDED.estimated_minutes,source=EXCLUDED.source,options=EXCLUDED.options,correct_option_id=EXCLUDED.correct_option_id,explanation=EXCLUDED.explanation,knowledge_points=EXCLUDED.knowledge_points,hints=EXCLUDED.hints,question_parts=EXCLUDED.question_parts,updated_at=now() RETURNING id`,[conceptId,draft.questionType,draft.assessmentLevel,draft.difficulty,draft.title,draft.context,draft.prompt,draft.estimatedMinutes,draft.source,draft.options ? JSON.stringify(draft.options) : null,draft.correctOptionId,draft.explanation,draft.knowledgePoints,draft.hints,draft.parts ? JSON.stringify(draft.parts) : null]);
+  const result = await client.query<{ id: string }>(`INSERT INTO questions (concept_id,question_type,assessment_level,difficulty,title,context,prompt,estimated_minutes,source,options,correct_option_id,explanation,knowledge_points,hints,question_parts,rubric) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16) ON CONFLICT (concept_id,question_type,prompt) WHERE canonical_question_revision_id IS NULL DO UPDATE SET assessment_level=EXCLUDED.assessment_level,difficulty=EXCLUDED.difficulty,title=EXCLUDED.title,context=EXCLUDED.context,estimated_minutes=EXCLUDED.estimated_minutes,source=EXCLUDED.source,options=EXCLUDED.options,correct_option_id=EXCLUDED.correct_option_id,explanation=EXCLUDED.explanation,knowledge_points=EXCLUDED.knowledge_points,hints=EXCLUDED.hints,question_parts=EXCLUDED.question_parts,rubric=EXCLUDED.rubric,updated_at=now() RETURNING id`,[conceptId,draft.questionType,draft.assessmentLevel,draft.difficulty,draft.title,draft.context,draft.prompt,draft.estimatedMinutes,draft.source,draft.options ? JSON.stringify(draft.options) : null,draft.correctOptionId,draft.explanation,draft.knowledgePoints,draft.hints,draft.parts ? JSON.stringify(draft.parts) : null,JSON.stringify(draft.rubric ?? [])]);
   return result.rows[0].id;
 }

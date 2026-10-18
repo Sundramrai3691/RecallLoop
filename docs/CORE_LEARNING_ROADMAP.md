@@ -65,6 +65,8 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** Versioned labeled evaluation set, reviewer agreement and release thresholds, measured defect rates, and documented item provenance.
 
+**Current delivery (2026-10-18, partial):** Migration `016` and the [canonical question bank design](CANONICAL_QUESTION_BANK.md) provide stable identities, immutable revisions, exact canonical point mapping, source provenance, review/publication gates, offline quality validation, benchmark fixtures, and a vertical slice through existing assessment/recall persistence. The original pilot has 24 items across the two actual HTTP canonical points. It is engineering-reviewed and RFC-grounded; independent subject-matter review, blinded answerability review, human-labeled evaluator results, reviewer agreement, and release thresholds are not yet established. Expand only after that review.
+
 ## Phase D — Evaluation and session reports
 
 **Learner problem:** Learners need feedback tied to answer evidence and a useful report, not a single score that obscures partial or missing ideas.

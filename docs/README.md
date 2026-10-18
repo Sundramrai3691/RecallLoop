@@ -19,6 +19,7 @@ This index separates current implementation references from domain explanations,
 - [Learning model](LEARNING_MODEL.md): learner evidence, mastery, and review behavior.
 - [Knowledge model](KNOWLEDGE_MODEL.md): canonical knowledge and its provenance.
 - [Question engine](QUESTION_ENGINE.md): questions, assessment sessions, hints, and evaluation.
+- [Canonical question bank](CANONICAL_QUESTION_BANK.md): revisioned curated items, review gates, provenance, selection, and quality checks.
 - [Grounded remediation](GROUNDED_REMEDIATION.md): source ingestion, retrieval, remediation, and verification.
 
 ## Audits and migration history

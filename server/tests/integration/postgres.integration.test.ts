@@ -19,10 +19,12 @@ import { getRoleRoadmap } from "../../src/services/knowledge/knowledgeService.js
 import { createStudySession } from "../../src/services/study/studySessionService.js";
 import { env } from "../../src/config/env.js";
 import { resetEvaluatorForTests } from "../../src/services/evaluator/index.js";
+import { seedCanonicalQuestionBank } from "../../src/db/seedCanonicalQuestionBank.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
     await runPostgresMigration();
+    await seedCanonicalQuestionBank();
   });
 
   afterAll(async () => {
@@ -30,10 +32,49 @@ describe("PostgreSQL runtime integration", () => {
   });
 
   it("applies relational schema and exposes core tables", async () => {
-    const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations')`);
-    expect(result.rows.length).toBe(13);
+    const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations','canonical_question_items','canonical_question_revisions','canonical_question_revision_points')`);
+    expect(result.rows.length).toBe(16);
     const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id')))`);
     expect(structured.rows).toHaveLength(9);
+  });
+
+  it("seeds, selects, grades, and preserves revisioned canonical HTTP questions",async()=>{
+    await seedCanonicalQuestionBank();
+    const pilotCounts=await postgres.query<any>(`SELECT r.assessment_level,count(*)::int AS count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'http-%' AND r.publication_status='published' AND r.quality_status='valid' AND r.review_status='engineering_reviewed' GROUP BY r.assessment_level ORDER BY r.assessment_level`);
+    expect(pilotCounts.rows.reduce((sum:any,row:any)=>sum+row.count,0)).toBe(24);
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Canonical question pilot') RETURNING id`,[`question-bank-${randomUUID()}@test.local`])).rows[0].id;
+    const previous={provider:env.llmProvider,key:env.llmApiKey};
+    try{
+      const catalog=(await postgres.query<any>(`SELECT cc.id AS concept_id,kp.id AS point_id,kp.statement FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN knowledge_points kp ON kp.concept_id=cc.id WHERE t.name='HTTP' AND cc.name='HTTP caching' AND cc.status='active'`)).rows[0];
+      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,canonical_topic_id,canonical_concept_id) SELECT $1,'Canonical question pilot',t.id,cc.id FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id WHERE cc.id=$2 RETURNING id`,[userId,catalog.concept_id])).rows[0];
+      const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,canonical_concept_id) VALUES($1,$2,'HTTP caching','Freshness and revalidation.',$3,$4) RETURNING id`,[userId,session.id,[catalog.statement],catalog.concept_id])).rows[0];
+      const assessment=await createAssessment(userId,concept.id,"mastery_check");
+      expect(assessment.questions).toHaveLength(6);
+      expect(assessment.questions.map((item:any)=>item.questionType).sort()).toEqual(["descriptive","mcq","rapid_recall","scenario","short_explanation","transfer"].sort());
+      expect(assessment.questions.every((item:any)=>item.canonicalQuestionRevisionId&&item.question.canonicalQuestionRevisionId===item.canonicalQuestionRevisionId)).toBe(true);
+      expect(assessment.questions.find((item:any)=>item.questionType==='short_explanation')?.question.rubric.length).toBeGreaterThan(0);
+      const mapped=(await postgres.query<any>(`SELECT count(*)::int AS count FROM canonical_question_revision_points rp JOIN canonical_question_revisions r ON r.id=rp.question_revision_id JOIN canonical_question_items i ON i.id=r.question_item_id WHERE i.canonical_concept_id=$1 AND r.revision=i.current_revision AND rp.canonical_knowledge_point_id=$2`,[catalog.concept_id,catalog.point_id])).rows[0];
+      expect(mapped.count).toBe(12);
+
+      const mcq=assessment.questions.find((item:any)=>item.questionType==='mcq');
+      await submitRecall(mcq.id,{userId,selectedOptionId:mcq.question.correctOptionId,confidence:8});
+      const free=assessment.questions.find((item:any)=>item.questionType==='short_explanation');
+      env.llmProvider='mock';env.llmApiKey='';resetEvaluatorForTests();
+      await submitRecall(free.id,{userId,answer:catalog.statement,confidence:7});
+      const persisted=(await postgres.query<any>(`SELECT a.canonical_question_revision_id,r.canonical_knowledge_point_id,e.evaluator_version FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id WHERE a.id=ANY($1::uuid[]) ORDER BY a.created_at`,[[mcq.id,free.id]])).rows;
+      expect(persisted).toHaveLength(2);
+      expect(persisted.every((row:any)=>row.canonical_knowledge_point_id===catalog.point_id)).toBe(true);
+      expect(persisted.every((row:any)=>row.canonical_question_revision_id)).toBe(true);
+      expect(persisted.find((row:any)=>row.evaluator_version==='deterministic-mcq-1.0')).toBeTruthy();
+      const immutableRevision=mcq.canonicalQuestionRevisionId;
+      const oldPrompt=mcq.question.prompt;
+      await expect(postgres.query(`UPDATE canonical_question_revisions SET prompt=prompt||' edited' WHERE id=$1`,[immutableRevision])).rejects.toThrow('immutable');
+      expect((await postgres.query<any>(`SELECT prompt FROM canonical_question_revisions WHERE id=$1`,[immutableRevision])).rows[0].prompt).toBe(oldPrompt);
+      expect((await getAttempt(mcq.id,userId))?.question?.prompt).toBe(oldPrompt);
+    }finally{
+      resetEvaluatorForTests();env.llmProvider=previous.provider;env.llmApiKey=previous.key;
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
   });
 
   it("deduplicates canonical seed rows, keeps topic identity, and remains stable across migration reruns",async()=>{
@@ -65,11 +106,11 @@ describe("PostgreSQL runtime integration", () => {
     const client=await postgres.connect();
     try{
       await client.query("BEGIN");
-      const concept=(await client.query<any>(`SELECT c.id FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id WHERE t.name='HTTP' AND c.name='HTTP caching' LIMIT 1`)).rows[0];
+      const concept=(await client.query<any>(`SELECT c.id,kp.statement,kp.importance,kp.difficulty FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id JOIN knowledge_points kp ON kp.concept_id=c.id WHERE t.name='Caching' AND c.name='Cache-aside pattern' LIMIT 1`)).rows[0];
       await client.query(`DROP INDEX IF EXISTS uq_knowledge_points_concept_statement_metadata`);
       const duplicateA="00000000-0000-0000-0000-000000000001";
       const duplicateB="00000000-0000-0000-0000-000000000002";
-      await client.query(`INSERT INTO knowledge_points(id,concept_id,statement,importance,difficulty) VALUES($1,$3,'Can distinguish freshness from validation.',80,3),($2,$3,'Can distinguish freshness from validation.',80,3)`,[duplicateA,duplicateB,concept.id]);
+      await client.query(`INSERT INTO knowledge_points(id,concept_id,statement,importance,difficulty) VALUES($1,$3,$4,$5,$6),($2,$3,$4,$5,$6)`,[duplicateA,duplicateB,concept.id,concept.statement,concept.importance,concept.difficulty]);
 
       const userId=(await client.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Point Reference Test') RETURNING id`,[`point-refs-${randomUUID()}@test.local`])).rows[0].id;
       const goalId=(await client.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Point reference fixture') RETURNING id`,[userId])).rows[0].id;
@@ -78,10 +119,10 @@ describe("PostgreSQL runtime integration", () => {
 
       const sessionId=(await client.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'Point reference fixture') RETURNING id`,[userId])).rows[0].id;
       const personalConceptId=(await client.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description) VALUES($1,$2,'Point reference fixture','Fixture concept') RETURNING id`,[userId,sessionId])).rows[0].id;
-      await client.query(`INSERT INTO learner_knowledge_point_states(user_id,concept_id,point,last_status,canonical_knowledge_point_id) VALUES($1,$2,'Can distinguish freshness from validation.','correct',$3)`,[userId,personalConceptId,duplicateA]);
+      await client.query(`INSERT INTO learner_knowledge_point_states(user_id,concept_id,point,last_status,canonical_knowledge_point_id) VALUES($1,$2,$3,'correct',$4)`,[userId,personalConceptId,concept.statement,duplicateA]);
       const attemptId=(await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question) VALUES($1,$2,$3,'explain','Fixture recall') RETURNING id`,[userId,personalConceptId,sessionId])).rows[0].id;
       const evaluationId=(await client.query<any>(`INSERT INTO recall_evaluations(recall_attempt_id,overall_coverage,feedback,suggested_recall_type,evaluator_version) VALUES($1,1,'Fixture evidence','explain','integration') RETURNING id`,[attemptId])).rows[0].id;
-      await client.query(`INSERT INTO recall_knowledge_point_results(evaluation_id,point,status,canonical_knowledge_point_id) VALUES($1,'Can distinguish freshness from validation.','correct',$2)`,[evaluationId,duplicateB]);
+      await client.query(`INSERT INTO recall_knowledge_point_results(evaluation_id,point,status,canonical_knowledge_point_id) VALUES($1,$2,'correct',$3)`,[evaluationId,concept.statement,duplicateB]);
 
       const conflictA="00000000-0000-0000-0000-000000000010";
       const conflictB="00000000-0000-0000-0000-000000000011";
@@ -89,10 +130,10 @@ describe("PostgreSQL runtime integration", () => {
 
       const migration=await readFile(new URL("../../migrations/015_deduplicate_canonical_knowledge_points.sql",import.meta.url),"utf8");
       await client.query(migration);
-      const keeper=(await client.query<any>(`SELECT id FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')='can distinguish freshness from validation.' ORDER BY id LIMIT 1`,[concept.id])).rows[0].id;
+      const keeper=(await client.query<any>(`SELECT id FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')=regexp_replace(lower(trim($2)),'[[:space:]]+',' ','g') ORDER BY id LIMIT 1`,[concept.id,concept.statement])).rows[0].id;
       const refs=await client.query<any>(`SELECT (SELECT count(*)::int FROM baseline_questions WHERE assessment_id=$1 AND knowledge_point_id=$2) AS baseline_refs,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$3 AND canonical_knowledge_point_id=$2) AS learner_refs,(SELECT count(*)::int FROM recall_knowledge_point_results WHERE evaluation_id=$4 AND canonical_knowledge_point_id=$2) AS recall_refs`,[assessmentId,keeper,userId,evaluationId]);
       expect(refs.rows[0]).toEqual({baseline_refs:2,learner_refs:1,recall_refs:1});
-      expect(Number((await client.query<any>(`SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')='can distinguish freshness from validation.'`,[concept.id])).rows[0].count)).toBe(1);
+      expect(Number((await client.query<any>(`SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1 AND regexp_replace(lower(trim(statement)),'[[:space:]]+',' ','g')=regexp_replace(lower(trim($2)),'[[:space:]]+',' ','g')`,[concept.id,concept.statement])).rows[0].count)).toBe(1);
       expect(Number((await client.query<any>(`SELECT count(*)::int AS count FROM knowledge_points WHERE id IN ($1,$2)`,[conflictA,conflictB])).rows[0].count)).toBe(2);
       expect((await client.query<any>(`SELECT action FROM canonical_knowledge_point_deduplication_audit WHERE concept_id=$1 AND normalized_statement='metadata conflict point.'`,[concept.id])).rows[0]?.action).toBe("manual_review");
     }finally{

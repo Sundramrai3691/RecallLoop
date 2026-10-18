@@ -53,7 +53,8 @@ export async function submitRecall(id: string, input: { answer?: string; answers
     const {knowledgePointResults,overallCoverage}=structuredEvaluation;
     evaluationBody={knowledgePointResults,overallCoverage,missingConcepts:knowledgePointResults.filter((point)=>point.status==="missing").map((point)=>point.point),mistakes:knowledgePointResults.filter((point)=>point.status!=="correct").map((point)=>point.feedback),strengths:knowledgePointResults.filter((point)=>point.status==="correct").map((point)=>point.point),feedback:structuredEvaluation.feedback,suggestedRecallType:overallCoverage>=.75?"application" as QuestionType:"explain" as QuestionType};
   } else {
-    evaluationBody = await evaluator!.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: attempt.question?.knowledgePoints ?? concept.requiredKnowledgePoints, answer: answer!, questionType: attempt.questionType as QuestionType });
+    const rubric = attempt.question?.rubric?.map((dimension: any) => `${dimension.label}: Full credit: ${dimension.fullCredit} Partial credit: ${dimension.partialCredit} Insufficient: ${dimension.insufficient}`);
+    evaluationBody = await evaluator!.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: attempt.question?.knowledgePoints ?? concept.requiredKnowledgePoints, answer: answer!, questionType: attempt.questionType as QuestionType, rubric: rubric?.length ? rubric : undefined });
   }
   const evaluation = { ...evaluationBody, evaluatorVersion: mcq ? "deterministic-mcq-1.0" : evaluator!.version };
   const hintWeight = evidenceWeight(attempt.hintsUsed ?? 0);

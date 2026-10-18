@@ -205,6 +205,8 @@ try {
 
   const canonicalPractice = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
   assert.equal(canonicalPractice.status, 201);
+  assert.ok(canonicalPractice.body.questions[0].canonicalQuestionRevisionId, "A canonical HTTP assessment should retain the selected published bank revision");
+  assert.equal(canonicalPractice.body.questions[0].questionData.assessmentLevel, "depth", "Deep Recall should select a bank question at the requested descriptive type");
   await driver.get(`${clientUrl}/assessments/${canonicalPractice.body.assessment.id}`);
   await driver.wait(until.elementLocated(By.id("assessment-answer")), 10000);
   await driver.findElement(By.id("assessment-answer")).sendKeys("I do not know this yet.");
@@ -213,13 +215,14 @@ try {
   const canonicalAssessment = await learnerApi("GET", `/api/assessments/${canonicalPractice.body.assessment.id}`);
   const canonicalAttemptId = canonicalAssessment.body.questions[0].id;
   const pointEvidence = await pool.query(
-    `SELECT r.canonical_knowledge_point_id
+    `SELECT r.canonical_knowledge_point_id,a.canonical_question_revision_id
      FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id
      JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id
      WHERE a.id=$1`,
     [canonicalAttemptId],
   );
   assert.ok(pointEvidence.rows.some((row) => row.canonical_knowledge_point_id === concept.knowledgePoints[0].id), "The assessed response should retain the canonical point UUID");
+  assert.ok(pointEvidence.rows.some((row) => row.canonical_question_revision_id === canonicalPractice.body.questions[0].canonicalQuestionRevisionId), "The submitted evidence should retain the exact bank revision used for the question");
   const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
   const learnerSummary = await learnerApi("GET", "/api/learner/summary");
