@@ -127,18 +127,37 @@ export async function getGoalPlan(userId: string, goalId: string) {
 export async function getGoalReadiness(userId: string, goalId: string) {
   const goal = await ownedGoal(userId, goalId);
   const result = await query<any>(`WITH evidence AS (
-      SELECT DISTINCT ON (canonical_knowledge_point_id) canonical_knowledge_point_id, mastery::float AS mastery, updated_at
-      FROM learner_knowledge_point_states
-      WHERE user_id=$1 AND canonical_knowledge_point_id IS NOT NULL
-      ORDER BY canonical_knowledge_point_id, updated_at DESC, attempt_count DESC
+      SELECT DISTINCT ON (r.canonical_knowledge_point_id)
+        r.canonical_knowledge_point_id,
+        CASE
+          WHEN r.status='correct' THEN 'correct'
+          WHEN r.status='partial' THEN 'partial'
+          WHEN r.status='missing' AND (
+            CASE
+              WHEN a.structured_answers IS NOT NULL AND r.part_id IS NOT NULL AND jsonb_typeof(a.structured_answers)='array'
+                THEN COALESCE((SELECT NULLIF(trim(answer.value->>'answer'),'') FROM jsonb_array_elements(a.structured_answers) AS answer(value) WHERE answer.value->>'partId'=r.part_id LIMIT 1),'') <> ''
+              WHEN a.question_type='mcq' THEN a.selected_option_id IS NOT NULL
+              ELSE NULLIF(trim(a.answer),'') IS NOT NULL
+            END
+          ) THEN 'incorrect'
+          ELSE 'unanswered'
+        END AS outcome,
+        a.submitted_at
+      FROM recall_attempts a
+      JOIN recall_evaluations ev ON ev.recall_attempt_id=a.id
+      JOIN recall_knowledge_point_results r ON r.evaluation_id=ev.id
+      WHERE a.user_id=$1 AND a.submitted_at IS NOT NULL AND r.canonical_knowledge_point_id IS NOT NULL
+      ORDER BY r.canonical_knowledge_point_id,a.submitted_at DESC,a.created_at DESC,a.id DESC,r.id DESC
     )
     SELECT ls.id AS "skillId",ls.name,ls.priority,cs.id AS "canonicalSkillId",cs.name AS "canonicalSkillName",
       count(DISTINCT kp.id)::int AS "totalPoints",
       count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NOT NULL)::int AS "assessedPoints",
-      count(DISTINCT kp.id) FILTER (WHERE e.mastery >= .7)::int AS strengths,
-      count(DISTINCT kp.id) FILTER (WHERE e.mastery < .7)::int AS weaknesses,
+      count(DISTINCT kp.id) FILTER (WHERE e.outcome='correct')::int AS strengths,
+      count(DISTINCT kp.id) FILTER (WHERE e.outcome='partial')::int AS partial,
+      count(DISTINCT kp.id) FILTER (WHERE e.outcome='incorrect')::int AS incorrect,
+      count(DISTINCT kp.id) FILTER (WHERE e.outcome='unanswered')::int AS unanswered,
       count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NULL)::int AS "unassessedPoints",
-      max(e.updated_at) AS "latestEvidenceAt"
+      max(e.submitted_at) AS "latestEvidenceAt"
     FROM learner_skills ls
     LEFT JOIN canonical_skills cs ON lower(trim(cs.name))=lower(trim(ls.name))
     LEFT JOIN topics t ON t.skill_id=cs.id
@@ -147,13 +166,13 @@ export async function getGoalReadiness(userId: string, goalId: string) {
     LEFT JOIN evidence e ON e.canonical_knowledge_point_id=kp.id
     WHERE ls.user_id=$1 AND ls.goal_id=$2
     GROUP BY ls.id,ls.name,ls.priority,cs.id,cs.name ORDER BY ls.priority DESC,ls.name`, [userId,goalId]);
-  return { goal: { id: goal.id, title: goal.title }, evidenceSource: "Latest submitted recall evidence mapped to canonical knowledge points.", skills: result.rows.map((row) => ({
+  return { goal: { id: goal.id, title: goal.title }, evidenceSource: "Latest submitted result for each canonical knowledge point.", skills: result.rows.map((row) => ({
     skillId: row.skillId, name: row.name, priority: row.priority,
     relevance: "learner_priority",
     canonicalSkill: row.canonicalSkillId ? { id: row.canonicalSkillId, name: row.canonicalSkillName } : null,
     status: !row.canonicalSkillId ? "unmapped" : Number(row.totalPoints) === 0 ? "unassessed" : "mapped",
     totalPoints: Number(row.totalPoints), assessedPoints: Number(row.assessedPoints),
-    strengths: Number(row.strengths), weaknesses: Number(row.weaknesses),
+    strengths: Number(row.strengths), partial: Number(row.partial), incorrect: Number(row.incorrect), unanswered: Number(row.unanswered),
     unassessedPoints: Number(row.unassessedPoints), latestEvidenceAt: row.latestEvidenceAt,
   })) };
 }

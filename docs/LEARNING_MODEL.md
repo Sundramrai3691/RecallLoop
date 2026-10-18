@@ -49,6 +49,8 @@ The planner consumes `ReviewState` for due timing and `LearnerModelService` for 
 - **Derived**: recall success rate, mistake count, due count, average mastery, weak concepts, and weak skills.
 - **Heuristic**: concept status thresholds and the blend used to update `Concept.mastery`. These are intentionally transparent approximations, not scientific mastery claims.
 
+My Readiness is a separate evidence view rather than a mastery estimate. It reads the latest persisted submitted result per canonical knowledge point and reports correct, partial, incorrect, unanswered, or no submitted evidence separately. A nonblank free response or selected MCQ option scored as missing is incorrect; a blank answer scored as missing is unanswered. Pending attempts do not count. Timestamp ties use deterministic creation-time and UUID ordering. See [ADR 010](adr/010-latest-submitted-readiness-evidence.md).
+
 Baseline answers are evaluated before persistence. Once the answer and point evidence are committed, that question is immutable within the assessment: submission locks the assessment and updates only a question with no `submitted_at`. Concurrent final answers serialize before completion and learner-state aggregation. A provider failure before the transaction leaves the question unanswered and retryable.
 
 ## Why the boundaries matter

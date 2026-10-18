@@ -10,7 +10,7 @@ import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
 import { recommendResources } from "../../src/services/resources/resourceRecommendationService.js";
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
-import { generateGoalPlan,getTodayPlan } from "../../src/services/goal/goalService.js";
+import { generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
@@ -279,6 +279,73 @@ describe("PostgreSQL runtime integration", () => {
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
+  it("builds readiness from latest submitted point evidence with distinct incorrect, partial, unanswered, and unassessed states",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Readiness evidence test') RETURNING id`,[`readiness-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const selected=(await postgres.query<any>(`WITH ranked_skills AS (
+          SELECT cs.id,cs.name,count(kp.id)::int AS total_points
+          FROM canonical_skills cs JOIN topics t ON t.skill_id=cs.id JOIN canonical_concepts cc ON cc.topic_id=t.id AND cc.status='active'
+          JOIN knowledge_points kp ON kp.concept_id=cc.id GROUP BY cs.id,cs.name
+        ), representatives AS (
+          SELECT DISTINCT ON (rs.id) rs.id AS skill_id,rs.name AS skill_name,rs.total_points,cc.id AS canonical_concept_id,kp.id AS point_id,kp.statement
+          FROM ranked_skills rs JOIN topics t ON t.skill_id=rs.id JOIN canonical_concepts cc ON cc.topic_id=t.id AND cc.status='active'
+          JOIN knowledge_points kp ON kp.concept_id=cc.id ORDER BY rs.id,cc.id,kp.id
+        ) SELECT * FROM representatives ORDER BY skill_name LIMIT 5`)).rows;
+      expect(selected.length).toBeGreaterThanOrEqual(5);
+      const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Readiness evidence integration') RETURNING id`,[userId])).rows[0];
+      for(const [index,item] of selected.entries())await postgres.query(`INSERT INTO learner_skills(user_id,goal_id,name,priority) VALUES($1,$2,$3,$4)`,[userId,goal.id,item.skill_name,90-index]);
+      await postgres.query(`INSERT INTO learner_skills(user_id,goal_id,name,priority) VALUES($1,$2,'Unmapped custom focus',50)`,[userId,goal.id]);
+      const sessions=new Map<string,{sessionId:string;conceptId:string}>();
+      for(const item of selected){
+        if(sessions.has(item.canonical_concept_id))continue;
+        const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,canonical_concept_id) VALUES($1,$2,$3) RETURNING id`,[userId,item.skill_name,item.canonical_concept_id])).rows[0];
+        const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,canonical_concept_id) VALUES($1,$2,$3,'Canonical readiness fixture',$4,$5) RETURNING id`,[userId,session.id,item.skill_name,[item.statement],item.canonical_concept_id])).rows[0];
+        sessions.set(item.canonical_concept_id,{sessionId:session.id,conceptId:concept.id});
+      }
+      const baseTime=Date.parse('2026-01-01T00:00:00.000Z');
+      async function evidence(item:any,fixture:{id?:string;status:'correct'|'partial'|'missing';submittedAt:number|null;createdAt:number;answer?:string;selectedOptionId?:string;structuredAnswers?:unknown;partId?:string}){
+        const owner=sessions.get(item.canonical_concept_id)!;
+        const attempt=(await postgres.query<any>(`INSERT INTO recall_attempts(id,user_id,concept_id,study_session_id,question_type,question,answer,selected_option_id,structured_answers,submitted_at,created_at)
+          VALUES(COALESCE($1::uuid,gen_random_uuid()),$2,$3,$4,$5,'Readiness point fixture',$6,$7,$8,$9,$10) RETURNING id`,[fixture.id??null,userId,owner.conceptId,owner.sessionId,fixture.structuredAnswers?'short_explanation':fixture.selectedOptionId?'mcq':'descriptive',fixture.answer??'',fixture.selectedOptionId??null,fixture.structuredAnswers?JSON.stringify(fixture.structuredAnswers):null,fixture.submittedAt===null?null:new Date(fixture.submittedAt),new Date(fixture.createdAt)])).rows[0];
+        if(fixture.submittedAt!==null){
+          const evaluation=(await postgres.query<any>(`INSERT INTO recall_evaluations(recall_attempt_id,overall_coverage,feedback,suggested_recall_type,evaluator_version) VALUES($1,$2,'fixture evaluation','explain','integration-fixture') RETURNING id`,[attempt.id,fixture.status==='correct'?1:fixture.status==='partial'?.5:0])).rows[0];
+          await postgres.query(`INSERT INTO recall_knowledge_point_results(evaluation_id,point,status,evidence,feedback,part_id,canonical_knowledge_point_id) VALUES($1,$2,$3,$4,'fixture result',$5,$6)`,[evaluation.id,item.statement,fixture.status,fixture.answer??'',fixture.partId??null,item.point_id]);
+        }
+        return attempt.id as string;
+      }
+      await evidence(selected[0],{status:'correct',submittedAt:baseTime,createdAt:baseTime,answer:'Correct earlier answer.'});
+      await evidence(selected[0],{id:'00000000-0000-4000-8000-000000000001',status:'correct',submittedAt:baseTime+86400000,createdAt:baseTime+86400000,answer:'Tied correct answer.'});
+      await evidence(selected[0],{id:'00000000-0000-4000-8000-000000000002',status:'missing',submittedAt:baseTime+86400000,createdAt:baseTime+86400000,answer:'Tie-break winner contains a misconception.'});
+      await evidence(selected[1],{status:'partial',submittedAt:baseTime+172800000,createdAt:baseTime+172800000,answer:'Some but not all of the explanation.'});
+      await evidence(selected[2],{status:'missing',submittedAt:baseTime+259200000,createdAt:baseTime+259200000,answer:'',partId:'validation',structuredAnswers:[{partId:'validation',answer:''}]});
+      await evidence(selected[3],{status:'correct',submittedAt:baseTime+345600000,createdAt:baseTime+345600000,answer:'Adequate persisted answer.'});
+      const tiedTime=baseTime+86400000;
+      await evidence(selected[4],{status:'correct',submittedAt:null,createdAt:baseTime+604800000});
+      await postgres.query(`INSERT INTO learner_knowledge_point_states(user_id,concept_id,point,mastery,attempt_count,last_status,canonical_knowledge_point_id,updated_at)
+        VALUES($1,$2,$3,1,9,'correct',$4,'2099-01-01T00:00:00Z')`,[userId,sessions.get(selected[0].canonical_concept_id)!.conceptId,selected[0].statement,selected[0].point_id]);
+
+      const readiness=await getGoalReadiness(userId,goal.id);
+      const outcomes=[
+        {assessedPoints:1,strengths:0,partial:0,incorrect:1,unanswered:0},
+        {assessedPoints:1,strengths:0,partial:1,incorrect:0,unanswered:0},
+        {assessedPoints:1,strengths:0,partial:0,incorrect:0,unanswered:1},
+        {assessedPoints:1,strengths:1,partial:0,incorrect:0,unanswered:0},
+        {assessedPoints:0,strengths:0,partial:0,incorrect:0,unanswered:0},
+      ];
+      const latestEvidenceOffsets=[86400000,172800000,259200000,345600000,null];
+      for(const [index,item] of selected.entries()){
+        const mapped=readiness.skills.find((skill:any)=>skill.name===item.skill_name);
+        expect(mapped).toMatchObject({totalPoints:item.total_points,...outcomes[index],unassessedPoints:item.total_points-outcomes[index].assessedPoints,latestEvidenceAt:latestEvidenceOffsets[index]===null?null:new Date(baseTime+latestEvidenceOffsets[index]!)});
+      }
+      expect(readiness.skills.find((skill:any)=>skill.name==='Unmapped custom focus')).toMatchObject({status:'unmapped',totalPoints:0,assessedPoints:0,latestEvidenceAt:null});
+      const otherUser=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Readiness foreign owner') RETURNING id`,[`readiness-foreign-${randomUUID()}@test.local`])).rows[0].id;
+      try{await expect(getGoalReadiness(otherUser,goal.id)).rejects.toMatchObject({status:403});}
+      finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[otherUser]);}
+    }finally{
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
+  });
+
   it("keeps provider-failed study extraction and recall evaluation recoverable without partial evidence",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Provider Failure Test') RETURNING id`,[`provider-failure-${randomUUID()}@test.local`])).rows[0].id;
     const previous={provider:env.llmProvider,key:env.llmApiKey,model:env.llmModel,baseUrl:env.llmBaseUrl};
@@ -296,6 +363,12 @@ describe("PostgreSQL runtime integration", () => {
       const attempt=assessment.questions.find((item:any)=>item.questionType!=="mcq"&&!item.question?.parts?.length);
       expect(attempt).toBeDefined();
       await expect(submitRecall(attempt.id,{userId,answer:"Cache invalidation removes or refreshes stale entries.",confidence:8})).rejects.toMatchObject({code:"LLM_RATE_LIMITED"});
+      expect((await getAttempt(attempt.id,userId))?.submittedAt).toBeNull();
+      expect((await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[attempt.id,userId,concept.id])).rows[0]).toMatchObject({evaluations:0,states:0});
+
+      vi.stubGlobal("fetch",vi.fn(async()=>new Response(JSON.stringify({choices:[{message:{content:"not json"}}]}),{status:200,headers:{"Content-Type":"application/json"}})));
+      resetEvaluatorForTests();
+      await expect(submitRecall(attempt.id,{userId,answer:"Cache invalidation removes or refreshes stale entries.",confidence:8})).rejects.toMatchObject({code:"INVALID_AI_JSON"});
       expect((await getAttempt(attempt.id,userId))?.submittedAt).toBeNull();
       expect((await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[attempt.id,userId,concept.id])).rows[0]).toMatchObject({evaluations:0,states:0});
     }finally{

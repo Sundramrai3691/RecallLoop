@@ -88,7 +88,7 @@ export const api = {
   },
 
   goalReadiness(goalId: string) {
-    return request<{ goal: { id: string; title: string }; evidenceSource: string; skills: Array<{ skillId: string; name: string; priority: number; relevance: string; canonicalSkill: { id: string; name: string } | null; status: "unmapped" | "unassessed" | "mapped"; totalPoints: number; assessedPoints: number; strengths: number; weaknesses: number; unassessedPoints: number; latestEvidenceAt: string | null }> }>(`/api/goals/${goalId}/readiness`);
+    return request<{ goal: { id: string; title: string }; evidenceSource: string; skills: Array<{ skillId: string; name: string; priority: number; relevance: string; canonicalSkill: { id: string; name: string } | null; status: "unmapped" | "unassessed" | "mapped"; totalPoints: number; assessedPoints: number; strengths: number; partial: number; incorrect: number; unanswered: number; unassessedPoints: number; latestEvidenceAt: string | null }> }>(`/api/goals/${goalId}/readiness`);
   },
 
   createSkill(goalId: string, input: { name: string; description: string; priority: number }) {

@@ -71,16 +71,16 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Dependencies:** Phase C reviewed objectives and answer rubrics; Phase B stable knowledge-point identity.
 
-**Deliverables:** Per-question feedback; answer-key/explanation reveal after submission; correct/partial/missing/incorrect distinctions; unique knowledge-point evidence; single-write recoverable baseline and recall submissions; coherent study-session and assessment reports; a labeled evaluator benchmark of manageable size.
+**Deliverables:** Per-question feedback; answer-key/explanation reveal after submission; correct/partial/missing/incorrect distinctions; unique knowledge-point evidence; single-write recoverable baseline and recall submissions; coherent study-session and assessment reports; a labeled evaluator benchmark of manageable size. My Readiness selects direct latest submitted canonical point evidence and displays partial, incorrect, unanswered, and absent results separately from blended learner mastery (ADR 010).
 
 **Acceptance:** Each shown result traces to submitted content and rubric; unassessed dimensions remain absent; independent structured parts remain independent; aggregates state their denominator and do not imply long-term mastery from one answer.
 
-**Automated tests:** Labeled evaluator fixtures, denominator/count tests, partial credit, no-evidence vs measured-zero, multi-part attribution, score/band consistency, and report serialization contracts.
+**Automated tests:** Offline scripted evaluator fixtures cover adequate, partial, misconception, vague, terminology error, irrelevant, and prompt-injection-shaped answers, plus malformed/schema-invalid output, strict point mapping, and blank structured parts. These validate contract behavior only; they do not score model accuracy. PostgreSQL tests cover latest evidence selection, timestamp tie-breaks, answer-state classification, unmapped skills, owner checks, and disagreement with stale blended mastery. Keep denominator/count tests, human review, and calibrated quality thresholds as separate requirements.
 
 **Manual validation:** Compare evaluator output to human labels across correct, incomplete, incorrect, irrelevant and adversarial answers; inspect the learner explanation and next action.
 
 **Maturity evidence:** Benchmark results with error analysis and inter-rater notes; monitored regression set; review of real reports for clarity and consistency.
-**Current delivery (2026-10-17):** Assessment reports expose outcome counts, point-level feedback and maturity status; Firefox verified the rendered report against the API summary. Baseline duplicate/lost-response recovery, completion and atomic learner-state updates have PostgreSQL and browser regressions, including a forced rollback case. Recall review intervals now round to whole days to match the persisted integer schema; the browser trace found and verified the prior fractional-interval failure. Human-labeled evaluator benchmarking and review remain open.
+**Current delivery (2026-10-17):** Assessment reports expose outcome counts, point-level feedback and maturity status; Firefox verified the rendered report against the API summary. Baseline duplicate/lost-response recovery, completion and atomic learner-state updates have PostgreSQL and browser regressions, including a forced rollback case. Recall review intervals now round to whole days to match the persisted integer schema; the browser trace found and verified the prior fractional-interval failure. The offline evaluator contract benchmark is implemented, while human-labeled model-quality benchmarking and review remain open.
 
 ## Phase E — Resources and remediation
 
@@ -115,7 +115,7 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 **Maturity evidence:** Usability sessions across novice and experienced learners, task completion/error measures, and evidence that plan reasons match the underlying state.
 
-**Current delivery (2026-10-17):** Firefox verifies the resource handoff and safe no-match state, canonical roadmap-to-study evidence, and daily-plan due recall with complete/skip/overdue persistence. Planner day boundaries use UTC consistently because no user time-zone preference exists. A first goal-scoped My Readiness view reports exact-matched canonical point evidence without a composite score; usability and broader mapping precision remain unmeasured.
+**Current delivery (2026-10-17):** Firefox verifies the resource handoff and safe no-match state, canonical roadmap-to-study evidence, and daily-plan due recall with complete/skip/overdue persistence. Planner day boundaries use UTC consistently because no user time-zone preference exists. My Readiness uses deterministic latest submitted canonical point results and keeps correct, partial, incorrect, unanswered, and no submitted evidence distinct. The integration test covers classifications and tie-breaks; usability and broader mapping precision remain unmeasured.
 
 ## Later roadmap
 

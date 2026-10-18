@@ -308,11 +308,12 @@ try {
   const mappedReadiness = readiness.body.skills.find((skill) => skill.name === canonicalSkillForReadiness.rows[0].name);
   assert.equal(mappedReadiness.status, "mapped");
   assert.ok(mappedReadiness.assessedPoints > 0, "Readiness should derive assessed coverage from submitted canonical point evidence");
-  assert.ok(mappedReadiness.weaknesses > 0, "The incorrect recall response should remain a measured weakness");
+  assert.ok(mappedReadiness.incorrect > 0, "The incorrect recall response should remain distinct from partial and unanswered evidence");
   const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
   assert.equal(unmappedReadiness.status, "unmapped");
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//p[contains(.,'incorrect') and contains(.,'partial') and contains(.,'unanswered') and contains(.,'no submitted evidence')]")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Not assessed: this goal skill has no exact canonical skill mapping yet.')]") ), 10000);
   const userIdResult = await pool.query("SELECT id FROM app_users WHERE email=$1", [email]);
   const pendingRecallResponse = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
@@ -334,6 +335,10 @@ try {
   assert.ok(new Date(scheduledRecall.scheduledFor) >= utcToday, "An overdue recall should be rescheduled into the UTC day so it remains visible today");
   await driver.get(`${clientUrl}/plan?goalId=${dailyPlanGoalId}`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='A learning journey for today']")), 10000);
+  await driver.wait(async () => {
+    const body = await driver.findElement(By.tagName("body")).getText();
+    return body.includes("Required") && body.includes("Done for now");
+  }, 10000);
   const visiblePlan = await driver.findElement(By.tagName("body")).getText();
   assert.ok(visiblePlan.includes("Required") && visiblePlan.includes("Done for now"), "The UI should render the required recall and its completion action");
   const completedResponse = await learnerApi("PATCH", `/api/plan/tasks/${scheduledRecall.id}`, { status: "completed" });

@@ -22,7 +22,7 @@ export function ReadinessPage() {
         <div className="section-heading"><h2>{skill.name}</h2><span className="status-chip recommended">Priority {skill.priority}</span></div>
         {skill.status === "unmapped" ? <p className="muted">Not assessed: this goal skill has no exact canonical skill mapping yet.</p> : <>
           <p>{skill.canonicalSkill?.name} · {skill.assessedPoints} of {skill.totalPoints} knowledge points assessed</p>
-          <p><strong>{skill.strengths}</strong> demonstrated strength{skill.strengths === 1 ? "" : "s"} · <strong>{skill.weaknesses}</strong> needs practice · <strong>{skill.unassessedPoints}</strong> not assessed</p>
+          <p><strong>{skill.strengths}</strong> demonstrated · <strong>{skill.partial}</strong> partial · <strong>{skill.incorrect}</strong> incorrect · <strong>{skill.unanswered}</strong> unanswered · <strong>{skill.unassessedPoints}</strong> no submitted evidence</p>
           {skill.latestEvidenceAt ? <p className="metadata">Latest evidence {new Date(skill.latestEvidenceAt).toLocaleString()}</p> : <p className="muted">No submitted recall evidence yet.</p>}
           <Link to={`/knowledge`}>Explore the knowledge map</Link>
         </>}
