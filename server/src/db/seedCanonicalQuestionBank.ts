@@ -24,7 +24,7 @@ export async function seedCanonicalQuestionBank(): Promise<void> {
           expected_misconceptions,estimated_minutes,options,correct_option_id,explanation,distractor_rationales,hints,
           question_origin,source_title,source_url,source_publisher,source_license,source_accessed_on,source_notes,
           content_hash,review_status,quality_status,publication_status
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'original',$19,$20,$21,$22,'2026-10-18',$23,$24,'engineering_reviewed','valid','published')
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'original',$19,$20,$21,$22,'2026-10-18',$23,$24,'awaiting_subject_matter_review','valid','draft')
         ON CONFLICT(question_item_id,revision) DO NOTHING RETURNING id`, [
         item.id,question.revision,question.questionType,question.assessmentLevel,question.difficulty,question.objective,question.title,question.context,
         question.prompt,question.expectedAnswer,JSON.stringify(question.rubric),JSON.stringify(question.misconceptions),question.estimatedMinutes,

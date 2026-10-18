@@ -20,6 +20,7 @@ import { createStudySession } from "../../src/services/study/studySessionService
 import { env } from "../../src/config/env.js";
 import { resetEvaluatorForTests } from "../../src/services/evaluator/index.js";
 import { seedCanonicalQuestionBank } from "../../src/db/seedCanonicalQuestionBank.js";
+import { listEligibleCanonicalQuestions } from "../../src/services/questionBank/questionBankService.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -34,46 +35,60 @@ describe("PostgreSQL runtime integration", () => {
   it("applies relational schema and exposes core tables", async () => {
     const result = await postgres.query<{ table_name: string }>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('app_users','goals','study_sessions','recall_attempts','recall_evaluations','review_states','canonical_concepts','baseline_assessments','resources','questions','assessment_sessions','recall_dimension_results','assessment_recommendations','canonical_question_items','canonical_question_revisions','canonical_question_revision_points')`);
     expect(result.rows.length).toBe(16);
+    const reviewTables = await postgres.query<any>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('canonical_question_reviewers','canonical_question_reviews')`);
+    expect(reviewTables.rows).toHaveLength(2);
     const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id')))`);
     expect(structured.rows).toHaveLength(9);
   });
 
-  it("seeds, selects, grades, and preserves revisioned canonical HTTP questions",async()=>{
+  it("keeps the unreviewed HTTP pilot out of learner assessments and records no attempt",async()=>{
     await seedCanonicalQuestionBank();
-    const pilotCounts=await postgres.query<any>(`SELECT r.assessment_level,count(*)::int AS count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'http-%' AND r.publication_status='published' AND r.quality_status='valid' AND r.review_status='engineering_reviewed' GROUP BY r.assessment_level ORDER BY r.assessment_level`);
-    expect(pilotCounts.rows.reduce((sum:any,row:any)=>sum+row.count,0)).toBe(24);
+    const pilotCounts=await postgres.query<any>(`SELECT r.review_status,r.publication_status,count(*)::int AS count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'http-%' GROUP BY r.review_status,r.publication_status`);
+    expect(pilotCounts.rows).toEqual([{ review_status: "awaiting_subject_matter_review", publication_status: "draft", count: 24 }]);
+    const revisionCounts=await postgres.query<any>(`SELECT count(*)::int AS revisions,count(*) FILTER (WHERE cr.decision='approved')::int AS approvals FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id LEFT JOIN canonical_question_reviews cr ON cr.question_revision_id=r.id WHERE i.slug LIKE 'http-%'`);
+    expect(revisionCounts.rows[0]).toMatchObject({ revisions: 35, approvals: 0 });
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Canonical question pilot') RETURNING id`,[`question-bank-${randomUUID()}@test.local`])).rows[0].id;
-    const previous={provider:env.llmProvider,key:env.llmApiKey};
     try{
       const catalog=(await postgres.query<any>(`SELECT cc.id AS concept_id,kp.id AS point_id,kp.statement FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN knowledge_points kp ON kp.concept_id=cc.id WHERE t.name='HTTP' AND cc.name='HTTP caching' AND cc.status='active'`)).rows[0];
       const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,canonical_topic_id,canonical_concept_id) SELECT $1,'Canonical question pilot',t.id,cc.id FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id WHERE cc.id=$2 RETURNING id`,[userId,catalog.concept_id])).rows[0];
       const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,canonical_concept_id) VALUES($1,$2,'HTTP caching','Freshness and revalidation.',$3,$4) RETURNING id`,[userId,session.id,[catalog.statement],catalog.concept_id])).rows[0];
-      const assessment=await createAssessment(userId,concept.id,"mastery_check");
-      expect(assessment.questions).toHaveLength(6);
-      expect(assessment.questions.map((item:any)=>item.questionType).sort()).toEqual(["descriptive","mcq","rapid_recall","scenario","short_explanation","transfer"].sort());
-      expect(assessment.questions.every((item:any)=>item.canonicalQuestionRevisionId&&item.question.canonicalQuestionRevisionId===item.canonicalQuestionRevisionId)).toBe(true);
-      expect(assessment.questions.find((item:any)=>item.questionType==='short_explanation')?.question.rubric.length).toBeGreaterThan(0);
-      const mapped=(await postgres.query<any>(`SELECT count(*)::int AS count FROM canonical_question_revision_points rp JOIN canonical_question_revisions r ON r.id=rp.question_revision_id JOIN canonical_question_items i ON i.id=r.question_item_id WHERE i.canonical_concept_id=$1 AND r.revision=i.current_revision AND rp.canonical_knowledge_point_id=$2`,[catalog.concept_id,catalog.point_id])).rows[0];
-      expect(mapped.count).toBe(12);
-
-      const mcq=assessment.questions.find((item:any)=>item.questionType==='mcq');
-      await submitRecall(mcq.id,{userId,selectedOptionId:mcq.question.correctOptionId,confidence:8});
-      const free=assessment.questions.find((item:any)=>item.questionType==='short_explanation');
-      env.llmProvider='mock';env.llmApiKey='';resetEvaluatorForTests();
-      await submitRecall(free.id,{userId,answer:catalog.statement,confidence:7});
-      const persisted=(await postgres.query<any>(`SELECT a.canonical_question_revision_id,r.canonical_knowledge_point_id,e.evaluator_version FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id WHERE a.id=ANY($1::uuid[]) ORDER BY a.created_at`,[[mcq.id,free.id]])).rows;
-      expect(persisted).toHaveLength(2);
-      expect(persisted.every((row:any)=>row.canonical_knowledge_point_id===catalog.point_id)).toBe(true);
-      expect(persisted.every((row:any)=>row.canonical_question_revision_id)).toBe(true);
-      expect(persisted.find((row:any)=>row.evaluator_version==='deterministic-mcq-1.0')).toBeTruthy();
-      const immutableRevision=mcq.canonicalQuestionRevisionId;
-      const oldPrompt=mcq.question.prompt;
-      await expect(postgres.query(`UPDATE canonical_question_revisions SET prompt=prompt||' edited' WHERE id=$1`,[immutableRevision])).rejects.toThrow('immutable');
-      expect((await postgres.query<any>(`SELECT prompt FROM canonical_question_revisions WHERE id=$1`,[immutableRevision])).rows[0].prompt).toBe(oldPrompt);
-      expect((await getAttempt(mcq.id,userId))?.question?.prompt).toBe(oldPrompt);
+      await expect(createAssessment(userId,concept.id,"mastery_check")).rejects.toMatchObject({ status: 409, code: "QUESTION_BANK_COVERAGE_INSUFFICIENT" });
+      const writes=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,(SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,[userId]);
+      expect(writes.rows[0]).toEqual({ sessions: 0, attempts: 0 });
     }finally{
-      resetEvaluatorForTests();env.llmProvider=previous.provider;env.llmApiKey=previous.key;
       await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
+  });
+
+  it("requires an authorized exact-revision approval and lets a later review withdraw eligibility", async () => {
+    const client = await postgres.connect();
+    try {
+      await client.query("BEGIN");
+      const users = await client.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'test-only','Test reviewer'),($2,'test-only','Test grantor') RETURNING id`, [`reviewer-${randomUUID()}@test.local`,`grantor-${randomUUID()}@test.local`]);
+      const reviewerId = users.rows[0].id;
+      const grantorId = users.rows[1].id;
+      await client.query(`INSERT INTO canonical_question_reviewers(reviewer_user_id,granted_by_user_id,grant_note) VALUES($1,$2,'Ephemeral integration fixture grant')`, [reviewerId,grantorId]);
+      const question = (await client.query<any>(`SELECT i.canonical_concept_id,r.id,r.question_type,r.content_hash FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug='http-cache-explanation-cache-paths'`)).rows[0];
+      const criteria = { technical_correctness: "pass", expected_answer: "pass", explanation: "not_applicable", mcq_key: "not_applicable", distractors: "not_applicable", rubric: "pass", point_mapping: "pass", cognitive_level_difficulty: "pass", source_attribution_license: "pass" };
+      await client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes,reviewed_at) VALUES($1,$2,'approved',$3,$4,'Ephemeral integration approval fixture for the gate.',clock_timestamp())`, [question.id,reviewerId,question.content_hash,JSON.stringify(criteria)]);
+      await client.query(`UPDATE canonical_question_revisions SET review_status='subject_matter_reviewed',publication_status='published' WHERE id=$1`, [question.id]);
+      expect(await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).toHaveLength(1);
+      await client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes,reviewed_at) VALUES($1,$2,'changes_requested',$3,$4,'Ephemeral later review withdraws this test approval.',clock_timestamp())`, [question.id,reviewerId,question.content_hash,JSON.stringify(criteria)]);
+      await client.query(`UPDATE canonical_question_revisions SET review_status='changes_requested',publication_status='draft' WHERE id=$1`, [question.id]);
+      expect(await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).toHaveLength(0);
+      await client.query("SAVEPOINT unauthorized_review");
+      await expect(client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes) VALUES($1,$2,'approved',$3,$4,'Unauthorized test reviewer should be rejected.')`, [question.id,grantorId,question.content_hash,JSON.stringify(criteria)])).rejects.toThrow("reviewer is not authorized");
+      await client.query("ROLLBACK TO SAVEPOINT unauthorized_review");
+      await client.query("SAVEPOINT stale_revision");
+      const stale = (await client.query<any>(`SELECT r.id,r.content_hash FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id WHERE i.slug LIKE 'http-%' AND r.revision<i.current_revision ORDER BY i.slug,r.revision DESC LIMIT 1`)).rows[0];
+      await expect(client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes) VALUES($1,$2,'approved',$3,$4,'Stale revision review should be rejected.')`, [stale.id,reviewerId,stale.content_hash,JSON.stringify(criteria)])).rejects.toThrow("current question revision");
+      await client.query("ROLLBACK TO SAVEPOINT stale_revision");
+      await client.query("ROLLBACK");
+    } catch (error) {
+      try { await client.query("ROLLBACK"); } catch { /* transaction may already be rolled back */ }
+      throw error;
+    } finally {
+      client.release();
     }
   });
 

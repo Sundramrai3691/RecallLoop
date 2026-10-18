@@ -204,35 +204,18 @@ try {
   assert.equal(canonicalPointCountBefore.rows[0].count, 1);
 
   const canonicalPractice = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
-  assert.equal(canonicalPractice.status, 201);
-  assert.ok(canonicalPractice.body.questions[0].canonicalQuestionRevisionId, "A canonical HTTP assessment should retain the selected published bank revision");
-  assert.equal(canonicalPractice.body.questions[0].questionData.assessmentLevel, "depth", "Deep Recall should select a bank question at the requested descriptive type");
-  await driver.get(`${clientUrl}/assessments/${canonicalPractice.body.assessment.id}`);
-  await driver.wait(until.elementLocated(By.id("assessment-answer")), 10000);
-  await driver.findElement(By.id("assessment-answer")).sendKeys("I do not know this yet.");
-  await driver.findElement(By.css("form.question-card button[type='submit']")).click();
-  await driver.wait(until.elementLocated(By.css(".report-hero")), 10000);
-  const canonicalAssessment = await learnerApi("GET", `/api/assessments/${canonicalPractice.body.assessment.id}`);
-  const canonicalAttemptId = canonicalAssessment.body.questions[0].id;
-  const pointEvidence = await pool.query(
-    `SELECT r.canonical_knowledge_point_id,a.canonical_question_revision_id
-     FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id
-     JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id
-     WHERE a.id=$1`,
-    [canonicalAttemptId],
+  assert.equal(canonicalPractice.status, 409);
+  assert.equal(canonicalPractice.body.code, "QUESTION_BANK_COVERAGE_INSUFFICIENT");
+  const learnerId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0].id;
+  const canonicalLearnerWrites = await pool.query(
+    `SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,
+            (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
+    [learnerId],
   );
-  assert.ok(pointEvidence.rows.some((row) => row.canonical_knowledge_point_id === concept.knowledgePoints[0].id), "The assessed response should retain the canonical point UUID");
-  assert.ok(pointEvidence.rows.some((row) => row.canonical_question_revision_id === canonicalPractice.body.questions[0].canonicalQuestionRevisionId), "The submitted evidence should retain the exact bank revision used for the question");
+  assert.deepEqual(canonicalLearnerWrites.rows[0], { sessions: 0, attempts: 0 }, "The unreviewed pilot must not create learner assessments or evidence");
   const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
-  const learnerSummary = await learnerApi("GET", "/api/learner/summary");
-  const diagnosedWeakness = learnerSummary.body.weakConcepts.find((item) => item.conceptId === mappedPersonalConcept.id);
-  assert.ok(diagnosedWeakness, "The weak recall should surface as persisted learner evidence");
-  assert.equal(diagnosedWeakness.mastery, 0);
-
-  await driver.get(`${clientUrl}/learner`);
-  const weakConceptLink = await driver.wait(until.elementLocated(By.xpath("//a[contains(@class,'learner-concept')][.//strong[normalize-space()='HTTP caching']]")), 10000);
-  await weakConceptLink.click();
+  await driver.get(`${clientUrl}/resources?conceptId=${mappedPersonalConcept.id}`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Focused resources']")), 10000);
   await driver.wait(until.elementLocated(By.css("article.resource-card")), 10000);
   const focusedResources = await learnerApi("GET", `/api/resources/recommendations?conceptId=${mappedPersonalConcept.id}&availableMinutes=60`);
@@ -310,24 +293,20 @@ try {
   assert.equal(readiness.status, 200);
   const mappedReadiness = readiness.body.skills.find((skill) => skill.name === canonicalSkillForReadiness.rows[0].name);
   assert.equal(mappedReadiness.status, "mapped");
-  assert.ok(mappedReadiness.assessedPoints > 0, "Readiness should derive assessed coverage from submitted canonical point evidence");
-  assert.ok(mappedReadiness.incorrect > 0, "The incorrect recall response should remain distinct from partial and unanswered evidence");
+  assert.equal(mappedReadiness.assessedPoints, 0, "An unreviewed canonical pilot must not create readiness evidence");
+  assert.equal(mappedReadiness.incorrect, 0);
   const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
   assert.equal(unmappedReadiness.status, "unmapped");
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//p[contains(.,'incorrect') and contains(.,'partial') and contains(.,'unanswered') and contains(.,'no submitted evidence')]")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Not assessed: this goal skill has no exact canonical skill mapping yet.')]") ), 10000);
-  const userIdResult = await pool.query("SELECT id FROM app_users WHERE email=$1", [email]);
-  const pendingRecallResponse = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
-  assert.equal(pendingRecallResponse.status, 201);
-  const pendingRecall = await learnerApi("GET", `/api/assessments/${pendingRecallResponse.body.assessment.id}`);
-  const pendingRecallAttemptId = pendingRecall.body.questions[0].id;
+  const pendingRecallAttemptId = generatedAssessment.body.questions[0].id;
   await pool.query(
     `INSERT INTO review_states (user_id,concept_id,state,due_at,interval_days)
      VALUES ($1,$2,'review',now() - interval '1 day',1)
      ON CONFLICT (user_id,concept_id) DO UPDATE SET due_at=EXCLUDED.due_at,interval_days=EXCLUDED.interval_days`,
-    [userIdResult.rows[0].id, mappedPersonalConcept.id],
+    [learnerId, createdStudy.body.concepts[0].id],
   );
   const generatedPlan = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/plan/generate`, { availableMinutes: 60 });
   assert.equal(generatedPlan.status, 201);

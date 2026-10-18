@@ -1,0 +1,1062 @@
+{
+  "inventoryVersion": 1,
+  "reportKind": "engineering audit; not subject-matter approval",
+  "generatedAt": "2026-10-18T17:05:48.013Z",
+  "pilotInventory": {
+    "total": 24,
+    "concepts": [
+      "HTTP caching",
+      "HTTP request lifecycle"
+    ],
+    "points": {
+      "Can distinguish freshness from validation.": 12,
+      "Can explain method, status, headers, and body roles.": 12
+    },
+    "cognitiveLevels": {
+      "application": 4,
+      "depth": 4,
+      "explanation": 4,
+      "recall": 6,
+      "recognition": 2,
+      "transfer": 4
+    },
+    "difficulties": {
+      "1": 4,
+      "2": 6,
+      "3": 4,
+      "4": 6,
+      "5": 4
+    },
+    "questionTypes": {
+      "descriptive": 2,
+      "mcq": 10,
+      "rapid_recall": 6,
+      "scenario": 2,
+      "short_explanation": 2,
+      "transfer": 2
+    }
+  },
+  "databaseCounts": {
+    "currentQuestions": 24,
+    "questionRevisions": 35
+  },
+  "validationSummary": {
+    "issueCount": 0,
+    "pilotSourceIssues": []
+  },
+  "questions": [
+    {
+      "revisionKey": "http-cache-analysis-304-vs-200@2",
+      "revisionUuid": "57bd6954-e900-4de3-b6e9-51b1068e07bc",
+      "contentHash": "33d54af93cf2916864190d9d380f669b96071d04638adb18c2188f31efc97f0d",
+      "questionSlug": "http-cache-analysis-304-vs-200",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "descriptive",
+      "cognitiveLevel": "depth",
+      "difficulty": 5,
+      "prompt": "Analyze three states for one cached response: it is fresh, it is stale and validation returns 304, or it is stale and the origin returns 200 with a changed representation. Explain when the origin is contacted, what body is used, and how validators differ from freshness metadata.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-analysis-no-cache-vs-no-store@2",
+      "revisionUuid": "b92a7bee-902c-40f3-9d56-25d55e12dae4",
+      "contentHash": "709685b0be10cb6f6338f9f9945b027a4a220cec4bf68ff2c1b3c240833e7b04",
+      "questionSlug": "http-cache-analysis-no-cache-vs-no-store",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "depth",
+      "difficulty": 4,
+      "prompt": "A teammate says, “`no-cache` forbids storage, while `max-age` requires an origin check on every reuse.” Diagnose the claim and state the correct roles of freshness and validation.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-application-age-boundary@2",
+      "revisionUuid": "cefea000-6d70-491f-a0d9-5a876607ce5c",
+      "contentHash": "db61efe054b5969ba825fa5517433310d40b59d965da9bad06a4712b7439fc01",
+      "questionSlug": "http-cache-application-age-boundary",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "application",
+      "difficulty": 3,
+      "prompt": "A shared cache has a response with `s-maxage=300`; its current age is 180 seconds. Assuming no stricter applicable directive, what is the correct next step now, and what changes after the lifetime expires?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-application-conditional-get@2",
+      "revisionUuid": "c5d0ef3b-68d3-4d2d-bbab-f7198a315ed0",
+      "contentHash": "521ac7cef9b64c88a1f2e9930d8ae845e7d8ab9a77d11849413b25c9378976b6",
+      "questionSlug": "http-cache-application-conditional-get",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "scenario",
+      "cognitiveLevel": "application",
+      "difficulty": 4,
+      "prompt": "A browser has a cached response with ETag `\"v7\"` and a 60-second freshness lifetime. At age 20 seconds and again after it becomes stale, describe the appropriate request path and what to do for 304 versus 200.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation",
+        "outcome-304",
+        "outcome-200"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-explanation-cache-paths@1",
+      "revisionUuid": "0ab651a2-317f-4835-b7fc-78651d55b194",
+      "contentHash": "5579169da51f4b74fdbec055259069ebc63ca03f73381a46b3d407fa76413dc4",
+      "questionSlug": "http-cache-explanation-cache-paths",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "short_explanation",
+      "cognitiveLevel": "explanation",
+      "difficulty": 3,
+      "prompt": "Explain the difference between reusing a fresh cached response and reusing a stale response after validation.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-explanation-no-cache-no-store@2",
+      "revisionUuid": "fc6c73a4-1fe3-4d7e-9ae1-144df0e27bce",
+      "contentHash": "9bdb1d5cb07f417899ab429c3fa3fce2470d67d58a947cadcd20d612236488f1",
+      "questionSlug": "http-cache-explanation-no-cache-no-store",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "explanation",
+      "difficulty": 2,
+      "prompt": "Which statement correctly contrasts a fresh `max-age` response with `no-cache` and `no-store`?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-recall-304-body@2",
+      "revisionUuid": "92667c17-eaba-4e4f-8438-cbfebba7db29",
+      "contentHash": "4904730b4ba1b99f79bc89f42583cfec8459c768effb0ef5e456764ee40d6743",
+      "questionSlug": "http-cache-recall-304-body",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 2,
+      "prompt": "Compare what a cache does for a still-fresh response and for a stale response that receives `304 Not Modified` after validation.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-recall-no-cache@2",
+      "revisionUuid": "555de991-2201-43d9-86c1-297b069be7b3",
+      "contentHash": "44ee7a863f6f53dc59ec3e1b4c411b46999cc12a4f5e400f97fdf523f316599d",
+      "questionSlug": "http-cache-recall-no-cache",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 1,
+      "prompt": "Contrast `max-age` with `no-cache`: when may a response be reused without contacting the origin, and what must happen before a stored no-cache response is reused?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-recall-validators@2",
+      "revisionUuid": "da582a24-5c33-458b-bd72-1ac7c2fe63fc",
+      "contentHash": "f42b99238d0eceaeb8a0b7b4e9ed4eec04738e77bd6698d06be239d585779e9a",
+      "questionSlug": "http-cache-recall-validators",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 2,
+      "prompt": "Contrast `max-age` with one HTTP validator. Name the conditional request field used with that validator and explain when it is used.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-recognition-freshness-directive@1",
+      "revisionUuid": "f463ed45-fecd-4611-b0de-857f57d97974",
+      "contentHash": "7d177c3a8a230d0c7b6574f3fbb9ea9a201fe06dfbb4c20b0e22e242b4574e01",
+      "questionSlug": "http-cache-recognition-freshness-directive",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "recognition",
+      "difficulty": 1,
+      "prompt": "A response contains `Cache-Control: max-age=120`. What does this directive primarily tell a cache?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-transfer-shared-private@2",
+      "revisionUuid": "62ee71ea-40cc-491e-8fc1-0c8c19ce195c",
+      "contentHash": "ffb53dfaee0dc4efb353801723beaccbde3dce524fa103c607b9fa8396cfd8bc",
+      "questionSlug": "http-cache-transfer-shared-private",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "transfer",
+      "difficulty": 4,
+      "prompt": "An API wants a CDN to use a 60-second freshness lifetime while browsers may use a different `max-age`. Which directive sets the shared freshness lifetime, and what role does an ETag still serve?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-cache-transfer-validator-limit@2",
+      "revisionUuid": "61df1abb-7837-496a-9e60-6ed230de91c7",
+      "contentHash": "28adbde999c7487140e07c219c69d7a86c66ada301d6d8af0ed8fc327c6df44a",
+      "questionSlug": "http-cache-transfer-validator-limit",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalConcept": "HTTP caching",
+      "canonicalPoint": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "questionType": "transfer",
+      "cognitiveLevel": "transfer",
+      "difficulty": 5,
+      "prompt": "A mobile client has a response with a 60-second freshness lifetime and an ETag, then loses connectivity. Compare what it can justify at age 20 seconds and after the response becomes stale; explain what the ETag can establish offline and the product policy choice.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "freshness",
+        "validation",
+        "constraint"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9111: HTTP Caching",
+        "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": [
+        "Human judgment requested: clarify which stale-serving policies count as acceptable when origin directives and product risk constraints differ."
+      ]
+    },
+    {
+      "revisionKey": "http-lifecycle-analysis-412@1",
+      "revisionUuid": "463b6550-a2ca-44d1-967f-79792f8f5065",
+      "contentHash": "7f5550e139be3b47da16d74845f6970533be1822f4a8655745991099ca498221",
+      "questionSlug": "http-lifecycle-analysis-412",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "depth",
+      "difficulty": 4,
+      "prompt": "A client sends `PUT` with `If-Match: \"v3\"`; the selected representation now has ETag `\"v4\"`. The server returns 412. What does this indicate?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-analysis-conditional-trace@1",
+      "revisionUuid": "25998478-96bf-48a6-b178-6a4b4c0db97c",
+      "contentHash": "d59ed2c24ee28c1067023eb94ea72650b0bf9bacd8ed7fa5151bb395c867d84e",
+      "questionSlug": "http-lifecycle-analysis-conditional-trace",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "descriptive",
+      "cognitiveLevel": "depth",
+      "difficulty": 5,
+      "prompt": "Two clients read the same resource with ETag `\"r1\"`. Client A updates it successfully and the current ETag becomes `\"r2\"`. Client B then sends a state-changing request with `If-Match: \"r1\"` and receives 412. Diagnose the sequence and state what each message component contributes.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "method",
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-application-async-create@1",
+      "revisionUuid": "90c342a6-d768-4467-8c0b-89d1b4768fe2",
+      "contentHash": "486bfd0766c26ffc2123e48aede9f1bffa66d6ce317883bdd7a25125f09a1a20",
+      "questionSlug": "http-lifecycle-application-async-create",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "scenario",
+      "cognitiveLevel": "application",
+      "difficulty": 4,
+      "prompt": "An API accepts a long-running export request and queues it for later processing. Describe a defensible immediate response and the role of its headers and body.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "response-fields",
+        "accepted-not-complete",
+        "follow-up"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": [
+        "Human judgment requested: define which response fields or status-monitor conventions are required versus merely defensible."
+      ]
+    },
+    {
+      "revisionKey": "http-lifecycle-application-if-match@2",
+      "revisionUuid": "a3ae4ae1-4a3c-435a-a536-fd29f5f96fd3",
+      "contentHash": "ac372098b1208026bca915b4782b782a68f0d86bede71b01374a01f21b2b2186",
+      "questionSlug": "http-lifecycle-application-if-match",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "application",
+      "difficulty": 3,
+      "prompt": "A client fetched a representation with ETag `\"a1\"` and wants to update it only if it has not changed. Which request field is appropriate?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-explanation-response@1",
+      "revisionUuid": "f93caac9-34b7-4b91-a89f-288437c186c2",
+      "contentHash": "f2eff41f72580f1534b0b16904a855bbc79806dde13277187f81f00860b418fe",
+      "questionSlug": "http-lifecycle-explanation-response",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "short_explanation",
+      "cognitiveLevel": "explanation",
+      "difficulty": 3,
+      "prompt": "Walk through how a client action and server result are represented across an HTTP request and response.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "method",
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-explanation-status-header-body@1",
+      "revisionUuid": "bdf473ee-4b9b-43d8-b29e-98e3953161c3",
+      "contentHash": "86d3725c79e5b79148137987a01b0f4cc3c49709ce8d9cad540e7402df19a3e6",
+      "questionSlug": "http-lifecycle-explanation-status-header-body",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "explanation",
+      "difficulty": 2,
+      "prompt": "A response is `200 OK`, includes `Content-Type: application/json`, and contains a JSON object. Which mapping is correct?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-recall-four-roles@1",
+      "revisionUuid": "f51c0811-b85b-4382-a9c0-be90691f8054",
+      "contentHash": "c3274ce50e5a9d21863e96d36af170a36604e4cb63b2feec956fb52d65cc5f5f",
+      "questionSlug": "http-lifecycle-recall-four-roles",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 1,
+      "prompt": "Briefly state the role of the method, response status, headers, and body in an HTTP exchange.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "method",
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-recall-headers@1",
+      "revisionUuid": "448deb9f-cda7-4f0f-acb3-494408e8e5ba",
+      "contentHash": "abe0b6964e4bbc7acdf5cd764bd25f843fbe76d6b497c4aeee4996712f4bd7d3",
+      "questionSlug": "http-lifecycle-recall-headers",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 2,
+      "prompt": "Name two kinds of information an HTTP header can carry and contrast them with the message body.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "header-examples",
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-recall-status@1",
+      "revisionUuid": "43878ffe-cc43-43e5-8738-82d216bd9add",
+      "contentHash": "6e0ca95993ce8962e76c801241b42d2a875ec2bb8d1a82d3068b2f5c9c8253dc",
+      "questionSlug": "http-lifecycle-recall-status",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "rapid_recall",
+      "cognitiveLevel": "recall",
+      "difficulty": 2,
+      "prompt": "What does an HTTP response status communicate, and where would a JSON resource representation normally appear?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-recognition-method@1",
+      "revisionUuid": "d6474eb6-08ae-4ee7-900f-3b5685f54095",
+      "contentHash": "ce165b16c6f7e58358976947cae14c4d8a65264ee5edc05caeaabd1d4c20bfa3",
+      "questionSlug": "http-lifecycle-recognition-method",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "recognition",
+      "difficulty": 1,
+      "prompt": "In an HTTP request, which component primarily indicates the action semantics requested by the client?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-transfer-async-contract@1",
+      "revisionUuid": "9c235498-01f8-491f-b921-c8017e35f1e3",
+      "contentHash": "1fb252cd92a6757327251912771ecc3e2ef3ef10039013fb178ef872b676d097",
+      "questionSlug": "http-lifecycle-transfer-async-contract",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "transfer",
+      "cognitiveLevel": "transfer",
+      "difficulty": 5,
+      "prompt": "A previously synchronous API now queues work and returns before completion. Propose the key HTTP response semantics and explain how clients should distinguish acceptance from completion.",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "acceptance",
+        "response-fields"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 0,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": []
+    },
+    {
+      "revisionKey": "http-lifecycle-transfer-connection-independence@1",
+      "revisionUuid": "9fd40a8c-84fc-4656-adb9-61d0e39ac153",
+      "contentHash": "215c369f9f7d3db5223bb13f434fac1db0a4e843e178b18cdc7b898d6147936f",
+      "questionSlug": "http-lifecycle-transfer-connection-independence",
+      "canonicalConceptId": "85789bff-da2f-419a-9025-02daef956331",
+      "canonicalConcept": "HTTP request lifecycle",
+      "canonicalPoint": [
+        {
+          "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+          "statement": "Can explain method, status, headers, and body roles."
+        }
+      ],
+      "questionType": "mcq",
+      "cognitiveLevel": "transfer",
+      "difficulty": 4,
+      "prompt": "A service moves from one persistent TCP connection per client to multiplexed connections. Which HTTP message meaning remains the same?",
+      "expectedAnswerPresent": true,
+      "rubricDimensionIds": [
+        "answer-key"
+      ],
+      "mcqExplanationPresent": true,
+      "mcqDistractorRationales": 3,
+      "provenance": {
+        "title": "RFC 9110: HTTP Semantics",
+        "url": "https://www.rfc-editor.org/rfc/rfc9110.html",
+        "publisher": "Internet Engineering Task Force (IETF)",
+        "origin": "original",
+        "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+        "accessedOn": "2026-10-17T18:30:00.000Z",
+        "notes": "Grounding: sections 8 (fields), 9 (methods), 13 (conditional requests), 15 (status codes). Accessed 2026-10-18.",
+        "complete": true
+      },
+      "automatedValidation": "passed",
+      "automatedValidationIssues": [],
+      "humanReviewState": "awaiting_subject_matter_review",
+      "publicationState": "draft",
+      "reviewRecordCount": 0,
+      "latestRecordedReviewDecision": null,
+      "suspectedHumanReviewIssues": [
+        "Human judgment requested: check whether the persistent-TCP-to-multiplexed-connection setup makes the intended transport-independence objective sufficiently clear."
+      ]
+    }
+  ],
+  "humanReviewSummary": {
+    "awaitingReview": 24,
+    "independentlyApproved": 0,
+    "engineeringInspectedSuspectedIssues": 3,
+    "note": "Suspected issues are prompts for an independent reviewer, not confirmed technical defects."
+  }
+}

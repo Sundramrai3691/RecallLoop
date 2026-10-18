@@ -20,6 +20,7 @@ This index separates current implementation references from domain explanations,
 - [Knowledge model](KNOWLEDGE_MODEL.md): canonical knowledge and its provenance.
 - [Question engine](QUESTION_ENGINE.md): questions, assessment sessions, hints, and evaluation.
 - [Canonical question bank](CANONICAL_QUESTION_BANK.md): revisioned curated items, review gates, provenance, selection, and quality checks.
+- [Question bank review workflow](QUESTION_BANK_REVIEW.md): reviewer authorization, exact-revision review packets, current inventory, and human benchmark annotation.
 - [Grounded remediation](GROUNDED_REMEDIATION.md): source ingestion, retrieval, remediation, and verification.
 
 ## Audits and migration history

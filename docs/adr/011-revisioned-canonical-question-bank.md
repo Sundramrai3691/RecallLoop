@@ -4,6 +4,8 @@
 
 Accepted in implementation, 2026-10-18. This record describes the implemented design; it does not claim the original team discussed it.
 
+The initial engineering-or-subject-matter review-state selection rule is superseded by [ADR 012](012-auditable-question-review-and-benchmark-labels.md), which requires an auditable exact-revision approval and introduces the reviewer workflow.
+
 ## Context
 
 The existing assessment engine persisted questions as learner-specific artifacts and generated most questions from deterministic templates. The curated MCQ file had no stable question identity, canonical UUID mapping, or revision history. A curated shared bank needs canonical grounding while preserving old attempts and retaining the existing evaluator and evidence path.
