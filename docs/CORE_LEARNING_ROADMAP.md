@@ -121,6 +121,18 @@ This plan sequences work needed to make the learning loop traceable from a learn
 
 ## Later roadmap
 
+## UI/UX 2.0 — visual and interaction consolidation (2026-10-18)
+
+**Observed issues:** The public landing page listed a hard-coded set of catalog topics, including areas not proven available in the actual catalog. The selected treatment used warm orange tokens, mobile navigation compressed all labels, and raw historical URL titles could surface in activity headlines. The learner overview called an average of blended concept scores “Demonstrated Recall” without describing its denominator or update rule. A local read-only data check also found two separately saved goals with the same normalized title; they are genuine records, not a repeated row from rendering.
+
+**Delivery:** Introduced the Aurora Ink design tokens with retained light/dark preference, responsive navigation, a reduced-motion-aware SVG process constellation, and shared route transitions. The landing page no longer presents unsupported topic coverage. Dashboard, plan, and study-session headlines suppress raw URL-shaped titles while preserving separately stored source links. Learner copy states the actual averaging and rolling-score formula. Goal creation now prevents exact normalized duplicates per owner under a transaction lock; legacy duplicates remain visible and intact.
+
+**Limits:** The constellation shows the Learn/Recall/Evaluate/Adapt process, not the catalog graph. Duplicate checking is exact after trim and case folding; it does not fuzzy-match similar goals. Historical goal records are not automatically merged. Responsive, accessibility, and product-quality claims should follow actual browser verification and are tracked in [Project Status](PROJECT_STATUS.md).
+
+**Acceptance evidence:** Build, unit/integration, and Firefox browser checks passed and are recorded in the append-only session log for this date. Screenshots were captured and visually inspected. Firefox rendered 1440×900 and 1024×768 as requested; its 390px window request was clamped by the local browser to a 450×844 CSS viewport, where document overflow was checked. This is not an exact 390px verification.
+
+## Later roadmap
+
 - **FSRS:** Evaluate a mature spaced-repetition scheduler only after evidence quality and outcome calibration are stable; compare against current deterministic scheduling on a replayable dataset.
 - **Advanced RAG / pgvector:** Consider indexed retrieval when corpus size and measured latency justify it; retain provenance and compare retrieval against labeled relevant excerpts.
 - **Practice engine:** Add richer coding, simulation and application tasks after question objectives and evaluation benchmarks are dependable.

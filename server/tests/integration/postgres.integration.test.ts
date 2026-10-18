@@ -10,7 +10,7 @@ import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
 import { recommendResources } from "../../src/services/resources/resourceRecommendationService.js";
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
-import { generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
+import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
@@ -90,6 +90,22 @@ describe("PostgreSQL runtime integration", () => {
     } finally {
       client.release();
     }
+  });
+
+  it("blocks case-insensitive duplicate goal creation without hiding existing records", async () => {
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Duplicate Goal Guard') RETURNING id`,[`goal-duplicate-${randomUUID()}@test.local`])).rows[0].id;
+    try {
+      const results = await Promise.allSettled([
+        createGoal(userId,{title:"System Design",description:"First record"}),
+        createGoal(userId,{title:" system design ",description:"Duplicate attempt"}),
+      ]);
+      expect(results.filter((result)=>result.status==="fulfilled")).toHaveLength(1);
+      const rejected=results.find((result)=>result.status==="rejected") as PromiseRejectedResult;
+      expect(rejected.reason).toMatchObject({status:409,code:"DUPLICATE_GOAL"});
+      const rows=await postgres.query<any>(`SELECT title FROM goals WHERE user_id=$1 ORDER BY created_at`,[userId]);
+      expect(rows.rows).toHaveLength(1);
+      expect(rows.rows[0].title).toBe("System Design");
+    } finally { await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]); }
   });
 
   it("deduplicates canonical seed rows, keeps topic identity, and remains stable across migration reruns",async()=>{

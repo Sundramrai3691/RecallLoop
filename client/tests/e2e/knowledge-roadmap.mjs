@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
+import { mkdir, writeFile } from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
@@ -110,6 +112,39 @@ try {
   await driver.findElement(By.id("password")).sendKeys(password);
   await driver.findElement(By.css("button[type='submit']")).click();
   await driver.wait(until.urlContains("/onboarding"), 10000);
+
+  const screenshotDirectory = path.join(os.tmpdir(), "recallloop-uiux-2026-10-18");
+  await mkdir(screenshotDirectory, { recursive: true });
+  await driver.manage().window().setRect({ width: 1440, height: 985, x: 0, y: 0 });
+  await driver.get(clientUrl);
+  await driver.wait(until.elementLocated(By.css(".constellation")), 10000);
+  await new Promise((resolve) => setTimeout(resolve, 650));
+  await writeFile(path.join(screenshotDirectory, "landing-desktop.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
+  const initialTheme = await driver.executeScript("return document.documentElement.dataset.theme");
+  if (initialTheme !== "light") await driver.findElement(By.css("button[aria-label='Switch to light theme']")).click();
+  await driver.wait(async () => (await driver.executeScript("return document.documentElement.dataset.theme")) === "light", 3000);
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  await writeFile(path.join(screenshotDirectory, "landing-light.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
+  if (initialTheme !== "light") await driver.findElement(By.css("button[aria-label='Switch to dark theme']")).click();
+  await driver.wait(async () => (await driver.executeScript("return document.documentElement.dataset.theme")) === initialTheme, 3000);
+  await driver.get(`${clientUrl}/dashboard`);
+  await driver.wait(until.elementLocated(By.css(".sidebar")), 10000);
+  for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
+    await driver.manage().window().setRect({ width: viewport.width, height: viewport.height + 85, x: 0, y: 0 });
+    await driver.wait(async () => (await driver.executeScript("return window.innerWidth")) > 0, 3000);
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const renderedViewport = await driver.executeScript("return { width: window.innerWidth, height: window.innerHeight }");
+    assert.ok(Math.abs(renderedViewport.width - viewport.width) <= (viewport.width === 390 ? 64 : 24), `Browser CSS width ${renderedViewport.width} should be close to requested ${viewport.width}`);
+    const overflow = await driver.executeScript("return document.documentElement.scrollWidth > window.innerWidth");
+    assert.equal(overflow, false, `Dashboard should not overflow at ${renderedViewport.width}x${renderedViewport.height} (requested ${viewport.width}x${viewport.height})`);
+    if (viewport.width === 1440 || viewport.width === 390) {
+      const name = viewport.width === 1440 ? "dashboard-desktop.png" : "dashboard-mobile.png";
+      await writeFile(path.join(screenshotDirectory, name), Buffer.from(await driver.takeScreenshot(), "base64"));
+    }
+    console.log(`Dashboard viewport check: requested ${viewport.width}x${viewport.height}, rendered CSS ${renderedViewport.width}x${renderedViewport.height}`);
+  }
+  await driver.manage().window().setRect({ width: 1440, height: 985, x: 0, y: 0 });
+  await new Promise((resolve) => setTimeout(resolve, 250));
 
   await driver.wait(until.elementLocated(By.css("a[href='/knowledge']")), 10000);
   await driver.findElement(By.css("a[href='/knowledge']")).click();
@@ -257,6 +292,10 @@ try {
   const extractedText = createdStudy.body.concepts.flatMap((item) => [item.name, item.description, ...item.requiredKnowledgePoints]).join(" ");
   assert.doesNotMatch(extractedText, /https?:\/\/|www\.|example\.com/i, "URLs must not leak into extracted concept data");
   await driver.wait(until.elementLocated(By.xpath(`//h1[normalize-space()='${studyTitle}']`)), 10000);
+  await pool.query("UPDATE study_sessions SET title=$1 WHERE id=$2 AND user_id=$3", ["https://www.youtube.com/watch?v=legacy-title", createdSessionId, learnerId]);
+  await driver.get(`${clientUrl}/study/${createdSessionId}`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Review recent study session']")), 10000);
+  assert.equal(await driver.findElement(By.xpath("//a[normalize-space()='Open saved source link']")).getAttribute("href"), studySourceUrl, "Hiding a historical URL title should preserve its separately stored source link");
   await driver.findElement(By.xpath("//button[normalize-space()='rapid fire']")).click();
   await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+$/i), 15000);
   const assessmentId = (await driver.getCurrentUrl()).split("/assessments/")[1];

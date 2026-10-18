@@ -26,7 +26,14 @@ export const userRepository: UserRepository = {
 };
 
 export const goalRepository: GoalRepository = {
-  async create(userId, input) { const result = await query(`INSERT INTO goals (user_id, title, description, goal_type, target_date, weekly_time_budget_minutes, status) VALUES ($1,$2,$3,$4,$5,$6,'active') RETURNING *`, [userId, input.title, input.description ?? "", input.goalType ?? "learning", input.targetDate ?? null, input.weeklyTimeBudgetMinutes ?? 240]); return goal(result.rows[0]); },
+  async create(userId, input) { return withTransaction(async (client) => {
+    const title = String(input.title ?? "").trim();
+    await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [`${userId}:${title.toLocaleLowerCase("en-US")}`]);
+    const duplicate = await client.query(`SELECT id FROM goals WHERE user_id=$1 AND lower(trim(title))=lower(trim($2)) LIMIT 1`, [userId,title]);
+    if (duplicate.rows[0]) return null;
+    const result = await client.query(`INSERT INTO goals (user_id, title, description, goal_type, target_date, weekly_time_budget_minutes, status) VALUES ($1,$2,$3,$4,$5,$6,'active') RETURNING *`, [userId, title, input.description ?? "", input.goalType ?? "learning", input.targetDate ?? null, input.weeklyTimeBudgetMinutes ?? 240]);
+    return goal(result.rows[0]);
+  }); },
   async list(userId) { const result = await query(`SELECT * FROM goals WHERE user_id = $1 ORDER BY updated_at DESC`, [userId]); return result.rows.map(goal); },
   async findById(id) { const result = await query(`SELECT * FROM goals WHERE id = $1`, [id]); return result.rows[0] ? goal(result.rows[0]) : null; },
   async update(id, userId, input) { const result = await query(`UPDATE goals SET title = COALESCE($3,title), description = COALESCE($4,description), goal_type = COALESCE($5,goal_type), target_date = COALESCE($6,target_date), weekly_time_budget_minutes = COALESCE($7,weekly_time_budget_minutes), status = COALESCE($8,status), updated_at = now() WHERE id = $1 AND user_id = $2 RETURNING *`, [id, userId, input.title ?? null, input.description ?? null, input.goalType ?? null, input.targetDate ?? null, input.weeklyTimeBudgetMinutes ?? null, input.status ?? null]); return result.rows[0] ? goal(result.rows[0]) : null; },

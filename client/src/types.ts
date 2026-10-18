@@ -65,7 +65,7 @@ export interface LearnerSummary {
     status: string;
     mistakeCount: number;
   }>;
-  recentMistakes: Array<{ conceptId: string; mistakes: string[]; submittedAt?: string }>;
+    recentMistakes: Array<{ conceptId: string; conceptName?: string; mistakes: string[]; submittedAt?: string }>;
 }
 
 export interface KnowledgeRole {

@@ -1,45 +1,58 @@
 # RecallLoop Frontend Design
 
-## Design Philosophy
+## Direction
 
-RecallLoop uses a calm, editorial interface for deliberate learning. The experience should make the next learning action clear, explain recommendations only with available evidence, and keep learner-state information secondary to action. Use real API data; do not fabricate analytics or recommendation reasons.
+RecallLoop uses **Aurora Ink**: a focused, contemporary interface with deep ink surfaces, soft violet as the navigation/action color, and citron as a small highlight. The visual hierarchy should make the next useful learning step clear, then let evidence explain why it is suggested. The UI uses the existing API data and does not invent activity, content coverage, or learner progress.
 
-## Color Tokens
+The shared tokens and responsive overrides live in `client/src/styles/design-system.css`; the existing semantic component rules remain in `client/src/index.css`. Components should use those tokens instead of introducing route-specific colors.
 
-Global colors are defined in `client/src/index.css` and shared through CSS variables. Light mode uses a near-white canvas, white surfaces, warm ink, and a restrained burnt-orange accent. Dark mode uses the requested charcoal surfaces and a lighter orange accent. Weak, developing, and strong mastery each have distinct semantic tokens; every mastery visualization must also show a text label.
+## Color and theme
 
-## Typography
+- Dark canvas: `#0B1020`; surfaces use layered midnight blue tones.
+- Light mode uses a cool near-white canvas and clean white surfaces.
+- Text uses high-contrast near-white/ink and muted slate for secondary information.
+- Violet (`#9B8CFF`) marks navigation, focus and primary learning actions.
+- Citron (`#D7FB7B`) is reserved for small illustrative accents, not long text or large surfaces.
+- Success, warning and error use distinct semantic colors and surface tokens. Any state visualization also includes a text label.
 
-Fraunces is used for headings and prominent statistics. IBM Plex Sans is used for body copy and controls. The scale is 13px for metadata, 15px for standard UI, 19-24px for compact headings, and 40px for hero statistics. Keep letter spacing neutral and reserve display sizes for primary values.
+Theme selection remains a persistent light/dark preference in `ThemeProvider`, with system preference as the initial fallback. No downloaded font is required; the UI uses local system sans-serif fonts.
 
-## Navigation
+## Navigation and motion
 
-The shared app shell uses compact Lucide icons with text labels for Dashboard, New study, Goals, Today's plan, Learner, and Knowledge. The active route uses the accent tint. A theme control sits beside navigation, and the navigation wraps into a three-column layout at tablet and mobile widths.
+The desktop shell groups Dashboard, New study, Today's plan, Goals, Knowledge, Resources, Learner, and Settings. Mobile navigation keeps text with its icons and makes room for the bottom safe area. A skip link provides a direct path to the main content.
 
-## Knowledge roadmap
+Route changes use a brief opacity and 5px vertical transition. Motion for React is configured with `reducedMotion="user"`; decorative constellation drawing and card entrances also honor `useReducedMotion`. Avoid continuous animation, parallax, and motion that obscures answer or evidence state. CSS transitions remain short and are disabled by the existing reduced-motion media query.
 
-Role maps are navigable through their actual catalog hierarchy: role, focus skill, topic, concept, and knowledge point. Topic and concept nodes offer a Study action that carries canonical IDs into New Study; the form keeps those IDs only while the selected suggestion remains selected. Show direct prerequisite links and recorded catalog resources when present. Label progress with persisted evidence states (`Not started`, `Studied`, `Evidence available`) and do not turn session completion into mastery or a percentage.
+## Landing page
 
-## Dashboard Hierarchy
+The landing page presents the learning loop as Learn → Recall → Evaluate → Adapt. Its Knowledge Constellation is an SVG illustration of the product process, not a claim about catalog coverage or user progress. Do not add customer counts, testimonials, proficiency claims, or unsupported topic lists without evidence.
 
-The dashboard should lead with the next recall and its data-supported rationale, then show today's plan and active goal, followed by compact learner and activity context. Avoid equal-weight analytics cards. Daily activity visualizations require daily counts from the API; do not synthesize missing history.
+## Dashboard hierarchy
 
-## Component Conventions
+The dashboard leads with a due recall and its schedule-based reason, then active goal, today's plan, recall attempts, concepts to revisit, and recently studied items. Values and labels should retain their denominators and reflect API fields. Historical URL-shaped titles use a neutral fallback in headlines; saved source links stay available as separate links.
 
-Use 12px-radius bordered surface cards, 12px-radius controls, clear primary and secondary buttons, and the shared CSS tokens. Reserve hover elevation for interactive elements. Keep empty states brief and pair them with an appropriate action when the API and routes support one.
+## Learning evidence
 
-## Accessibility
+My Learner labels the aggregate as **Average recall signal**. It is an equal average of each assessed personal concept's rolling `mastery` value. Each submitted recall updates that concept score using 60% current coverage and 40% of its previous score. This is not the percentage of knowledge points mastered and should not be labeled as stable mastery. Per-concept status/progress uses the persisted concept score and stays separate from My Readiness, which uses latest submitted canonical point results.
 
-Use semantic links and buttons, visible accent focus rings, explicit form labels, sufficient contrast, accessible names for icon-only controls, and text labels alongside semantic colors. Respect reduced-motion preferences.
+Goals with the same trimmed, case-insensitive title are distinct existing records and remain visible. New exact-title duplicates are rejected within the authenticated learner's workspace; similar but non-identical goals are left alone. The UI must not silently merge or delete saved goals.
 
-## Responsive Behavior
+## Component conventions
 
-The shell is fluid up to a constrained desktop width. Navigation becomes a three-column grid on smaller viewports, content grids use responsive minimum tracks, and action rows wrap rather than overflow. Verify narrow mobile widths as screens are redesigned.
+Use bordered surfaces with 15–20px radii, compact status chips, readable body copy, and one clear primary action per section. Keep empty states short and pair them with a supported next action. Avoid oversized panels that push the principal action below the fold. Use Lucide icons consistently and include visible labels for navigation.
 
-## Chart Rules
+## Knowledge map and catalog
 
-Only visualize values supplied by the API. Use the smallest appropriate chart implementation, include accessible text labels, and show an explanatory empty state when data is insufficient. Do not add synthetic calibration points or progress values.
+Role maps use the real catalog hierarchy: role, skill, topic, concept, knowledge point. Display only persisted prerequisites, resources, and learner evidence. A decorative visual may illustrate relationships only when edges are backed by catalog data; the landing illustration is explicitly process-oriented and makes no catalog relationship claims.
 
-## Why This?
+## Accessibility and responsive behavior
 
-Keep recommendation rationale compact and tied to available fields such as due state, prior coverage, weakness, or goal relevance. If the API does not provide a reason, keep the explanation minimal and document the missing field instead of implying a reason.
+Use semantic links and buttons, visible violet focus rings, explicit form labels, sufficient text contrast, accessible names for icon-only controls, and text labels alongside semantic colors. The shell adapts at tablet/mobile breakpoints; cards stack, action rows wrap, the mobile navigation includes safe-area padding, and no screen should require horizontal scrolling at 390px.
+
+## Charts and metrics
+
+Only chart API-supplied values. State the population or denominator, distinguish `null`/not assessed from measured zero, and show an explanatory empty state when data is insufficient. Use a progress bar only for a defined measure; do not synthesize daily history or imply calibration from display precision.
+
+## Why this?
+
+Tie recommendation explanations to available fields such as due state, prior coverage, weakness, or goal relevance. If the API does not provide a reason, keep the explanation minimal rather than implying one.

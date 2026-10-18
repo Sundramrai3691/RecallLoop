@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { ApiError, type Concept, type RecallAttempt, type StudySession } from "../types";
+import { studySessionDisplayTitle } from "../utils/presentation";
 
 export function StudySessionPage() {
   const { id } = useParams();
@@ -50,7 +51,7 @@ export function StudySessionPage() {
     <div>
       <div className="hero">
         {returnTo ? <Link className="back-link" to={returnTo}>Return to roadmap</Link> : null}
-        <h1>{session.title}</h1>
+        <h1>{studySessionDisplayTitle(session.title, concepts)}</h1>
         <p className="muted">
           Status: {session.status.replace("_", " ")}. {concepts.length} concept
           {concepts.length === 1 ? "" : "s"} extracted.

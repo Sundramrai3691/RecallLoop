@@ -25,7 +25,9 @@ async function ownedGoal(userId: string, goalId: string) {
 export async function createGoal(userId: string, input: Record<string, any>) {
   const title = input.title?.trim();
   if (!title) throw new AppError("Goal title is required", 400, "VALIDATION_ERROR");
-  return serializeGoal(await goalRepository.create(userId, { ...input, title }));
+  const created = await goalRepository.create(userId, { ...input, title });
+  if (!created) throw new AppError("A goal with this title already exists in your workspace. Open the existing goal or choose a different title.", 409, "DUPLICATE_GOAL");
+  return serializeGoal(created);
 }
 export async function listGoals(userId: string) { return (await goalRepository.list(userId)).map(serializeGoal); }
 export async function getGoal(userId: string, goalId: string) { return serializeGoal(await ownedGoal(userId, goalId)); }

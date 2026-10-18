@@ -76,7 +76,7 @@ export interface UserRepository {
 }
 
 export interface GoalRepository {
-  create(userId: string, input: Record<string, unknown>): Promise<GoalRecord>;
+  create(userId: string, input: Record<string, unknown>): Promise<GoalRecord | null>;
   list(userId: string): Promise<GoalRecord[]>;
   findById(id: string): Promise<GoalRecord | null>;
   update(id: string, userId: string, input: Record<string, unknown>): Promise<GoalRecord | null>;
