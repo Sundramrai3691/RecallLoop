@@ -1,13 +1,13 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, FileText, Link as LinkIcon, StickyNote } from "lucide-react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { ArrowLeft, BookOpen, FileText, Link as LinkIcon, StickyNote } from "lucide-react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { PageHeader } from "../components/Ui";
 import { ApiError, type KnowledgeRoadmapRole } from "../types";
 
 const sourceOptions = [
-  { value: "url", label: "Article or docs", Icon: LinkIcon },
-  { value: "file", label: "PDF/book text", Icon: FileText },
+  { value: "url", label: "Web page excerpt", Icon: LinkIcon },
+  { value: "file", label: "Book or document text", Icon: FileText },
   { value: "notes", label: "My notes", Icon: StickyNote },
   { value: "manual", label: "Other notes", Icon: StickyNote },
 ] as const;
@@ -18,7 +18,8 @@ export function NewStudyPage() {
   const [title, setTitle] = useState(() => searchParams.get("topic") ?? "");
   const [canonicalTopicId, setCanonicalTopicId] = useState(() => searchParams.get("topicId") ?? "");
   const [canonicalConceptId, setCanonicalConceptId] = useState(() => searchParams.get("conceptId") ?? "");
-  const returnTo = searchParams.get("returnTo") ?? "";
+  const rawReturnTo = searchParams.get("returnTo") ?? "";
+  const returnTo = rawReturnTo === "/plan/today" || /^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo) ? rawReturnTo : "";
   const [rawMaterial, setRawMaterial] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceType, setSourceType] = useState<string>("notes");
@@ -84,20 +85,23 @@ export function NewStudyPage() {
   }
 
   return <div className="study-setup">
-    <PageHeader eyebrow="Learn" title="What are you studying?" description="Choose a topic and capture the material you’re learning from. Recall practice follows when you’re ready." />
+    {returnTo === "/plan/today" ? <Link className="back-link" to={returnTo}><ArrowLeft size={15}/> Today’s plan</Link> : null}
+    <PageHeader eyebrow="Learn" title="What are you studying?" description="Add the topic and paste the notes or excerpt you want RecallLoop to use." />
+    <ol className="study-next-steps" aria-label="What happens next"><li><strong>1. Add text</strong><span>Paste notes or an excerpt.</span></li><li><strong>2. Review concepts</strong><span>Check the session’s extracted concepts.</span></li><li><strong>3. Recall</strong><span>Answer a question when you’re ready.</span></li></ol>
     <form className="card study-form" onSubmit={(event) => void onSubmit(event)}>
       {error ? <p className="error" role="alert">{error}</p> : null}
       <label htmlFor="study-topic">What are you studying?</label>
-      <div className="suggestion-wrap"><input ref={inputRef} id="study-topic" required autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={focused && suggestions.length > 0} aria-controls="topic-suggestions" aria-activedescendant={focused && suggestions[active] ? `topic-option-${active}` : undefined} value={title} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 100)} onKeyDown={onTopicKeyDown} onChange={(event) => { setTitle(event.target.value); setCanonicalTopicId(""); setCanonicalConceptId(""); setActive(0); }} placeholder="Try ‘Computer Networks’ or ‘Caching’" />
+      <div className="suggestion-wrap"><input ref={inputRef} id="study-topic" name="topic" required autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={focused && suggestions.length > 0} aria-controls="topic-suggestions" aria-activedescendant={focused && suggestions[active] ? `topic-option-${active}` : undefined} value={title} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 100)} onKeyDown={onTopicKeyDown} onChange={(event) => { setTitle(event.target.value); setCanonicalTopicId(""); setCanonicalConceptId(""); setActive(0); }} placeholder="Try ‘Computer Networks’ or ‘Caching’" />
         {focused && suggestions.length > 0 ? <ul className="suggestion-list" id="topic-suggestions" role="listbox">{suggestions.map((item, index) => <li key={`${item.topicId}-${item.conceptId}`} id={`topic-option-${index}`} role="option" aria-selected={index === active}><button role="presentation" tabIndex={-1} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setTitle(item.value); setCanonicalTopicId(item.topicId); setCanonicalConceptId(item.conceptId); setFocused(false); inputRef.current?.focus(); }}><span>{item.label}</span><small>{item.detail}</small></button></li>)}</ul> : null}</div>
       <p className="metadata">{canonicalTopicId ? "Linked to the selected knowledge map node. Edit the title to make this a custom topic." : "Suggestions come from the knowledge map. You can also enter your own topic."}</p>
       <fieldset className="source-fieldset"><legend>How are you learning this?</legend><div className="source-options">{sourceOptions.map(({ value, label, Icon }) => <button key={value} type="button" className={`source-option ${sourceType === value ? "selected" : ""}`} aria-pressed={sourceType === value} onClick={() => setSourceType(value)}><Icon size={18}/><span>{label}</span></button>)}</div></fieldset>
+      <p className="metadata">This records where your text came from. RecallLoop uses the text you paste; it does not fetch web pages or upload files.</p>
       <label htmlFor="source-url">Source link <span className="muted">(optional)</span></label>
-      <input id="source-url" type="url" inputMode="url" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://…" />
+      <input id="source-url" name="sourceUrl" type="url" inputMode="url" autoComplete="url" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="https://…" />
       <p className="metadata">The link is saved with this session. Pages, video transcripts, and files are not fetched or uploaded; paste usable text below.</p>
       <label htmlFor="material">Notes or source text</label>
-      <textarea id="material" rows={6} required value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Paste notes or a short source excerpt. Concepts and recall questions are based on this text." />
-      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> Local mock extraction is deterministic; it is not semantic LLM extraction.</span><button className="btn btn-primary" disabled={busy || retryBlocked || !title.trim() || !rawMaterial.trim()} type="submit">{busy ? "Starting session…" : retryBlocked ? "Retry unavailable" : "Continue to study"}</button></div>
+      <textarea id="material" name="material" autoComplete="off" rows={6} required value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Paste notes or a short source excerpt. Concepts and recall questions are based on this text." />
+      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> Local mock extraction is deterministic; it is not semantic LLM extraction.</span><button className="btn btn-primary" disabled={busy || retryBlocked || !title.trim() || !rawMaterial.trim()} type="submit">{busy ? "Creating session…" : retryBlocked ? "Retry unavailable" : "Create study session"}</button></div>
     </form>
   </div>;
 }

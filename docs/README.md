@@ -12,6 +12,7 @@ This index separates current implementation references from domain explanations,
 - [Core learning roadmap](CORE_LEARNING_ROADMAP.md): prioritized learner-facing integrity and product phases with acceptance evidence.
 - [Session log](SESSION_LOG.md): append-only record of repository work sessions.
 - [Frontend design](FRONTEND_DESIGN.md): UI system and interaction patterns.
+- [Product flow and UX journey audit](UX_JOURNEY.md): state-aware next actions, action-to-outcome inventory, learner journeys, and browser validation evidence.
 
 ## Product and domain references
 

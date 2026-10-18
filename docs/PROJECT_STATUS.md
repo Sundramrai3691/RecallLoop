@@ -1,6 +1,6 @@
 # Project status
 
-Status is based on checked-in source and commands run as of 2026-10-18. This is not a claim about any deployed environment or production usage.
+Status is based on checked-in source and commands run as of 2026-10-19. This is not a claim about any deployed environment or production usage.
 
 ## Status definitions
 
@@ -20,7 +20,8 @@ Presence of a test file alone does not mean it passed in this session.
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
 | PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`017`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |
-| UI/UX 2.0 visual system and responsive shell | TESTED | Aurora Ink tokens, persistent light/dark themes, responsive navigation, accessible skip link, reduced-motion route transitions, and process-based landing illustration. Firefox E2E checked dashboard overflow at 1440px, 1024px, and the browser's 450px minimum CSS width when a 390px phone width was requested; see the current session entry. |
+| UI/UX 2.0 visual system and responsive shell | TESTED | Aurora Ink tokens, persistent light/dark themes, responsive navigation, accessible skip link, reduced-motion route transitions, and process-based landing illustration. Playwright/Edge checked exact 1440×900, 768×1024, and 390×844 Home layouts without horizontal overflow; Firefox continues to cover interactive routes. Screenshots were inspected and are in the temp directory recorded in the session log. |
+| State-aware Home, learner next actions, and product journey clarity | TESTED | Home prioritizes first goal, due recall, in-progress study, planned task, weak-concept practice, then new study. Study source limitations and sequence are explicit; plan start/complete/defer/skip have distinct outcomes and context-preserving navigation. See [UX Journey](UX_JOURNEY.md) and the 2026-10-19 browser/unit/integration/build evidence in [Session Log](SESSION_LOG.md). |
 | Exact duplicate goal prevention | TESTED | Per-owner normalized-title advisory lock and duplicate lookup; returns `409 DUPLICATE_GOAL`. PostgreSQL integration verified two concurrent case-insensitive create calls leave one saved goal and return one conflict. Existing duplicate goal records remain separate and visible. |
 | Historical URL-shaped session headlines | TESTED | Firefox E2E changed a disposable session title to a legacy YouTube URL and verified the study page uses a readable fallback while retaining the saved source link. Dashboard and plan apply the same URL-safe headline rule. |
 | Learner average recall signal explanation | TESTED | Learner summary averages `personal_concepts.mastery` equally for concepts with submitted attempts. Each concept score blends per recall as 60% current coverage and 40% previous score; the UI labels and explains this as a rolling recall signal, not knowledge-point mastery. Client production build passed. |
@@ -73,7 +74,7 @@ npm run dev
 npm run test:e2e
 ```
 
-The E2E command launches isolated API and Vite child processes with deterministic mock providers on ports 3101 and 5174, and uses a uniquely named learner in the local `recallloop` database, which it deletes after the scenario. It requires Firefox and an already migrated/seeded local database; it does not reuse the developer API/client processes.
+The E2E command launches isolated API and Vite child processes with deterministic mock providers on ports 3101 and 5174, and uses a uniquely named learner in the local `recallloop` database, which it deletes after the scenario. It requires Firefox, Microsoft Edge for Playwright exact-viewport checks, and an already migrated/seeded local database; it does not reuse the developer API/client processes.
 
 The compose file defines PostgreSQL 16 on port 5432. If Docker is unavailable, provide a PostgreSQL instance matching `DATABASE_URL` in `.env`. Apply migrations before the first API run; startup itself only runs `SELECT 1`.
 

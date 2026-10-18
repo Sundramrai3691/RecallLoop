@@ -193,3 +193,18 @@ a { color: var(--accent); }
   .nav-link { min-width: 44px; font-size: 9px; }
   .nav-link span { max-width: 42px; }
 }
+
+.study-next-steps { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 10px; margin: -6px 0 17px; padding: 0; list-style: none; }
+.study-next-steps li { display: grid; gap: 4px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.study-next-steps li span { color: var(--muted); font-size: 12px; }
+.practice-options { margin-top: 14px; border-top: 1px solid var(--border); padding-top: 12px; }
+.practice-options summary { width: fit-content; color: var(--accent); cursor: pointer; font-weight: 650; }
+.practice-options .actions { margin-top: 12px; }
+.learner-concept { grid-template-columns: minmax(150px,1.3fr) minmax(90px,auto) minmax(90px,1fr) auto; }
+.learner-concept .actions { grid-column: 1 / -1; margin-top: 2px; }
+.learner-concept .actions .btn { min-height: 36px; }
+@media (max-width:560px) {
+  .study-next-steps { grid-template-columns: 1fr; gap: 7px; }
+  .study-next-steps li { grid-template-columns: auto 1fr; align-items: baseline; gap: 8px; padding: 10px 12px; }
+  .learner-concept .actions { grid-column: 1 / -1; flex-wrap: wrap; }
+}

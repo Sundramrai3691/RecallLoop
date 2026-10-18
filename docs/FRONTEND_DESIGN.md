@@ -19,7 +19,7 @@ Theme selection remains a persistent light/dark preference in `ThemeProvider`, w
 
 ## Navigation and motion
 
-The desktop shell groups Dashboard, New study, Today's plan, Goals, Knowledge, Resources, Learner, and Settings. Mobile navigation keeps text with its icons and makes room for the bottom safe area. A skip link provides a direct path to the main content.
+The desktop shell groups Dashboard, New study, Today's plan, Goals, Knowledge, Resources, Learner, and Settings. Mobile navigation keeps text with its icons and makes room for the bottom safe area. A skip link provides a direct path to the main content. Product routes, action destinations, recovery states, and E2E mapping are maintained in [Product flow and UX journey audit](UX_JOURNEY.md).
 
 Route changes use a brief opacity and 5px vertical transition. Motion for React is configured with `reducedMotion="user"`; decorative constellation drawing and card entrances also honor `useReducedMotion`. Avoid continuous animation, parallax, and motion that obscures answer or evidence state. CSS transitions remain short and are disabled by the existing reduced-motion media query.
 
@@ -29,7 +29,7 @@ The landing page presents the learning loop as Learn → Recall → Evaluate →
 
 ## Dashboard hierarchy
 
-The dashboard leads with a due recall and its schedule-based reason, then active goal, today's plan, recall attempts, concepts to revisit, and recently studied items. Values and labels should retain their denominators and reflect API fields. Historical URL-shaped titles use a neutral fallback in headlines; saved source links stay available as separate links.
+Home selects one primary action from persisted learner state: first goal, due recall, in-progress study, planned task, weak concept practice, or study something new for an active goal. First-visit Home keeps the initial goal action clear; returning learners can still reach goal, plan, and evidence summaries below the primary action. Values and labels should retain their denominators and reflect API fields. Historical URL-shaped titles use a neutral fallback in headlines; saved source links stay available as separate links.
 
 ## Learning evidence
 
@@ -47,7 +47,7 @@ Role maps use the real catalog hierarchy: role, skill, topic, concept, knowledge
 
 ## Accessibility and responsive behavior
 
-Use semantic links and buttons, visible violet focus rings, explicit form labels, sufficient text contrast, accessible names for icon-only controls, and text labels alongside semantic colors. The shell adapts at tablet/mobile breakpoints; cards stack, action rows wrap, the mobile navigation includes safe-area padding, and no screen should require horizontal scrolling at 390px.
+Use semantic links and buttons, visible violet focus rings, explicit form labels, sufficient text contrast, accessible names for icon-only controls, and text labels alongside semantic colors. Keep one primary action per section; disclose alternatives and give status-changing controls distinct verbs. The shell adapts at tablet/mobile breakpoints; cards stack, action rows wrap, the mobile navigation includes safe-area padding, and no screen should require horizontal scrolling at 390px. The E2E browser matrix checks 1440×900, 768×1024, and 390×844 in a browser that honors exact CSS viewport sizing.
 
 ## Charts and metrics
 

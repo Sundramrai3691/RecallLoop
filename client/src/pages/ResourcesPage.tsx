@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { ArrowUpRight, BookOpen, Clock3, FileText, LibraryBig } from "lucide-react";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { EmptyState, PageHeader } from "../components/Ui";
 import { ApiError, type ResourceRecommendation } from "../types";
@@ -9,6 +9,7 @@ function prettyType(type: string | undefined) { return type ? type.replaceAll("_
 
 export function ResourcesPage() {
   const [params] = useSearchParams(); const conceptId = params.get("conceptId") ?? undefined;
+  const returnTo = params.get("returnTo") === "/plan/today" ? "/plan/today" : "";
   const [available, setAvailable] = useState(60); const [resources, setResources] = useState<ResourceRecommendation[]>([]); const [pack, setPack] = useState<Awaited<ReturnType<typeof api.learningPack>>["pack"] | null>(null);
   const [sources, setSources] = useState<Awaited<ReturnType<typeof api.listGroundingSources>>["sources"]>([]); const [title,setTitle]=useState(""); const [text,setText]=useState(""); const [reference,setReference]=useState(""); const [provenance,setProvenance]=useState(""); const [sourceType,setSourceType]=useState<"text"|"markdown">("text"); const [notice,setNotice]=useState<string|null>(null); const [error,setError]=useState<string|null>(null); const [loading,setLoading]=useState(true);
   async function load() { setLoading(true); try { const [resourceResult, packResult] = await Promise.all([api.recommendedResources(conceptId,available), conceptId ? api.learningPack(conceptId,available) : Promise.resolve(null)]); setResources(resourceResult.resources); setPack(packResult?.pack??null); setError(null); } catch (err) { setError(err instanceof ApiError && err.status===401 ? "Sign in to see your focused resources." : "We couldn’t load resources right now. Please try again."); } finally { setLoading(false); } }
@@ -16,6 +17,7 @@ export function ResourcesPage() {
   useEffect(()=>{void api.listGroundingSources().then((result)=>setSources(result.sources)).catch(()=>setSources([]));},[]);
   async function addSource(event:FormEvent) { event.preventDefault(); setNotice(null); setError(null); try { const result=await api.ingestGroundingSource({title,text,sourceType,reference,provenance:provenance.trim()?{attribution:provenance.trim(),submittedBy:"learner"}:{submittedBy:"learner"}}); setNotice(result.source.duplicate?"This source was refreshed and is ready for focused review.":"Your source is ready for focused review."); setTitle("");setText("");setReference("");setProvenance(""); void api.listGroundingSources().then((data)=>setSources(data.sources)).catch(()=>undefined); } catch { setError("We couldn’t process that source. Check the details and try again."); } }
   return <div>
+    {returnTo ? <Link className="back-link" to={returnTo}>Return to today’s plan</Link> : null}
     <PageHeader eyebrow="Explore" title={conceptId?"Focused resources":"Learning resources"} description={conceptId?"Material selected to help you revisit this concept.":"A reading list shaped around what you’re learning and what you have time for."}/>
     <section className="resource-controls card"><div><label htmlFor="resource-time">Time available</label><select id="resource-time" value={available} onChange={(event)=>setAvailable(Number(event.target.value))}><option value={15}>15 minutes</option><option value={30}>30 minutes</option><option value={45}>45 minutes</option><option value={60}>1 hour</option><option value={90}>1.5 hours</option><option value={120}>2 hours</option></select></div><button className="btn btn-primary" type="button" disabled={loading} onClick={()=>void load()}>Refresh suggestions</button></section>
     {error?<p className="error" role="alert">{error}</p>:null}{notice?<p className="notice" role="status">{notice}</p>:null}

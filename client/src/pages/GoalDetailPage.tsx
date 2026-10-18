@@ -127,10 +127,11 @@ export function GoalDetailPage() {
             checked={trustMe}
             onChange={(event) => setTrustMe(event.target.checked)}
           />{" "}
-          Trust me, continue without assessment
+          Skip the baseline assessment
         </label>
+        <p className="metadata">The baseline checks what you currently remember. Skipping it leaves this goal without starting evidence.</p>
         <button className="btn btn-primary" type="submit">
-          Choose starting point
+          {trustMe ? "Continue without baseline" : "Start baseline assessment"}
         </button>
         {canonicalSkills.find((skill)=>skill.id===canonicalSkillId) ? <Link className="btn" to={`/knowledge/roles/${canonicalSkills.find((skill)=>skill.id===canonicalSkillId)!.roleId}#skill-${canonicalSkillId}`}>Open this skill&apos;s roadmap</Link> : <Link className="btn" to="/knowledge">Explore knowledge map</Link>}
       </form>

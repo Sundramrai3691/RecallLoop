@@ -9,7 +9,7 @@ export function StudySessionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawReturnTo=searchParams.get("returnTo") ?? "";
-  const returnTo=/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
+  const returnTo=rawReturnTo==="/plan/today"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const [session, setSession] = useState<StudySession | null>(null);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [pendingRecalls, setPendingRecalls] = useState<RecallAttempt[]>([]);
@@ -50,7 +50,7 @@ export function StudySessionPage() {
   return (
     <div>
       <div className="hero">
-        {returnTo ? <Link className="back-link" to={returnTo}>Return to roadmap</Link> : null}
+        {returnTo ? <Link className="back-link" to={returnTo}>{returnTo==="/plan/today"?"Return to today’s plan":"Return to roadmap"}</Link> : null}
         <h1>{studySessionDisplayTitle(session.title, concepts)}</h1>
         <p className="muted">
           Status: {session.status.replace("_", " ")}. {concepts.length} concept
@@ -70,16 +70,16 @@ export function StudySessionPage() {
                 <li key={point}>{point}</li>
               ))}
             </ul>
-            <div className="actions">
-              {(["rapid_fire","deep_recall","mastery_check"] as const).map((mode) => <button className="btn" key={mode} type="button" onClick={async () => { try { const run = await api.createAssessment(concept.id,mode); navigate(`/assessments/${run.assessment.id}`); } catch (err) { setError(err instanceof ApiError ? err.message : "Could not start assessment"); } }}>{mode.replace("_"," ")}</button>)}
-            </div>
+            <details className="practice-options"><summary>Choose a practice mode for this concept</summary><div className="actions">
+              {(["rapid_fire","deep_recall","mastery_check"] as const).map((mode) => <button className="btn" key={mode} type="button" onClick={async () => { try { const run = await api.createAssessment(concept.id,mode); navigate(`/assessments/${run.assessment.id}${returnTo==="/plan/today"?`?returnTo=${encodeURIComponent(returnTo)}`:""}`); } catch (err) { setError(err instanceof ApiError ? err.message : "Could not start assessment"); } }}>{mode === "rapid_fire" ? "Start Rapid Fire" : mode === "deep_recall" ? "Start deep recall" : "Start mastery check"}</button>)}
+            </div></details>
           </article>
         ))}
       </div>
       {session.status !== "completed" ? (
         <div className="actions">
           <button className="btn btn-primary" disabled={busy} onClick={complete} type="button">
-            {busy ? "Creating recall…" : "Mark complete and start recall"}
+            {busy ? "Preparing recall…" : "Finish review and start recall"}
           </button>
         </div>
       ) : pendingRecalls[0] ? (
@@ -87,7 +87,7 @@ export function StudySessionPage() {
           <button
             className="btn btn-primary"
             type="button"
-            onClick={() => navigate(`/recall/${pendingRecalls[0].id}`)}
+            onClick={() => navigate(`/recall/${pendingRecalls[0].id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`)}
           >
             Continue pending recall
           </button>

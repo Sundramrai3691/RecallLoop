@@ -9,6 +9,7 @@ import { Pool } from "pg";
 import { Builder, By, until } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { start as startGeckodriver } from "geckodriver";
+import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 dotenv.config({ path: path.join(root, ".env") });
@@ -113,7 +114,7 @@ try {
   await driver.findElement(By.css("button[type='submit']")).click();
   await driver.wait(until.urlContains("/onboarding"), 10000);
 
-  const screenshotDirectory = path.join(os.tmpdir(), "recallloop-uiux-2026-10-18");
+  const screenshotDirectory = path.join(os.tmpdir(), "recallloop-ux-2026-10-19");
   await mkdir(screenshotDirectory, { recursive: true });
   await driver.manage().window().setRect({ width: 1440, height: 985, x: 0, y: 0 });
   await driver.get(clientUrl);
@@ -146,6 +147,53 @@ try {
   await driver.manage().window().setRect({ width: 1440, height: 985, x: 0, y: 0 });
   await new Promise((resolve) => setTimeout(resolve, 250));
 
+  const browser = await chromium.launch({ channel: "msedge", headless: true });
+  try {
+    const token = await driver.executeScript("return localStorage.getItem('recallloop_token')");
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+    await context.addInitScript((authToken) => localStorage.setItem("recallloop_token", authToken), token);
+    const page = await context.newPage();
+    for (const viewport of [{ width: 1440, height: 900 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
+      await page.setViewportSize(viewport);
+      await page.goto(`${clientUrl}/dashboard`, { waitUntil: "networkidle" });
+      await page.getByRole("heading", { name: "Start with a clear direction" }).waitFor();
+      const metrics = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth }));
+      assert.deepEqual([metrics.width, metrics.height], [viewport.width, viewport.height], "Playwright must render the requested CSS viewport exactly");
+      assert.ok(metrics.scrollWidth <= viewport.width, `Home should not overflow at ${viewport.width}x${viewport.height}; scroll width was ${metrics.scrollWidth}`);
+      if (viewport.width === 1440 || viewport.width === 390) await page.screenshot({ path: path.join(screenshotDirectory, `home-${viewport.width}.png`), fullPage: true });
+      console.log(`Playwright viewport check: exact ${metrics.width}x${metrics.height}, no horizontal overflow`);
+    }
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${clientUrl}/study/new`, { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "What are you studying?" }).waitFor();
+    await page.screenshot({ path: path.join(screenshotDirectory, "study-setup-390.png"), fullPage: true });
+    await page.goto(`${clientUrl}/plan/today`, { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "A learning journey for today" }).waitFor();
+    const planWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(planWidth <= 390, `Today’s plan should not overflow at 390px; scroll width was ${planWidth}`);
+    await page.screenshot({ path: path.join(screenshotDirectory, "plan-empty-390.png"), fullPage: true });
+    await context.close();
+  } finally { await browser.close(); }
+
+  await driver.get(`${clientUrl}/onboarding`);
+  await driver.wait(until.elementLocated(By.id("start-topic")), 10000);
+  const starterSelect = await driver.findElement(By.id("start-topic"));
+  const starterOptions = await starterSelect.findElements(By.css("option"));
+  assert.ok(starterOptions.length > 1, "Onboarding should offer a real catalog focus area");
+  await starterSelect.findElement(By.css("option:not([value=''])")).click();
+  await driver.findElement(By.css("form.onboarding-form button[type='submit']")).click();
+  await driver.wait(until.urlContains("/study/new?topic="), 10000);
+  await driver.wait(until.elementLocated(By.css(".study-next-steps")), 10000);
+  assert.match(await driver.findElement(By.css(".study-next-steps")).getText(), /Review concepts[\s\S]*Recall/);
+  await driver.findElement(By.id("material")).sendKeys("A cache reuses a response while it is fresh. Validation asks the origin whether a stale response has changed.");
+  await driver.findElement(By.css("form.study-form button[type='submit']")).click();
+  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+$/i), 15000);
+  const firstJourneySessionId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+  const firstJourneySession = await fetch(`${apiUrl}/api/study-sessions/${firstJourneySessionId}`, {
+    headers: { Authorization: `Bearer ${await driver.executeScript("return localStorage.getItem('recallloop_token')")}` },
+  });
+  assert.equal(firstJourneySession.status, 200, "A new learner should reach a persisted study session through onboarding and the study form");
+
   await driver.wait(until.elementLocated(By.css("a[href='/knowledge']")), 10000);
   await driver.findElement(By.css("a[href='/knowledge']")).click();
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Knowledge map']")), 10000);
@@ -177,6 +225,10 @@ try {
   const concept = http?.concepts.find((item) => item.name === "HTTP caching");
   assert.deepEqual(concept?.knowledgePoints.map((point) => point.statement), ["Can distinguish freshness from validation."]);
 
+  const persistedCountBeforeRejectedInputs = await pool.query(
+    "SELECT count(*)::int AS count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1)",
+    [email],
+  );
   await driver.get(`${clientUrl}/study/new`);
   const topicInput = await driver.findElement(By.id("study-topic"));
   const materialInput = await driver.findElement(By.id("material"));
@@ -199,7 +251,7 @@ try {
     "SELECT count(*)::int AS count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1)",
     [email],
   );
-  assert.equal(persistedSessions.rows[0].count, 0, "Rejected study inputs must not leave orphan sessions");
+  assert.equal(persistedSessions.rows[0].count, persistedCountBeforeRejectedInputs.rows[0].count, "Rejected study inputs must not leave orphan sessions");
 
   const token = await driver.executeScript("return localStorage.getItem('recallloop_token')");
   async function learnerApi(method, route, body) {
@@ -296,7 +348,8 @@ try {
   await driver.get(`${clientUrl}/study/${createdSessionId}`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Review recent study session']")), 10000);
   assert.equal(await driver.findElement(By.xpath("//a[normalize-space()='Open saved source link']")).getAttribute("href"), studySourceUrl, "Hiding a historical URL title should preserve its separately stored source link");
-  await driver.findElement(By.xpath("//button[normalize-space()='rapid fire']")).click();
+  await driver.findElement(By.xpath("//summary[contains(.,'Choose a practice mode')]")).click();
+  await driver.findElement(By.xpath("//button[normalize-space()='Start Rapid Fire']")).click();
   await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+$/i), 15000);
   const assessmentId = (await driver.getCurrentUrl()).split("/assessments/")[1];
   const generatedAssessment = await learnerApi("GET", `/api/assessments/${assessmentId}`);
@@ -336,6 +389,13 @@ try {
   assert.equal(mappedReadiness.incorrect, 0);
   const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
   assert.equal(unmappedReadiness.status, "unmapped");
+  await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}`);
+  await driver.wait(until.elementLocated(By.id("canonical-skill")), 10000);
+  assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='Start baseline assessment']")).isDisplayed(), true);
+  await driver.findElement(By.css("input[type='checkbox']")).click();
+  assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='Continue without baseline']")).isDisplayed(), true);
+  assert.match(await driver.findElement(By.css("form.card[style]")).getText(), /leaves this goal without starting evidence/i);
+  await driver.findElement(By.css("input[type='checkbox']")).click();
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//p[contains(.,'incorrect') and contains(.,'partial') and contains(.,'unanswered') and contains(.,'no submitted evidence')]")), 10000);
@@ -347,7 +407,10 @@ try {
      ON CONFLICT (user_id,concept_id) DO UPDATE SET due_at=EXCLUDED.due_at,interval_days=EXCLUDED.interval_days`,
     [learnerId, createdStudy.body.concepts[0].id],
   );
-  const generatedPlan = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/plan/generate`, { availableMinutes: 60 });
+  await driver.get(`${clientUrl}/dashboard`);
+  await driver.wait(until.elementLocated(By.xpath(`//a[@href='/recall/${pendingRecallAttemptId}']`)), 10000);
+  assert.match(await driver.findElement(By.css(".next-action")).getText(), /due for review/i, "A returning learner with due work should see the recall as the primary home action");
+  const generatedPlan = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/plan/generate`, { availableMinutes: 120 });
   assert.equal(generatedPlan.status, 201);
   const scheduledRecall = generatedPlan.body.tasks.find((task) => task.recallAttemptId === pendingRecallAttemptId);
   assert.ok(scheduledRecall, "A due review state and unanswered recall attempt should produce a recall task");
@@ -358,25 +421,50 @@ try {
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='A learning journey for today']")), 10000);
   await driver.wait(async () => {
     const body = await driver.findElement(By.tagName("body")).getText();
-    return body.includes("Required") && body.includes("Done for now");
+    return body.includes("Required") && body.includes("Mark complete") && body.includes("Keep for later today");
   }, 10000);
   const visiblePlan = await driver.findElement(By.tagName("body")).getText();
-  assert.ok(visiblePlan.includes("Required") && visiblePlan.includes("Done for now"), "The UI should render the required recall and its completion action");
-  const completedResponse = await learnerApi("PATCH", `/api/plan/tasks/${scheduledRecall.id}`, { status: "completed" });
-  assert.equal(completedResponse.status, 200);
-  await driver.navigate().refresh();
+  assert.ok(visiblePlan.includes("Required") && visiblePlan.includes("Mark complete"), "The UI should render the required recall and an explicit completion action");
+  const recallCard = await driver.findElement(By.css(`[data-task-id='${scheduledRecall.id}']`));
+  await recallCard.findElement(By.xpath(".//button[contains(.,'Start recall') or contains(.,'Start this step')]")).click();
+  await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}?returnTo=`), 10000);
+  const answerField = await driver.findElements(By.id("answer"));
+  if (answerField.length) await answerField[0].sendKeys("Freshness tells a cache how long a response may be reused; validation checks with the origin whether stale content changed.");
+  else await driver.findElement(By.css("label.option input[type='radio']")).click();
+  await driver.findElement(By.css("form button[type='submit']")).click();
+  await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}/result?returnTo=`), 15000);
+  await driver.findElement(By.xpath("//a[normalize-space()='Done for now']")).click();
+  await driver.wait(until.urlContains("/plan"), 10000);
+  const learningTask = generatedPlan.body.tasks.find((task) => task.taskType === "learn");
+  assert.ok(learningTask, "The goal should provide a Learn task with a supported study handoff");
+  const learningCard = await driver.findElement(By.css(`[data-task-id='${learningTask.id}']`));
+  await learningCard.findElement(By.xpath(".//button[normalize-space()='Study this topic']")).click();
+  await driver.wait(until.urlContains("/study/new?topic="), 10000);
+  const studyHandoffUrl = new URL(await driver.getCurrentUrl());
+  assert.equal(studyHandoffUrl.searchParams.get("returnTo"), "/plan/today", "A plan Learn task should preserve its return destination");
+  assert.equal(await driver.findElement(By.id("study-topic")).getAttribute("value"), learningTask.title.replace(/^Learn\s*[·:]\s*/i, "").trim());
+  await driver.findElement(By.xpath("//a[normalize-space()='Today’s plan']")).click();
+  await driver.wait(until.urlContains("/plan/today"), 10000);
+  const startedLearnStatus = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [learningTask.id]);
+  assert.equal(startedLearnStatus.rows[0].status, "in_progress", "Starting a Learn task should persist its in-progress state before leaving the plan");
+  const completedCard = await driver.findElement(By.css(`[data-task-id='${scheduledRecall.id}']`));
+  await completedCard.findElement(By.xpath(".//button[normalize-space()='Mark complete']")).click();
   await driver.wait(until.elementLocated(By.xpath("//*[normalize-space()='Completed']")), 10000);
   const doneTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [scheduledRecall.id]);
   assert.equal(doneTask.rows[0].status, "completed", "The completion action should persist to PostgreSQL");
-  const skippable = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id);
-  assert.ok(skippable, "Evidence should generate another task for skip and overdue workflow checks");
+  const deferredTask = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id && task.id !== learningTask.id);
+  assert.ok(deferredTask, "Evidence should generate another task for defer and skip workflow checks");
   const visibleAfterCompletion = await driver.findElement(By.tagName("body")).getText();
-  assert.ok(visibleAfterCompletion.includes("Skip"), "The UI should retain a skip action for remaining planned work");
-  const skippedResponse = await learnerApi("PATCH", `/api/plan/tasks/${skippable.id}`, { status: "missed" });
-  assert.equal(skippedResponse.status, 200);
-  const skippedTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [skippable.id]);
-  assert.equal(skippedTask.rows[0].status, "missed", "Skip should persist the existing missed status");
-  const overdueCandidate = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id && task.id !== skippable.id);
+  assert.ok(visibleAfterCompletion.includes("Skip today"), "The UI should keep skip available as a separate action");
+  const deferredCard = await driver.findElement(By.css(`[data-task-id='${deferredTask.id}']`));
+  await deferredCard.findElement(By.xpath(".//button[normalize-space()='Keep for later today']")).click();
+  const deferredStatus = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [deferredTask.id]);
+  assert.equal(deferredStatus.rows[0].status, "in_progress", "Keep for later should persist in_progress and leave the task on today’s plan");
+  await driver.wait(async () => (await driver.findElement(By.css(`[data-task-id='${deferredTask.id}']`)).getText()).includes("In progress"), 10000);
+  await deferredCard.findElement(By.xpath(".//button[normalize-space()='Skip today']")).click();
+  const skippedTask = await pool.query("SELECT status FROM plan_tasks WHERE id=$1", [deferredTask.id]);
+  assert.equal(skippedTask.rows[0].status, "missed", "Skip today should persist the distinct missed status");
+  const overdueCandidate = generatedPlan.body.tasks.find((task) => task.id !== scheduledRecall.id && task.id !== deferredTask.id);
   assert.ok(overdueCandidate, "The E2E budget should include a separate task for overdue transition coverage");
   await pool.query("UPDATE plan_tasks SET status='planned',scheduled_for=$2 WHERE id=$1", [overdueCandidate.id, new Date(utcToday.getTime() - 1000)]);
   await driver.navigate().refresh();
@@ -607,6 +695,13 @@ try {
   const groundingAssessment = await learnerApi("GET", `/api/assessments/${groundingAssessmentId}`);
   const triggeringAttempt = groundingAssessment.body.questions[0];
   assert.equal(triggeringAttempt.resultStatus, "incorrect", "The weak answer should produce a real evaluated gap");
+  await driver.get(`${clientUrl}/learner`);
+  await driver.wait(until.elementLocated(By.xpath(`//article[contains(@class,'learner-concept')][.//strong[normalize-space()='${groundingTitle}']]`)), 10000);
+  const weakConceptRow = await driver.findElement(By.xpath(`//article[contains(@class,'learner-concept')][.//strong[normalize-space()='${groundingTitle}']]`));
+  await weakConceptRow.findElement(By.xpath(".//button[normalize-space()='Practice this concept']")).click();
+  await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+$/i), 10000);
+  await driver.wait(until.elementLocated(By.css(".assessment-context h1")), 10000);
+  assert.match(await driver.findElement(By.css(".assessment-context")).getText(), /TCP Congestion Control/, "The weak-concept practice action should create practice for the selected concept");
 
   const sourceReference = "https://example.com/e2e-tcp-notes";
   const sourceResponse = await learnerApi("POST", "/api/grounding/sources", {
@@ -641,7 +736,7 @@ try {
   assert.equal(verifiedRemediation.body.remediation.status, "verified");
   assert.equal(verifiedRemediation.body.remediation.improved, true, "The targeted browser answer should demonstrate improved evidence");
 
-  console.log("PASS browser E2E: canonical roadmap-to-study/evidence, resource handoff and empty state, readiness mapping, UTC daily-plan completion/skip/overdue, baseline recovery/completion, Rapid Fire/report, grounded remediation citation/verification");
+  console.log("PASS browser E2E: first-visit goal-to-study, weak-concept practice and grounded verification, due-recall Home action, plan return/complete/defer/skip/overdue, baseline/readiness, canonical evidence and resource handoffs, Rapid Fire report");
 } catch (error) {
   if (driver) {
     const currentUrl = await driver.getCurrentUrl().catch(() => "unavailable");
