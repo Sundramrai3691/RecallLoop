@@ -1,4 +1,4 @@
-import { withTransaction, query } from "../../db/postgres.js";
+import { withTransaction, query, postgres } from "../../db/postgres.js";
 import { getAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import { AppError, notFound } from "../../utils/errors.js";
 import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, upsertQuestion } from "./questionService.js";
@@ -142,26 +142,40 @@ async function createAssessmentForSource(userId: string, ownedConceptId: string 
 
 export async function createTargetedVerification(userId:string,remediationId:string) {
   const attemptId=await withTransaction(async(client)=>{
-    const result=await client.query<any>(`SELECT r.id,r.user_id,r.concept_id,r.knowledge_point,r.status,r.verification_attempt_id,c.name,c.study_session_id,c.difficulty
+    const result=await client.query<any>(`SELECT r.id,r.user_id,r.concept_id,r.knowledge_point,r.status,r.verification_attempt_id,c.name,c.study_session_id,c.difficulty,c.canonical_concept_id
       FROM grounded_remediations r JOIN personal_concepts c ON c.id=r.concept_id AND c.user_id=r.user_id WHERE r.id=$1 AND r.user_id=$2 FOR UPDATE OF r`,[remediationId,userId]);
     const remediation=result.rows[0];
     if(!remediation)throw notFound("Remediation not found","REMEDIATION_NOT_FOUND");
     if(remediation.verification_attempt_id)return remediation.verification_attempt_id as string;
     if(remediation.status!=="ready")throw new AppError("Remediation is not ready for verification",409,"REMEDIATION_NOT_READY");
-    const history=await client.query<any>(`SELECT question_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND question_id IS NOT NULL ORDER BY created_at DESC LIMIT 20`,[userId,remediation.concept_id]);
+    const history=await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,remediation.concept_id]);
     const recentIds=new Set<string>(history.rows.map((row)=>row.question_id));
+    const recentRevisionIds=new Set<string>(history.rows.map((row)=>row.canonical_question_revision_id).filter(Boolean));
+    let bankCandidate: Awaited<ReturnType<typeof listEligibleCanonicalQuestions>>[number] | null=null;
+    if(remediation.canonical_concept_id){
+      const candidates=await listEligibleCanonicalQuestions(client,remediation.canonical_concept_id);
+      bankCandidate=candidates.filter((candidate)=>!recentRevisionIds.has(candidate.revisionId)&&candidate.questionType!=="mcq"&&candidate.knowledgePoints.some((point)=>point.trim().toLowerCase()===String(remediation.knowledge_point).trim().toLowerCase()))
+        .sort((left,right)=>left.difficulty-right.difficulty||left.itemSlug.localeCompare(right.itemSlug))[0]??null;
+    }
     let draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,0);
     let questionId="";
-    for(let variant=0;variant<6;variant++){
-      draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,variant);
-      questionId=await upsertQuestion(client,remediation.concept_id,draft);
-      if(!recentIds.has(questionId))break;
-      questionId="";
+    let revisionId:string|null=null;
+    if(bankCandidate){
+      revisionId=bankCandidate.revisionId;
+      questionId=await materializeCanonicalQuestion(client,remediation.concept_id,bankCandidate);
+      draft={questionType:bankCandidate.questionType,assessmentLevel:bankCandidate.assessmentLevel,difficulty:bankCandidate.difficulty,title:bankCandidate.title,context:bankCandidate.context,prompt:bankCandidate.prompt,estimatedMinutes:bankCandidate.estimatedMinutes,source:"builtin",options:bankCandidate.options,correctOptionId:bankCandidate.correctOptionId,explanation:bankCandidate.explanation,knowledgePoints:bankCandidate.knowledgePoints,parts:null,hints:bankCandidate.hints};
+    }else{
+      for(let variant=0;variant<6;variant++){
+        draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,variant);
+        questionId=await upsertQuestion(client,remediation.concept_id,draft);
+        if(!recentIds.has(questionId))break;
+        questionId="";
+      }
     }
     if(!questionId)throw new AppError("No unseen targeted verification wording is available yet",409,"NO_FRESH_VERIFICATION");
     const session=await client.query<any>(`INSERT INTO assessment_sessions(user_id,concept_id,mode) VALUES($1,$2,'practice') RETURNING id`,[userId,remediation.concept_id]);
-    const attempt=await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,question_id,assessment_session_id,assessment_position,remediation_id)
-      VALUES($1,$2,$3,$4,$5,$6,$7,1,$8) RETURNING id`,[userId,remediation.concept_id,remediation.study_session_id,draft.questionType,draft.prompt,questionId,session.rows[0].id,remediationId]);
+    const attempt=await client.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,question_id,assessment_session_id,assessment_position,remediation_id,canonical_question_revision_id)
+      VALUES($1,$2,$3,$4,$5,$6,$7,1,$8,$9) RETURNING id`,[userId,remediation.concept_id,remediation.study_session_id,draft.questionType,draft.prompt,questionId,session.rows[0].id,remediationId,revisionId]);
     await client.query(`UPDATE grounded_remediations SET status='verification_created',verification_attempt_id=$2,updated_at=now() WHERE id=$1`,[remediationId,attempt.rows[0].id]);
     return attempt.rows[0].id as string;
   });
@@ -259,7 +273,7 @@ export async function getAssessment(userId: string, assessmentId: string) {
   const sessionResult = await query<any>(`SELECT * FROM assessment_sessions WHERE id=$1 AND user_id=$2`,[assessmentId,userId]);
   const session = sessionResult.rows[0];
   if (!session) throw notFound("Assessment not found","ASSESSMENT_NOT_FOUND");
-  const conceptResult = await query<any>(`SELECT name, required_knowledge_points, mastery FROM personal_concepts WHERE id=$1 AND user_id=$2`,[session.concept_id,userId]);
+  const conceptResult = await query<any>(`SELECT name, required_knowledge_points, mastery,canonical_concept_id FROM personal_concepts WHERE id=$1 AND user_id=$2`,[session.concept_id,userId]);
   const conceptRow = conceptResult.rows[0];
   const rows = await query<any>(`SELECT id,assessment_position,submitted_at FROM recall_attempts WHERE assessment_session_id=$1 ORDER BY assessment_position`,[assessmentId]);
   const questions=[];
@@ -268,6 +282,23 @@ export async function getAssessment(userId: string, assessmentId: string) {
   if (complete && !session.completed_at) await query(`UPDATE assessment_sessions SET completed_at=now() WHERE id=$1`,[assessmentId]);
   const dimensions = await query<any>(`SELECT d.dimension,AVG(d.score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.assessment_session_id=$1 GROUP BY d.dimension`,[assessmentId]);
   const recommendationResult=complete?await query<any>(`SELECT rec.action_type AS "actionType",rec.title,rec.reason,rec.estimated_minutes AS "estimatedMinutes",rec.priority FROM recall_attempts r JOIN assessment_recommendations rec ON rec.recall_attempt_id=r.id WHERE r.assessment_session_id=$1 ORDER BY rec.priority DESC,r.assessment_position LIMIT 1`,[assessmentId]):{rows:[]};
+  let recommendation=recommendationResult.rows[0]??null;
+  if (recommendation && conceptRow?.canonical_concept_id) {
+    const modeForAction: Record<string, AssessmentMode> = { recall: "rapid_fire", practice: "practice", mastery_check: "mastery_check", remediation: "deep_recall" };
+    const mode = modeForAction[recommendation.actionType];
+    if (mode) {
+      const client = await postgres.connect();
+      try {
+        const eligible = await listEligibleCanonicalQuestions(client,conceptRow.canonical_concept_id);
+        const recent = await client.query<any>(`SELECT canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND canonical_question_revision_id IS NOT NULL ORDER BY created_at DESC LIMIT 20`,[userId,session.concept_id]);
+        const recentIds = new Set<string>(recent.rows.map((row:any)=>row.canonical_question_revision_id));
+        const freshCounts = eligible.filter((candidate)=>!recentIds.has(candidate.revisionId)).reduce((counts:Record<string,number>,candidate)=>{counts[candidate.questionType]=(counts[candidate.questionType]??0)+1;return counts;},{});
+        const blueprint = assessmentBlueprint(mode);
+        const canVerify = blueprint.every((type)=>freshCounts[type]>=blueprint.filter((required)=>required===type).length);
+        if (!canVerify) recommendation = { actionType:"learn",title:`Review focused resources Â· ${conceptRow.name}`,reason:`Your result points to another review of this concept, but its exact approved bank does not have enough unseen questions for that check yet. Review the mapped resources before trying again.`,estimatedMinutes:12,priority:recommendation.priority };
+      } finally { client.release(); }
+    }
+  }
   const scores = Object.fromEntries(DIMENSIONS.map((name) => [name,dimensions.rows.find((item) => item.dimension === name)?.score ?? null]));
   const summary = summarizeAssessmentEvidence(
     questions,
@@ -288,7 +319,7 @@ export async function getAssessment(userId: string, assessmentId: string) {
       ...summary,
       dimensionScores: scores,
       weakArea: Object.entries(scores).filter(([,score])=>score!==null).sort((a:any,b:any)=>a[1]-b[1])[0]?.[0] ?? null,
-      recommendation: recommendationResult.rows[0] ?? null
+      recommendation
     } : null
   };
 }

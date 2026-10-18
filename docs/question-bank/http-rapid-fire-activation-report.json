@@ -1,0 +1,206 @@
+{
+  "reportVersion": 1,
+  "reportKind": "HTTP caching activation evidence; engineering validation is not human approval",
+  "generatedAt": "2026-10-18T20:17:27.583Z",
+  "command": "npm run question-bank:activation-report -w server",
+  "assessmentBlueprint": {
+    "mode": "rapid_fire",
+    "required": {
+      "mcq": 2,
+      "rapid_recall": 3
+    },
+    "eligible": {
+      "mcq": 0,
+      "rapid_recall": 0
+    },
+    "complete": false,
+    "missingRequirements": [
+      "need 2 eligible MCQ revision(s)",
+      "need 3 eligible rapid-recall revision(s)"
+    ]
+  },
+  "candidates": [
+    {
+      "revisionId": "f463ed45-fecd-4611-b0de-857f57d97974",
+      "slug": "http-cache-recognition-freshness-directive",
+      "revision": 1,
+      "contentHash": "7d177c3a8a230d0c7b6574f3fbb9ea9a201fe06dfbb4c20b0e22e242b4574e01",
+      "engineeringValidation": {
+        "status": "passed",
+        "issues": []
+      },
+      "questionType": "mcq",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalPoints": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "review": {
+        "status": "awaiting_subject_matter_review",
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "publication": "draft",
+      "assessmentEligible": false,
+      "missingRequirements": [
+        "current exact-revision subject-matter approval is required",
+        "revision must be published by the review workflow",
+        "revision is excluded by the live assessment selector"
+      ]
+    },
+    {
+      "revisionId": "b92a7bee-902c-40f3-9d56-25d55e12dae4",
+      "slug": "http-cache-analysis-no-cache-vs-no-store",
+      "revision": 2,
+      "contentHash": "709685b0be10cb6f6338f9f9945b027a4a220cec4bf68ff2c1b3c240833e7b04",
+      "engineeringValidation": {
+        "status": "passed",
+        "issues": []
+      },
+      "questionType": "mcq",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalPoints": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "review": {
+        "status": "awaiting_subject_matter_review",
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "publication": "draft",
+      "assessmentEligible": false,
+      "missingRequirements": [
+        "current exact-revision subject-matter approval is required",
+        "revision must be published by the review workflow",
+        "revision is excluded by the live assessment selector"
+      ]
+    },
+    {
+      "revisionId": "555de991-2201-43d9-86c1-297b069be7b3",
+      "slug": "http-cache-recall-no-cache",
+      "revision": 2,
+      "contentHash": "44ee7a863f6f53dc59ec3e1b4c411b46999cc12a4f5e400f97fdf523f316599d",
+      "engineeringValidation": {
+        "status": "passed",
+        "issues": []
+      },
+      "questionType": "rapid_recall",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalPoints": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "review": {
+        "status": "awaiting_subject_matter_review",
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "publication": "draft",
+      "assessmentEligible": false,
+      "missingRequirements": [
+        "current exact-revision subject-matter approval is required",
+        "revision must be published by the review workflow",
+        "revision is excluded by the live assessment selector"
+      ]
+    },
+    {
+      "revisionId": "92667c17-eaba-4e4f-8438-cbfebba7db29",
+      "slug": "http-cache-recall-304-body",
+      "revision": 2,
+      "contentHash": "4904730b4ba1b99f79bc89f42583cfec8459c768effb0ef5e456764ee40d6743",
+      "engineeringValidation": {
+        "status": "passed",
+        "issues": []
+      },
+      "questionType": "rapid_recall",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalPoints": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "review": {
+        "status": "awaiting_subject_matter_review",
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "publication": "draft",
+      "assessmentEligible": false,
+      "missingRequirements": [
+        "current exact-revision subject-matter approval is required",
+        "revision must be published by the review workflow",
+        "revision is excluded by the live assessment selector"
+      ]
+    },
+    {
+      "revisionId": "da582a24-5c33-458b-bd72-1ac7c2fe63fc",
+      "slug": "http-cache-recall-validators",
+      "revision": 2,
+      "contentHash": "f42b99238d0eceaeb8a0b7b4e9ed4eec04738e77bd6698d06be239d585779e9a",
+      "engineeringValidation": {
+        "status": "passed",
+        "issues": []
+      },
+      "questionType": "rapid_recall",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "canonicalPoints": [
+        {
+          "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+          "statement": "Can distinguish freshness from validation."
+        }
+      ],
+      "review": {
+        "status": "awaiting_subject_matter_review",
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "publication": "draft",
+      "assessmentEligible": false,
+      "missingRequirements": [
+        "current exact-revision subject-matter approval is required",
+        "revision must be published by the review workflow",
+        "revision is excluded by the live assessment selector"
+      ]
+    }
+  ],
+  "distinctVerificationCandidate": {
+    "revisionId": "0ab651a2-317f-4835-b7fc-78651d55b194",
+    "slug": "http-cache-explanation-cache-paths",
+    "revision": 1,
+    "contentHash": "5579169da51f4b74fdbec055259069ebc63ca03f73381a46b3d407fa76413dc4",
+    "engineeringValidation": {
+      "status": "passed",
+      "issues": []
+    },
+    "questionType": "short_explanation",
+    "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+    "canonicalPoints": [
+      {
+        "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+        "statement": "Can distinguish freshness from validation."
+      }
+    ],
+    "review": {
+      "status": "awaiting_subject_matter_review",
+      "latestDecision": null,
+      "recordCount": 0
+    },
+    "publication": "draft",
+    "assessmentEligible": false,
+    "missingRequirements": [
+      "current exact-revision subject-matter approval is required",
+      "revision must be published by the review workflow",
+      "revision is excluded by the live assessment selector"
+    ],
+    "availableAfterRapidFire": false
+  },
+  "assessmentToVerificationEligible": false
+}

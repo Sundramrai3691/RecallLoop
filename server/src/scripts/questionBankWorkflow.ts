@@ -6,6 +6,7 @@ import { verifyToken } from "../lib/auth.js";
 import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuestionBank.js";
 import { pilotQuestionInventory, questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
 import { benchmarkAnnotationStatus, buildHumanBenchmarkReport, reviewCriterionKeys, validateHumanBenchmark, validateReviewAssessment, type HumanBenchmarkDataset } from "../services/questionBank/questionBankGovernance.js";
+import { listEligibleCanonicalQuestions } from "../services/questionBank/questionBankService.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const docsDirectory = path.resolve(moduleDirectory, "../../../docs/question-bank");
@@ -46,6 +47,12 @@ async function activeReviewer() {
 
 function expectedCriterionTemplate() {
   return Object.fromEntries(reviewCriterionKeys.map((key) => [key, null]));
+}
+
+function stableJson(value: any): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  return JSON.stringify(value);
 }
 
 function questionPacketContent(row: any) {
@@ -175,21 +182,14 @@ async function exportReviewPacket(output: string) {
 }
 
 async function importReviewPacket(filename: string) {
-  const reviewerId = await activeReviewer();
   const packet = await readJson<any>(filename);
-  if (packet.packetVersion !== 1 || packet.packetType !== "canonical-question-subject-matter-review" || !Array.isArray(packet.entries)) throw new Error("Unsupported subject-matter review packet format.");
-  const decisions = packet.entries.filter((entry: any) => entry.review?.decision);
-  if (!decisions.length) throw new Error("No review decisions were filled in the packet.");
+  const decisions = validateReviewPacket(packet);
+  const reviewerId = await activeReviewer();
   const seen = new Set<string>();
   const authoritativeRows = new Map((await currentRows()).map((row: any) => [row.revision_id, row]));
-  for (const entry of decisions) {
-    if (seen.has(entry.revisionId)) throw new Error(`${entry.questionSlug}: duplicate decision for revision ${entry.revisionId}`);
-    seen.add(entry.revisionId);
-    if (!entry.revisionId || !entry.questionSlug || !Number.isInteger(entry.revision) || !/^[0-9a-f]{64}$/.test(entry.contentHash)) throw new Error("Each reviewed entry needs a revision UUID, slug, revision number, and content hash.");
-    if (typeof entry.review?.notes !== "string" || entry.review.notes.trim().length < 20) throw new Error(`${entry.questionSlug}: review notes must contain at least 20 characters.`);
-    const issues = validateReviewAssessment(entry.question?.type, entry.review.criteria, entry.review.decision);
-    if (issues.length) throw new Error(`${entry.questionSlug}: ${issues.join("; ")}`);
-  }
+  for (const entry of decisions) { if (seen.has(entry.revisionId)) throw new Error(`${entry.questionSlug}: duplicate decision for revision ${entry.revisionId}`); seen.add(entry.revisionId); }
+  let imported = 0;
+  let repeated = 0;
   await withTransaction(async (client) => {
     for (const entry of decisions) {
       const exact = await client.query<any>(`SELECT r.id,r.question_type,r.content_hash,r.review_status,r.publication_status,i.slug,r.revision,i.current_revision
@@ -199,16 +199,93 @@ async function importReviewPacket(filename: string) {
       if (!row || row.content_hash !== entry.contentHash || Number(row.current_revision) !== Number(row.revision)) throw new Error(`${entry.questionSlug}@${entry.revision}: stale packet; current revision or content hash changed. Re-export the packet.`);
       if (entry.question?.type !== row.question_type) throw new Error(`${entry.questionSlug}@${entry.revision}: question type in the packet no longer matches the revision.`);
       const currentContent = authoritativeRows.get(row.id);
-      if (!currentContent || JSON.stringify(entry.question) !== JSON.stringify(questionPacketContent(currentContent))) throw new Error(`${entry.questionSlug}@${entry.revision}: review packet question content differs from the authoritative database revision. Re-export the packet.`);
+      if (!currentContent || stableJson(entry.question) !== stableJson(questionPacketContent(currentContent))) throw new Error(`${entry.questionSlug}@${entry.revision}: review packet question content differs from the authoritative database revision. Re-export the packet.`);
       const decision = entry.review.decision as "approved" | "changes_requested" | "rejected";
+      const prior = await client.query<any>(`SELECT decision,content_hash,criteria,review_notes FROM canonical_question_reviews
+        WHERE question_revision_id=$1 AND reviewer_user_id=$2 ORDER BY reviewed_at DESC,id DESC LIMIT 1 FOR UPDATE`, [row.id,reviewerId]);
+      if (prior.rows[0]) {
+        const same = prior.rows[0].decision === decision && prior.rows[0].content_hash === row.content_hash &&
+          stableJson(prior.rows[0].criteria) === stableJson(entry.review.criteria) && prior.rows[0].review_notes === entry.review.notes.trim();
+        if (!same) throw new Error(`${entry.questionSlug}@${entry.revision}: this reviewer already submitted a different decision for this exact revision. Review a new immutable revision or use a different authorized reviewer.`);
+        repeated++;
+        continue;
+      }
       await client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes)
         VALUES($1,$2,$3,$4,$5,$6)`, [row.id,reviewerId,decision,row.content_hash,JSON.stringify(entry.review.criteria),entry.review.notes.trim()]);
       const nextStatus = decision === "approved" ? "subject_matter_reviewed" : decision;
       const publication = decision === "approved" ? "published" : decision === "rejected" ? "retired" : "draft";
       await client.query(`UPDATE canonical_question_revisions SET review_status=$2,publication_status=$3 WHERE id=$1`, [row.id,nextStatus,publication]);
+      imported++;
     }
   });
-  return { reviewerId, imported: decisions.length, note: "Reviewer identity came from the verified bearer token; review timestamps were assigned by PostgreSQL." };
+  return { reviewerId, imported, repeated, note: "Reviewer identity came from the verified bearer token; review timestamps were assigned by PostgreSQL." };
+}
+
+function validateReviewPacket(packet: any) {
+  if (packet?.packetVersion !== 1 || packet?.packetType !== "canonical-question-subject-matter-review" || !Array.isArray(packet.entries) || !packet.entries.length) throw new Error("Unsupported or empty subject-matter review packet; export a current packet first.");
+  const issues: string[] = [];
+  const seen = new Set<string>();
+  for (const [index, entry] of packet.entries.entries()) {
+    const name = typeof entry?.questionSlug === "string" && entry.questionSlug ? entry.questionSlug : `entries[${index}]`;
+    if (typeof entry?.revisionId !== "string" || !/^[0-9a-f-]{36}$/i.test(entry.revisionId)) issues.push(`${name}.revisionId must be a revision UUID`);
+    if (typeof entry?.questionSlug !== "string" || !entry.questionSlug.trim()) issues.push(`${name}.questionSlug is required`);
+    if (!Number.isInteger(entry?.revision) || entry.revision < 1) issues.push(`${name}.revision must be a positive integer`);
+    if (typeof entry?.contentHash !== "string" || !/^[0-9a-f]{64}$/.test(entry.contentHash)) issues.push(`${name}.contentHash must be a SHA-256 hash`);
+    if (typeof entry?.question?.type !== "string") issues.push(`${name}.question.type is required`);
+    if (!entry?.review || !["approved", "changes_requested", "rejected"].includes(entry.review.decision)) issues.push(`${name}.review.decision must be approved, changes_requested, or rejected`);
+    if (typeof entry?.review?.notes !== "string" || entry.review.notes.trim().length < 20) issues.push(`${name}.review.notes must contain at least 20 characters`);
+    const criteriaIssues = validateReviewAssessment(entry?.question?.type, entry?.review?.criteria, entry?.review?.decision);
+    for (const issue of criteriaIssues) issues.push(`${name}.review.criteria: ${issue}`);
+    if (entry?.revisionId && seen.has(entry.revisionId)) issues.push(`${name}: duplicate revisionId ${entry.revisionId}`);
+    if (entry?.revisionId) seen.add(entry.revisionId);
+  }
+  if (issues.length) throw new Error(`Review packet is incomplete or invalid:\n- ${issues.join("\n- ")}`);
+  return packet.entries;
+}
+
+async function activationReport() {
+  const inventory = await runInventory();
+  const rows = await currentRows();
+  const slugs = ["http-cache-recognition-freshness-directive", "http-cache-analysis-no-cache-vs-no-store", "http-cache-recall-no-cache", "http-cache-recall-304-body", "http-cache-recall-validators"];
+  const details: any[] = [];
+  for (const slug of slugs) {
+    const row = rows.find((candidate: any) => candidate.slug === slug);
+    const quality = inventory.questions.find((candidate: any) => candidate.questionSlug === slug);
+    if (!row || !quality) throw new Error(`${slug}: expected current HTTP activation candidate is absent from database inventory.`);
+    const eligible = (await postgres.connect().then(async (client) => { try { return (await listEligibleCanonicalQuestions(client, row.canonical_concept_id)).some((item) => item.revisionId === row.revision_id); } finally { client.release(); } }));
+    details.push({ revisionId: row.revision_id, slug, revision: Number(row.revision), contentHash: row.content_hash,
+      engineeringValidation: { status: quality.automatedValidation, issues: quality.automatedValidationIssues },
+      questionType: row.question_type, canonicalConceptId: row.canonical_concept_id, canonicalPoints: row.mapped_points,
+      review: { status: row.review_status, latestDecision: row.latest_review_decision, recordCount: Number(row.review_count) },
+      publication: row.publication_status, assessmentEligible: eligible,
+      missingRequirements: [quality.automatedValidation !== "passed" ? "engineering validation must pass" : null,
+        row.review_status !== "subject_matter_reviewed" || row.latest_review_decision !== "approved" ? "current exact-revision subject-matter approval is required" : null,
+        row.publication_status !== "published" ? "revision must be published by the review workflow" : null,
+        !eligible ? "revision is excluded by the live assessment selector" : null].filter(Boolean) });
+  }
+  const verificationRow = rows.find((candidate: any) => candidate.slug === "http-cache-explanation-cache-paths");
+  if (!verificationRow) throw new Error("http-cache-explanation-cache-paths: current distinct verification candidate is absent from the database.");
+  const verificationQuality = inventory.questions.find((candidate: any) => candidate.questionSlug === verificationRow.slug);
+  const verificationClient = await postgres.connect();
+  let eligibleVerification = false;
+  try { eligibleVerification = (await listEligibleCanonicalQuestions(verificationClient, verificationRow.canonical_concept_id)).some((candidate) => candidate.revisionId === verificationRow.revision_id); }
+  finally { verificationClient.release(); }
+  const verificationCandidate = { revisionId: verificationRow.revision_id, slug: verificationRow.slug, revision: Number(verificationRow.revision), contentHash: verificationRow.content_hash,
+    engineeringValidation: { status: verificationQuality?.automatedValidation ?? "failed", issues: verificationQuality?.automatedValidationIssues ?? ["current question is absent from the engineering inventory"] },
+    questionType: verificationRow.question_type, canonicalConceptId: verificationRow.canonical_concept_id, canonicalPoints: verificationRow.mapped_points,
+    review: { status: verificationRow.review_status, latestDecision: verificationRow.latest_review_decision, recordCount: Number(verificationRow.review_count) },
+    publication: verificationRow.publication_status, assessmentEligible: eligibleVerification,
+    missingRequirements: [verificationQuality?.automatedValidation !== "passed" ? "engineering validation must pass" : null,
+      verificationRow.review_status !== "subject_matter_reviewed" || verificationRow.latest_review_decision !== "approved" ? "current exact-revision subject-matter approval is required" : null,
+      verificationRow.publication_status !== "published" ? "revision must be published by the review workflow" : null,
+      !eligibleVerification ? "revision is excluded by the live assessment selector" : null].filter(Boolean) };
+  const byType = Object.fromEntries(["mcq", "rapid_recall"].map((type) => [type, details.filter((item) => item.questionType === type && item.assessmentEligible).length]));
+  const report = { reportVersion: 1, reportKind: "HTTP caching activation evidence; engineering validation is not human approval", generatedAt: new Date().toISOString(),
+    command: "npm run question-bank:activation-report -w server", assessmentBlueprint: { mode: "rapid_fire", required: { mcq: 2, rapid_recall: 3 }, eligible: byType,
+      complete: byType.mcq >= 2 && byType.rapid_recall >= 3, missingRequirements: [byType.mcq < 2 ? `need ${2 - byType.mcq} eligible MCQ revision(s)` : null, byType.rapid_recall < 3 ? `need ${3 - byType.rapid_recall} eligible rapid-recall revision(s)` : null].filter(Boolean) },
+    candidates: details, distinctVerificationCandidate: { ...verificationCandidate, availableAfterRapidFire: eligibleVerification && !details.some((item) => item.revisionId === verificationRow.revision_id) },
+    assessmentToVerificationEligible: byType.mcq >= 2 && byType.rapid_recall >= 3 && eligibleVerification };
+  return report;
 }
 
 async function exportBenchmarkPacket(output: string) {
@@ -302,6 +379,22 @@ async function main() {
     const input = readOption("--in"); if (!input) throw new Error("Use review-import --in <completed-packet.json>.");
     process.stdout.write(`${JSON.stringify(await importReviewPacket(input),null,2)}\n`); return;
   }
+  if (command === "review-validate") {
+    const input = readOption("--in"); if (!input) throw new Error("Use review-validate --in <completed-private-packet.json>.");
+    const packet = await readJson<any>(input); const entries = validateReviewPacket(packet);
+    const authoritative = new Map((await currentRows()).map((row: any) => [row.revision_id, row]));
+    for (const entry of entries) {
+      const row: any = authoritative.get(entry.revisionId);
+      if (!row || row.slug !== entry.questionSlug || Number(row.revision) !== entry.revision || row.content_hash !== entry.contentHash || Number(row.current_revision) !== entry.revision) throw new Error(`${entry.questionSlug}@${entry.revision}: stale or mismatched revision/hash; re-export before review import.`);
+      if (stableJson(entry.question) !== stableJson(questionPacketContent(row))) throw new Error(`${entry.questionSlug}@${entry.revision}: packet content differs from the current database revision.`);
+    }
+    process.stdout.write(`${JSON.stringify({ valid: true, entries: entries.length, note: "Packet is structurally valid and matches current database revisions; reviewer authorization is checked at import." },null,2)}\n`); return;
+  }
+  if (command === "activation-report") {
+    const report = await activationReport(); const output = readOption("--out");
+    if (output) await writeJson(output, report);
+    process.stdout.write(`${JSON.stringify(report,null,2)}\n`); return;
+  }
   if (command === "benchmark-report") {
     const dataset = await readJson<HumanBenchmarkDataset>(benchmarkPath);
     process.stdout.write(`${JSON.stringify(buildHumanBenchmarkReport(dataset,canonicalHttpPilotQuestions),null,2)}\n`); return;
@@ -314,7 +407,7 @@ async function main() {
     const input = readOption("--in"); if (!input) throw new Error("Use benchmark-import --in <completed-packet.json>.");
     process.stdout.write(`${JSON.stringify(await importBenchmarkPacket(input),null,2)}\n`); return;
   }
-  throw new Error("Choose inventory, review-export, review-import, benchmark-report, benchmark-export, or benchmark-import.");
+  throw new Error("Choose inventory, review-export, review-validate, review-import, activation-report, benchmark-report, benchmark-export, or benchmark-import.");
 }
 
 main().catch((error) => {

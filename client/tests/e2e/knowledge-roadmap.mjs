@@ -16,7 +16,8 @@ dotenv.config({ path: path.join(root, ".env") });
 
 const databaseUrl = new URL(process.env.DATABASE_URL ?? "");
 assert(["127.0.0.1", "localhost", "::1"].includes(databaseUrl.hostname), "E2E cleanup is restricted to a loopback PostgreSQL host");
-assert.equal(databaseUrl.pathname, "/recallloop", "E2E cleanup is restricted to the local recallloop database");
+const isolatedRun = process.env.RECALLLOOP_E2E_ISOLATED === "1";
+assert(isolatedRun ? /^\/recallloop_u2_it_[a-f0-9]{16}$/.test(databaseUrl.pathname) : databaseUrl.pathname === "/recallloop", "E2E cleanup is restricted to the local recallloop database or the U2 disposable test database");
 
 const email = `e2e-roadmap-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
 const password = `E2e-${Math.random().toString(36).slice(2)}-${Date.now()}`;
@@ -203,6 +204,7 @@ try {
   });
   assert.equal(coverageSnapshot.status, 200, "Knowledge check must load database-backed coverage");
   assert.ok(coverageSnapshot.body.subjects.length > 0, "The seeded canonical subject taxonomy should be available");
+  let canonicalAssessmentState = null;
   const allCatalogConcepts = coverageSnapshot.body.subjects.flatMap((subject) => subject.topics.flatMap((topic) => topic.concepts.map((concept) => ({ subject, topic, concept }))));
   const unsupportedConcept = allCatalogConcepts.find(({ concept }) => concept.supportedModes.length === 0);
   if (unsupportedConcept) {
@@ -242,6 +244,7 @@ try {
     const modeChoice = await driver.findElement(By.css(`input[name='assessment-mode'][value='${mode}']`)).catch(async () => {
       const inputs = await driver.findElements(By.css("input[name='assessment-mode']")); return inputs[0];
     });
+    await driver.executeScript("arguments[0].scrollIntoView({block:'center'});", modeChoice);
     await modeChoice.click();
     await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).click();
     await driver.wait(until.urlContains("/assessments/"), 10000);
@@ -253,13 +256,22 @@ try {
     }, assessmentId);
     assert.equal(assessmentInitial.status, 200);
     assert.ok(assessmentInitial.body.questions.every((question) => question.canonicalQuestionRevisionId), "Knowledge checks must preserve immutable canonical question revision links");
+    assert.equal(assessmentInitial.body.questions.length, 5, "Rapid Fire must materialize the complete five-question blueprint");
+    assert.deepEqual(assessmentInitial.body.questions.map((question) => question.questionType).sort(), ["mcq", "mcq", "rapid_recall", "rapid_recall", "rapid_recall"].sort());
+    assert.ok(assessmentInitial.body.questions.every((question) => !Object.hasOwn(question.questionData, "explanation") && !Object.hasOwn(question.questionData, "rubric")), "Expected answers and explanations must stay hidden before each answer is submitted");
+    assert.equal(new Set(assessmentInitial.body.questions.map((question) => question.canonicalQuestionRevisionId)).size, 5, "An assessment must not repeat a revision within its blueprint");
     const rapidIntro = await driver.findElements(By.xpath("//button[contains(.,'Start Rapid Fire')]"));
     if (rapidIntro.length) await rapidIntro[0].click();
     for (let index = 0; index < assessmentInitial.body.questions.length; index += 1) {
       const currentQuestion = assessmentInitial.body.questions[index];
       await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
       const radios = await driver.findElements(By.css(".question-card input[type='radio']"));
-      if (radios.length) await radios[0].click();
+      if (radios.length) {
+        const key = await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [currentQuestion.canonicalQuestionRevisionId]);
+        const wrongIndex = currentQuestion.questionData.options.findIndex((option) => option.id !== key.rows[0]?.correct_option_id);
+        if (wrongIndex >= 0) await radios[wrongIndex].click();
+        else await radios[0].click();
+      }
       else {
         const textareas = await driver.findElements(By.css(".question-card textarea"));
         for (const textarea of textareas) await textarea.sendKeys("I would explain the idea and connect it to the evidence in the question.");
@@ -281,8 +293,33 @@ try {
     }, assessmentId);
     assert.equal(assessmentCompleted.status, 200);
     assert.equal(assessmentCompleted.body.result.total, assessmentInitial.body.questions.length, "The report should persist question-level evidence");
+    assert.ok(assessmentCompleted.body.questions.every((question) => question.submittedAt && question.questionData.explanation !== undefined), "The report should reveal explanations only for submitted answers");
+    assert.ok(assessmentCompleted.body.questions.every((question) => question.evaluation || question.questionType === "mcq"), "Submitted free responses should include validated evaluator evidence");
+    assert.equal(assessmentCompleted.body.result.recommendation.actionType, "learn", "A new retest must not be offered after the five approved revisions have all been used");
     assert.ok(await driver.findElement(By.css(".assessment-question-feedback .assessment-feedback-row")), "The report should show individual answers and feedback");
+    const submittedAttempt = assessmentCompleted.body.questions[0];
+    const evaluationCountBeforeDuplicate = await pool.query("SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=$1", [submittedAttempt.id]);
+    const duplicateSubmission = await driver.executeAsyncScript(async (attemptId, optionId, done) => {
+      const token = localStorage.getItem("recallloop_token");
+      const response = await fetch(`/api/recalls/${attemptId}/submit`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ selectedOptionId: optionId, answer: "duplicate submission must not replace saved evidence", confidence: 10 }) });
+      done({ status: response.status, body: await response.json() });
+    }, submittedAttempt.id, submittedAttempt.selectedOptionId);
+    assert.equal(duplicateSubmission.status, 409, "A completed canonical attempt must reject duplicate submission");
+    const evaluationCountAfterDuplicate = await pool.query("SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=$1", [submittedAttempt.id]);
+    assert.equal(evaluationCountAfterDuplicate.rows[0].count, evaluationCountBeforeDuplicate.rows[0].count, "A duplicate response must not replace or append learner evidence");
+    const foreignAccountResponse = await fetch(`${apiUrl}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "U2 foreign owner", email: `u2-foreign-${Date.now()}@test.invalid`, password: `U2-${Math.random().toString(36).slice(2)}-Password` }) });
+    assert.equal(foreignAccountResponse.status, 201, "The isolated ownership check should create a disposable second learner");
+    const foreignAccount = await foreignAccountResponse.json();
+    const foreignRead = await fetch(`${apiUrl}/api/assessments/${assessmentId}`, { headers: { Authorization: `Bearer ${foreignAccount.token}` } });
+    assert.equal(foreignRead.status, 404, "A different authenticated learner must not read this assessment report");
+    const nextActionButton = await driver.findElement(By.css(".next-step-card button"));
+    assert.match(await nextActionButton.getText(), /focused resources/i, "When no fresh approved verification blueprint exists, the report should point to relevant learning resources");
+    await nextActionButton.click();
+    await driver.wait(until.urlContains(`/resources?conceptId=${assessmentInitial.body.assessment.conceptId}`), 10000);
+    assert.equal(new URL(await driver.getCurrentUrl()).searchParams.get("conceptId"), assessmentInitial.body.assessment.conceptId, "The recommended follow-up must preserve the assessed learner concept");
+    canonicalAssessmentState = { assessmentId, ...assessmentCompleted.body };
     console.log("PASS canonical knowledge-check journey: approved topic through persisted assessment report");
+    await driver.navigate().back();
   }
   else console.log("LIMITATION knowledge-check completion: this database has no fully approved canonical assessment blueprint; the insufficient-coverage gate was tested instead");
 
@@ -404,6 +441,52 @@ try {
     return { status: response.status, body: await response.json() };
   }
 
+  if (canonicalAssessmentState) {
+    const weakAttempt = canonicalAssessmentState.questions.find((question) => question.evaluation?.knowledgePointResults?.some((point) => point.status === "missing" || point.status === "partial"));
+    assert.ok(weakAttempt, "The deliberately incorrect answer should create an evidence-backed weak point");
+    const httpSourceReference = "https://example.com/u2-http-cache-notes";
+    const httpSource = await learnerApi("POST", "/api/grounding/sources", {
+      title: "U2 HTTP cache notes",
+      text: "HTTP caches may reuse a response while it remains fresh without contacting the origin. A stale response can be validated with If-None-Match using an ETag or If-Modified-Since. A 304 Not Modified response lets the cache reuse its stored response body while updating metadata.",
+      sourceType: "markdown", reference: httpSourceReference, provenance: { providedBy: "learner", test: "isolated-u2" },
+    });
+    assert.equal(httpSource.status, 201, `Could not ingest isolated HTTP remediation notes: ${JSON.stringify(httpSource.body)}`);
+    const remediationResult = await learnerApi("POST", `/api/remediations/from-attempt/${weakAttempt.id}`);
+    assert.equal(remediationResult.status, 200, `Could not create HTTP point remediation: ${JSON.stringify(remediationResult.body)}`);
+    const httpRemediation = remediationResult.body.remediation;
+    assert.equal(httpRemediation.status, "ready");
+    assert.equal(httpRemediation.knowledgePoint, "Can distinguish freshness from validation.");
+    assert.ok(httpRemediation.sources.some((source) => source.sourceId === httpSource.body.source.id && source.reference === httpSourceReference), "Targeted remediation must cite the learner-provided source relevant to the assessed point");
+    await driver.get(`${clientUrl}/remediations/${httpRemediation.id}`);
+    await driver.wait(until.elementLocated(By.css(".remediation-explanation")), 10000);
+    await driver.findElement(By.xpath("//button[contains(.,'Check what you remember')]")).click();
+    await driver.wait(until.urlMatches(/\/recall\/[0-9a-f-]+$/i), 10000);
+    const verificationAttemptId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const targetedQuestion = await learnerApi("GET", `/api/recalls/${verificationAttemptId}`);
+    assert.equal(targetedQuestion.status, 200);
+    assert.ok(!canonicalAssessmentState.questions.some((question) => question.questionData.prompt === targetedQuestion.body.recall.questionData.prompt), "Verification should ask different wording from the assessment prompts");
+    assert.ok(targetedQuestion.body.recall.canonicalQuestionRevisionId, "An unseen approved canonical question should be used when the review gate makes one available");
+    assert.ok(!canonicalAssessmentState.questions.some((question) => question.canonicalQuestionRevisionId === targetedQuestion.body.recall.canonicalQuestionRevisionId), "Verification must use a different immutable revision from the completed Rapid Fire round");
+    await driver.findElement(By.id("answer")).sendKeys("I can distinguish freshness from validation. A fresh response can be reused without contacting the origin. A stale response is validated with an ETag or Last-Modified validator; a 304 response lets the cache reuse the stored body.");
+    await driver.findElement(By.css("form button[type='submit']")).click();
+    await driver.wait(until.urlContains(`/recall/${verificationAttemptId}/result`), 10000);
+    const verifiedHttpRemediation = await learnerApi("GET", `/api/remediations/${httpRemediation.id}`);
+    assert.equal(verifiedHttpRemediation.body.remediation.status, "verified");
+    assert.equal(verifiedHttpRemediation.body.remediation.improved, true, "The verification attempt should update the persisted remediation outcome");
+    const persistedVerification = await pool.query(`SELECT kp.canonical_knowledge_point_id,a.canonical_question_revision_id FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id WHERE a.id=$1`, [verificationAttemptId]);
+    assert.equal(persistedVerification.rows[0]?.canonical_knowledge_point_id, concept.knowledgePoints[0].id, "Verification evidence must retain the diagnosed canonical point mapping");
+    assert.equal(persistedVerification.rows[0]?.canonical_question_revision_id, targetedQuestion.body.recall.canonicalQuestionRevisionId, "The verification attempt must retain its exact approved revision link");
+    const readinessGoal = await learnerApi("POST", "/api/goals", { title: "U2 HTTP verification readiness", description: "Disposable end-to-end evidence check", goalType: "learning", weeklyTimeBudgetMinutes: 60 });
+    assert.equal(readinessGoal.status, 201);
+    const canonicalSkill = await pool.query("SELECT cs.name FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills cs ON cs.id=t.skill_id WHERE cc.id=$1", [concept.id]);
+    const readinessSkill = await learnerApi("POST", `/api/goals/${readinessGoal.body.goal.id}/skills`, { name: canonicalSkill.rows[0].name, description: "HTTP verification evidence", priority: 80 });
+    assert.equal(readinessSkill.status, 201);
+    const verifiedReadiness = await learnerApi("GET", `/api/goals/${readinessGoal.body.goal.id}/readiness`);
+    const httpReadiness = verifiedReadiness.body.skills.find((skill) => skill.name === canonicalSkill.rows[0].name);
+    assert.equal(httpReadiness.strengths, 1, "My Readiness should reflect the latest submitted verification evidence for the mapped point");
+    console.log("PASS canonical assessment-to-remediation-to-verification-to-readiness loop in disposable PostgreSQL");
+  }
+
   await driver.get(`${clientUrl}/knowledge/roles/${apiRole.role.id}`);
   await driver.wait(until.elementLocated(By.id(`concept-${concept.id}`)), 10000);
   const canonicalArticle = await driver.findElement(By.id(`concept-${concept.id}`));
@@ -445,7 +528,7 @@ try {
             (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
     [learnerId],
   );
-  assert.deepEqual(canonicalLearnerWrites.rows[0], writesBeforeCanonicalGate.rows[0], "The unreviewed pilot must not create learner assessments or evidence");
+  assert.deepEqual(canonicalLearnerWrites.rows[0], writesBeforeCanonicalGate.rows[0], "A canonical mode without a complete eligible blueprint must not create learner assessments or evidence");
   const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
   await driver.get(`${clientUrl}/resources?conceptId=${mappedPersonalConcept.id}`);
@@ -531,9 +614,8 @@ try {
   assert.equal(readiness.status, 200);
   const mappedReadiness = readiness.body.skills.find((skill) => skill.name === canonicalSkillForReadiness.rows[0].name);
   assert.equal(mappedReadiness.status, "mapped");
-  assert.equal(mappedReadiness.assessedPoints, 0, "An unreviewed canonical pilot must not create readiness evidence");
-  assert.equal(mappedReadiness.incorrect, 0);
-  assert.ok(mappedReadiness.totalPoints > 0, "The selected canonical skill should have mapped points to display as unassessed");
+  assert.ok(mappedReadiness.assessedPoints > 0, "The completed canonical assessment should appear in persisted readiness evidence");
+  assert.ok(mappedReadiness.totalPoints > 0, "The selected canonical skill should retain its mapped point scope");
   const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
   assert.equal(unmappedReadiness.status, "unmapped");
   await driver.get(`${clientUrl}/dashboard`);
@@ -543,7 +625,7 @@ try {
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
   await driver.wait(until.elementLocated(By.id("readiness-goal")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Counts show the latest submitted outcome for each point.')]") ), 10000);
-  await driver.wait(until.elementLocated(By.xpath(`//*[contains(.,'No submitted recall evidence yet. All ${mappedReadiness.totalPoints} mapped points remain unassessed.')]`) ), 10000);
+  assert.equal(await driver.findElements(By.xpath("//*[contains(.,'No submitted recall evidence yet.')]")).then((items) => items.length), 0, "Readiness should not call the submitted canonical assessment unassessed");
   assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/review']")), "Readiness should offer a distinct Review & Improve action");
   assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/knowledge']")), "Readiness should link to the canonical knowledge map");
 
