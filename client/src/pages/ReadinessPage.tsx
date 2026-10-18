@@ -79,7 +79,7 @@ export function ReadinessPage() {
           </article>)}
         </section>
         {!data.skills.length ? <section className="card"><h2>No focus skills on this goal yet</h2><p className="muted">Readiness is limited to skills you have attached to this goal. Add a focus area from the goal page to see its canonical evidence and gaps.</p><Link className="btn" to={`/goals/${data.goal.id}`}>Open this goal</Link></section> : null}
-        <p className="metadata">Evidence source: {data.evidenceSource}. No confidence or aggregate readiness score is estimated.</p>
+        <p className="metadata">Evidence source: {data.evidenceSource} No confidence or aggregate readiness score is estimated.</p>
       </>}
     </>}
   </div>;

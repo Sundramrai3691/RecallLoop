@@ -6,6 +6,10 @@ The 24 HTTP pilot questions are engineering audited, but no subject matter appro
 
 The checked-in inventory at [`question-bank/http-pilot-review-inventory.json`](question-bank/http-pilot-review-inventory.json) is an engineering audit, not reviewer approval. Suspected issues are prompts for human inspection, not confirmed defects. RFC citations identify grounding sources; source notes do not certify licensing or permission for a particular use.
 
+## Smallest HTTP assessment review set
+
+The [HTTP Rapid Fire reviewer packet](question-bank/http-rapid-fire-review-packet.json) is an official database export narrowed to two current HTTP-caching MCQ revisions and three current HTTP-caching rapid-recall revisions. Their exact current revision UUIDs, hashes, one-point canonical mappings, prompts, expected answers, rubric, keyed options, explanations, provenance, automated audit fields, and blank review criteria are included. Automated validation is engineering evidence only. Every entry currently awaits independent subject-matter decisions; do not import or use this packet as approval until an authorized reviewer completes each entry and authenticates through the documented import workflow. The existing coverage selector remains unchanged while review is pending.
+
 ## Reviewer authorization and exact-revision review
 
 There is no public reviewer-administration endpoint. An authorized database operator grants an existing verified application user access after independently confirming their reviewer role:

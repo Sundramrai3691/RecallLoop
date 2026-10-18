@@ -139,6 +139,13 @@ try {
   for (const label of ["Test my knowledge", "Learn something new", "Review and improve"]) {
     assert.ok(await driver.findElement(By.xpath(`//h2[normalize-space()='${label}']`)), `Home should keep the ${label} entry point visible`);
   }
+  const homeReadinessLink = await driver.findElement(By.css(".home-utilities a[href='/readiness']"));
+  await homeReadinessLink.click();
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//h3[normalize-space()='Readiness starts with a goal']")), 10000);
+  assert.equal(new URL(await driver.getCurrentUrl()).pathname, "/readiness", "A learner without goals should reach the readiness page directly without an assessment or roadmap handoff");
+  await driver.get(`${clientUrl}/dashboard`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[contains(.,'What would you like to do?') or contains(.,'Choose your next learning step')]")), 10000);
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
     await driver.manage().window().setRect({ width: viewport.width, height: viewport.height + 85, x: 0, y: 0 });
     await driver.wait(async () => (await driver.executeScript("return window.innerWidth")) > 0, 3000);
@@ -573,8 +580,10 @@ try {
   await driver.findElement(By.css("input[type='checkbox']")).click();
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
-  await driver.wait(until.elementLocated(By.xpath("//p[contains(.,'incorrect') and contains(.,'partial') and contains(.,'unanswered') and contains(.,'no submitted evidence')]")), 10000);
-  await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Not assessed: this goal skill has no exact canonical skill mapping yet.')]") ), 10000);
+  for (const label of ["Incorrect", "Partial", "Unanswered", "No submitted evidence"]) {
+    await driver.wait(until.elementLocated(By.xpath(`//dt[normalize-space()='${label}']`)), 10000);
+  }
+  await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'No exact canonical skill mapping is available yet')]") ), 10000);
   const pendingRecallAttemptId = generatedAssessment.body.questions[0].id;
   await pool.query(
     `INSERT INTO review_states (user_id,concept_id,state,due_at,interval_days)

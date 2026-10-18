@@ -14,7 +14,7 @@ Home at `/dashboard` always presents three options: Test my knowledge, Learn som
 
 For a supported canonical check, the transaction creates a completed no-material session as the existing recall schema's evidence parent, a user-owned canonical-mapped personal concept, the assessment, learner-scoped question snapshots, and attempts. A failed coverage check creates none of these records. Existing owner checks, deterministic MCQ grading, validated free-response grading, duplicate submission guards, and exact canonical revision links remain in use. Submitted reports show the learner's answer, actual outcome, point feedback and post-submit explanation/rubric reasoning; weak points link to focused resources and subsequent assessment uses the existing recommendation path.
 
-**Current bank limitation:** The PostgreSQL integration fixture finds 24 current HTTP pilot revisions awaiting subject-matter approval and zero approvals. Those concepts do not offer canonical assessment modes until enough approved questions form a complete blueprint. The UI presents this limitation and offers the Learn flow; it does not silently switch to generated questions.
+**Current bank limitation:** The PostgreSQL integration fixture finds 24 current HTTP pilot revisions awaiting subject-matter approval and zero approvals. Those concepts do not offer canonical assessment modes until enough approved questions form a complete blueprint. The UI presents this limitation and offers the Learn flow; it does not silently switch to generated questions. The database-grounded [HTTP Rapid Fire reviewer packet](question-bank/http-rapid-fire-review-packet.json) contains the smallest useful single-concept candidate (two MCQ and three rapid-recall revisions for HTTP caching), with exact IDs/hashes, mappings, expected answers, rubrics, source provenance, and blank independent-review fields. It does not grant eligibility.
 
 ### Learn something new
 
@@ -26,13 +26,22 @@ For a supported canonical check, the transaction creates a completed no-material
 
 ### My Readiness
 
-`/dashboard` ? `/readiness` is directly reachable from Home and primary navigation. Learners can select one of their existing goals; the page reads the existing authenticated `GET /api/goals/:goalId/readiness` projection. When there is no goal, it explains that the established readiness model is goal-scoped and offers goal setup without blocking access to the page. For each goal focus skill it shows canonical mapping state, latest submitted point outcomes (demonstrated, partial, incorrect, unanswered), unassessed points, and evidence recency. It links to study, Review & Improve, and the canonical knowledge map. It makes no confidence, mastery percentage, or aggregate readiness score.
+`/dashboard` -> `/readiness` is directly reachable from Home and primary navigation. Learners can select one of their existing goals; the page reads the existing authenticated `GET /api/goals/:goalId/readiness` projection. When there is no goal, it explains that the established readiness model is goal-scoped and offers goal setup without blocking access to the page. For each goal focus skill it shows canonical mapping state, latest submitted point outcomes (demonstrated, partial, incorrect, unanswered), unassessed points, and evidence recency. It links to study, Review & Improve, and the canonical knowledge map. It makes no confidence, mastery percentage, or aggregate readiness score.
 
 My Readiness explains what available evidence says. Review & Improve is the action queue for due reviews, submitted weaknesses, unfinished sessions, and plan tasks. The two pages use the same persisted learner state for different jobs.
 
 ### Returning learner flexibility and utilities
 
 A due recall or another existing task can supply the contextual continuation without hiding the three Home intents. Goals, canonical knowledge maps, resources, today's plan, learner evidence, My Readiness, and settings remain accessible through navigation and utility links. Plan complete, keep-for-later (`in_progress`), and skip (`missed`) states remain distinct. Report/remediation paths preserve safe local return routes.
+
+## Phase U1 acceptance checklist (2026-10-19)
+
+- [x] Test a Topic: learners select live canonical subjects/topics/concepts without a roadmap prerequisite; assessment modes require a complete exact-approved blueprint.
+- [x] Learn from My Material: notes-first existing study flow carries the selected new/remember/apply intent.
+- [x] Review & Improve: due scheduler work, submitted weakness, unfinished sessions, and plan tasks use existing action routes and state transitions.
+- [x] My Readiness: reachable directly from Home and primary navigation before a goal exists; an existing goal selection exposes persisted outcome states and evidence recency.
+- [x] Verify empty/unassessed and submitted partial evidence, direct entry, and distinction between evidence explanation and action queue in Firefox.
+- [ ] Complete a canonical HTTP assessment and its result-to-action journey: blocked by human review. The live database-grounded five-revision Rapid Fire packet is at [HTTP Rapid Fire reviewer packet](question-bank/http-rapid-fire-review-packet.json); all five exact current revisions await authorized SME review.
 
 ## Previous flow audit snapshot (superseded by learner-intent flow below)
 
@@ -67,7 +76,7 @@ The user’s conceptual stages are not all represented by server state. In parti
 | Test my knowledge | `/knowledge-check` | Which canonical topic and assessment can I actually test? |
 | Learn | `/study/new` | What topic and supplied text should I study? |
 | Review and improve | `/review` | What is due, unfinished, or weak based on my evidence? |
-| My Readiness | `/readiness` | What does my submitted evidence show for this goal?s focus skills? |
+| My Readiness | `/readiness` | What does my submitted evidence show for this goal's focus skills? |
 | Today’s plan | `/plan/today` | What steps are planned, and what is their status? |
 | Goals | `/goals` | Which outcomes organize my learning? |
 | Knowledge | `/knowledge` | What is in the curated role/skill/topic/concept map? |
@@ -75,7 +84,7 @@ The user’s conceptual stages are not all represented by server state. In parti
 | Learner | `/learner` | What do my submitted personal-concept recalls show? |
 | Settings | `/settings` | How should scheduled reviews be handled? |
 
-`My Learner` and `My Readiness` remain distinct. Learner is a rolling signal over a user?s personal concepts and recall mistakes. Readiness is the latest submitted point-level evidence for canonical skills attached to a selected goal, with mapped/unmapped and no-evidence states. `/readiness` is available directly and selects an existing goal; it does not require a new assessment or completed roadmap. Neither view claims an aggregate readiness score.
+`My Learner` and `My Readiness` remain distinct. Learner is a rolling signal over a user's personal concepts and recall mistakes. Readiness is the latest submitted point-level evidence for canonical skills attached to a selected goal, with mapped/unmapped and no-evidence states. `/readiness` is available directly and selects an existing goal; it does not require a new assessment or completed roadmap. Neither view claims an aggregate readiness score.
 
 ## Current learner-intent action map
 
@@ -83,6 +92,7 @@ The user’s conceptual stages are not all represented by server state. In parti
 |---|---|---|
 | Test my knowledge | `/dashboard` → `/knowledge-check` → authenticated `GET /api/assessments/coverage` → choose skill/topic/concept/mode → `POST /api/assessments` with canonical concept ID → `/assessments/:id` | A supported blueprint creates canonical-mapped evidence and immutable question snapshots transactionally. Submission creates actual answer and point evidence; the report links to resources or the existing recommendation. Unsupported coverage disables Start and routes to Learn. Current seeded HTTP pilot: no eligible complete blueprint due to pending SME approval. |
 | Learn something new | `/dashboard` → `/study/new` → choose new/remember/apply → provide text → `POST /api/study-sessions` → `/study/:id?intent=…` → recall or practice | The session and extracted concepts persist before the learner continues. Only pasted text is processed; the source link is optional provenance. Apply opens the existing practice disclosure. |
+| My Readiness | `/dashboard` -> `/readiness` -> select an existing goal -> `GET /api/goals/:goalId/readiness` -> study/review/knowledge map | Shows persisted latest outcomes for canonical points, including partial and unassessed points, plus evidence recency. It creates no assessment or evidence. |
 | Review and improve | `/dashboard` → `/review` → due recall, submitted weakness, unfinished session, or planned task → existing recall/practice/resource/study/plan route | Due dates come from the current scheduler; weakness comes from submitted evidence. The selected activity retains a safe return path, and completed assessment/recall state is read back from the existing APIs. |
 
 ## Previous action inventory snapshot (before the learner-intent entry points)
