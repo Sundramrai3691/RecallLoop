@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { postgres, runPostgresMigration, withTransaction } from "../../src/db/postgres.js";
-import { createAssessment,getAssessment } from "../../src/services/question/assessmentService.js";
+import { createAssessment,createCanonicalKnowledgeCheck,getAssessment,listKnowledgeCheckCoverage } from "../../src/services/question/assessmentService.js";
 import { createBaseline,getBaseline,submitBaselineQuestion } from "../../src/services/baseline/baselineService.js";
 import { createConceptsForSession } from "../../src/services/concept/conceptService.js";
 import { createConcepts,createSession,getAttempt,getSession,revealNextHint,resolveCanonicalKnowledgePoint } from "../../src/repositories/legacyPostgresRepositories.js";
@@ -50,6 +50,12 @@ describe("PostgreSQL runtime integration", () => {
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Canonical question pilot') RETURNING id`,[`question-bank-${randomUUID()}@test.local`])).rows[0].id;
     try{
       const catalog=(await postgres.query<any>(`SELECT cc.id AS concept_id,kp.id AS point_id,kp.statement FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN knowledge_points kp ON kp.concept_id=cc.id WHERE t.name='HTTP' AND cc.name='HTTP caching' AND cc.status='active'`)).rows[0];
+      const coverage=await listKnowledgeCheckCoverage();
+      const coveredConcept=coverage.flatMap((subject:any)=>subject.topics.flatMap((topic:any)=>topic.concepts)).find((concept:any)=>concept.id===catalog.concept_id);
+      expect(coveredConcept).toMatchObject({id:catalog.concept_id,supportedModes:[]});
+      await expect(createCanonicalKnowledgeCheck(userId,catalog.concept_id,"practice")).rejects.toMatchObject({status:409,code:"QUESTION_BANK_COVERAGE_INSUFFICIENT"});
+      const blockedWrites=await postgres.query<any>(`SELECT count(*)::int AS count FROM study_sessions WHERE user_id=$1 AND title LIKE 'Knowledge check:%'`,[userId]);
+      expect(blockedWrites.rows[0].count).toBe(0);
       const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,canonical_topic_id,canonical_concept_id) SELECT $1,'Canonical question pilot',t.id,cc.id FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id WHERE cc.id=$2 RETURNING id`,[userId,catalog.concept_id])).rows[0];
       const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,canonical_concept_id) VALUES($1,$2,'HTTP caching','Freshness and revalidation.',$3,$4) RETURNING id`,[userId,session.id,[catalog.statement],catalog.concept_id])).rows[0];
       await expect(createAssessment(userId,concept.id,"mastery_check")).rejects.toMatchObject({ status: 409, code: "QUESTION_BANK_COVERAGE_INSUFFICIENT" });

@@ -15,11 +15,13 @@ const sourceOptions = [
 export function NewStudyPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const initialIntent = searchParams.get("intent");
+  const [learningIntent, setLearningIntent] = useState<"new" | "remember" | "apply">(initialIntent === "remember" || initialIntent === "apply" ? initialIntent : "new");
   const [title, setTitle] = useState(() => searchParams.get("topic") ?? "");
   const [canonicalTopicId, setCanonicalTopicId] = useState(() => searchParams.get("topicId") ?? "");
   const [canonicalConceptId, setCanonicalConceptId] = useState(() => searchParams.get("conceptId") ?? "");
   const rawReturnTo = searchParams.get("returnTo") ?? "";
-  const returnTo = rawReturnTo === "/plan/today" || /^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo) ? rawReturnTo : "";
+  const returnTo = rawReturnTo === "/plan/today" || rawReturnTo === "/review" || rawReturnTo === "/knowledge-check" || /^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo) ? rawReturnTo : "";
   const [rawMaterial, setRawMaterial] = useState("");
   const [sourceUrl, setSourceUrl] = useState("");
   const [sourceType, setSourceType] = useState<string>("notes");
@@ -56,7 +58,8 @@ export function NewStudyPage() {
     setBusy(true); setError(null);
     try {
       const result = await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined });
-      navigate(`/study/${result.session.id}${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
+      const query = new URLSearchParams(); query.set("intent", learningIntent); if (returnTo) query.set("returnTo", returnTo);
+      navigate(`/study/${result.session.id}?${query.toString()}`);
     } catch (err) {
       if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
         setRetryBlocked(false);
@@ -85,8 +88,8 @@ export function NewStudyPage() {
   }
 
   return <div className="study-setup">
-    {returnTo === "/plan/today" ? <Link className="back-link" to={returnTo}><ArrowLeft size={15}/> Today’s plan</Link> : null}
-    <PageHeader eyebrow="Learn" title="What are you studying?" description="Add the topic and paste the notes or excerpt you want RecallLoop to use." />
+    {returnTo ? <Link className="back-link" to={returnTo}><ArrowLeft size={15}/> {returnTo === "/plan/today" ? "Today’s plan" : returnTo === "/review" ? "Review and improve" : "Knowledge map"}</Link> : null}
+    <PageHeader eyebrow="Learn something new" title="What would you like to learn?" description="Choose a topic, then paste notes or an excerpt. RecallLoop extracts concepts from the text you provide and saves the source link separately." />
     <ol className="study-next-steps" aria-label="What happens next"><li><strong>1. Add text</strong><span>Paste notes or an excerpt.</span></li><li><strong>2. Review concepts</strong><span>Check the session’s extracted concepts.</span></li><li><strong>3. Recall</strong><span>Answer a question when you’re ready.</span></li></ol>
     <form className="card study-form" onSubmit={(event) => void onSubmit(event)}>
       {error ? <p className="error" role="alert">{error}</p> : null}
@@ -94,6 +97,11 @@ export function NewStudyPage() {
       <div className="suggestion-wrap"><input ref={inputRef} id="study-topic" name="topic" required autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={focused && suggestions.length > 0} aria-controls="topic-suggestions" aria-activedescendant={focused && suggestions[active] ? `topic-option-${active}` : undefined} value={title} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 100)} onKeyDown={onTopicKeyDown} onChange={(event) => { setTitle(event.target.value); setCanonicalTopicId(""); setCanonicalConceptId(""); setActive(0); }} placeholder="Try ‘Computer Networks’ or ‘Caching’" />
         {focused && suggestions.length > 0 ? <ul className="suggestion-list" id="topic-suggestions" role="listbox">{suggestions.map((item, index) => <li key={`${item.topicId}-${item.conceptId}`} id={`topic-option-${index}`} role="option" aria-selected={index === active}><button role="presentation" tabIndex={-1} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setTitle(item.value); setCanonicalTopicId(item.topicId); setCanonicalConceptId(item.conceptId); setFocused(false); inputRef.current?.focus(); }}><span>{item.label}</span><small>{item.detail}</small></button></li>)}</ul> : null}</div>
       <p className="metadata">{canonicalTopicId ? "Linked to the selected knowledge map node. Edit the title to make this a custom topic." : "Suggestions come from the knowledge map. You can also enter your own topic."}</p>
+      <fieldset className="learning-intent-options"><legend>What brings you to this topic?</legend>
+        <label><input type="radio" name="learningIntent" value="new" checked={learningIntent === "new"} onChange={() => setLearningIntent("new")}/><span><strong>It’s new to me</strong><span className="metadata">Review the extracted ideas, then start a recall check.</span></span></label>
+        <label><input type="radio" name="learningIntent" value="remember" checked={learningIntent === "remember"} onChange={() => setLearningIntent("remember")}/><span><strong>I’ve studied it, but don’t remember it confidently</strong><span className="metadata">Review the concepts and move into recall practice.</span></span></label>
+        <label><input type="radio" name="learningIntent" value="apply" checked={learningIntent === "apply"} onChange={() => setLearningIntent("apply")}/><span><strong>I want to apply or practise it</strong><span className="metadata">Open the extracted concept’s practice option when the session is ready.</span></span></label>
+      </fieldset>
       <fieldset className="source-fieldset"><legend>How are you learning this?</legend><div className="source-options">{sourceOptions.map(({ value, label, Icon }) => <button key={value} type="button" className={`source-option ${sourceType === value ? "selected" : ""}`} aria-pressed={sourceType === value} onClick={() => setSourceType(value)}><Icon size={18}/><span>{label}</span></button>)}</div></fieldset>
       <p className="metadata">This records where your text came from. RecallLoop uses the text you paste; it does not fetch web pages or upload files.</p>
       <label htmlFor="source-url">Source link <span className="muted">(optional)</span></label>

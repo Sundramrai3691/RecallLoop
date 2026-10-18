@@ -8,12 +8,94 @@ import { chooseCanonicalQuestionSet,hasCanonicalQuestionBank,listEligibleCanonic
 export type AssessmentMode = "rapid_fire" | "deep_recall" | "mastery_check" | "practice";
 const DIMENSIONS = ["recognition","recall","explanation","application","depth","transfer"];
 
+const KNOWLEDGE_CHECK_BLUEPRINTS: Record<AssessmentMode, string[]> = {
+  rapid_fire: ["mcq", "rapid_recall", "rapid_recall", "rapid_recall", "mcq"],
+  deep_recall: ["descriptive"],
+  mastery_check: ["mcq", "rapid_recall", "short_explanation", "scenario", "descriptive", "transfer"],
+  practice: ["scenario"],
+};
+
+const ELIGIBLE_CANONICAL_QUESTIONS = `
+  SELECT i.canonical_concept_id AS "conceptId", r.question_type AS "questionType", count(DISTINCT r.id)::int AS count
+  FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
+  WHERE r.revision=i.current_revision AND r.publication_status='published' AND r.review_status='subject_matter_reviewed' AND r.quality_status='valid'
+    AND EXISTS (
+      SELECT 1 FROM canonical_question_reviews approved
+      JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
+      WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
+        AND approved.reviewed_at>=reviewer.granted_at
+        AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
+        AND NOT EXISTS (SELECT 1 FROM canonical_question_reviews later WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id))
+    )
+  GROUP BY i.canonical_concept_id,r.question_type`;
+
+function supportedModes(counts: Record<string, number>) {
+  return Object.entries(KNOWLEDGE_CHECK_BLUEPRINTS).filter(([, blueprint]) => {
+    const required = new Map<string, number>();
+    for (const type of blueprint) required.set(type, (required.get(type) ?? 0) + 1);
+    return [...required].every(([type, count]) => (counts[type] ?? 0) >= count);
+  }).map(([mode]) => mode as AssessmentMode);
+}
+
+export async function listKnowledgeCheckCoverage() {
+  const result = await query<any>(`
+    SELECT d.name AS "domainName", s.id AS "skillId", s.name AS "skillName", s.description AS "skillDescription",
+      t.id AS "topicId", t.name AS "topicName", t.description AS "topicDescription",
+      c.id AS "conceptId", c.name AS "conceptName", c.description AS "conceptDescription",
+      COALESCE((SELECT jsonb_object_agg(eligible."questionType", eligible.count)
+        FROM (${ELIGIBLE_CANONICAL_QUESTIONS}) eligible WHERE eligible."conceptId"=c.id), '{}'::jsonb) AS coverage
+    FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id JOIN canonical_skills s ON s.id=t.skill_id
+    JOIN role_skills rs ON rs.skill_id=s.id JOIN roles r ON r.id=rs.role_id JOIN knowledge_domains d ON d.id=r.domain_id
+    WHERE c.status='active'
+    GROUP BY d.name,s.id,t.id,c.id ORDER BY d.name,s.name,t.name,c.name`);
+  const subjects = new Map<string, any>();
+  for (const row of result.rows) {
+    const subjectId = `${row.domainName}:${row.skillId}`;
+    if (!subjects.has(subjectId)) subjects.set(subjectId, { id: row.skillId, domainName: row.domainName, name: row.skillName, description: row.skillDescription, topics: [] });
+    const subject = subjects.get(subjectId);
+    let topic = subject.topics.find((item: any) => item.id === row.topicId);
+    if (!topic) { topic = { id: row.topicId, name: row.topicName, description: row.topicDescription, concepts: [] }; subject.topics.push(topic); }
+    const coverage = Object.fromEntries(Object.entries(row.coverage ?? {}).map(([type, count]) => [type, Number(count)]));
+    topic.concepts.push({ id: row.conceptId, name: row.conceptName, description: row.conceptDescription, coverage, supportedModes: supportedModes(coverage) });
+  }
+  return [...subjects.values()];
+}
+
+export async function createCanonicalKnowledgeCheck(userId: string, canonicalConceptId: string, mode: AssessmentMode) {
+  if (typeof canonicalConceptId !== "string" || !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(canonicalConceptId)) throw new AppError("A valid canonical concept ID is required.",400,"VALIDATION_ERROR");
+  return createAssessmentForSource(userId, null, canonicalConceptId, mode);
+}
+
 export async function createAssessment(userId: string, conceptId: string, mode: AssessmentMode) {
+  return createAssessmentForSource(userId, conceptId, null, mode);
+}
+
+async function createAssessmentForSource(userId: string, ownedConceptId: string | null, canonicalConceptId: string | null, mode: AssessmentMode) {
   if (!new Set(["rapid_fire","deep_recall","mastery_check","practice"]).has(mode)) throw new AppError("Invalid assessment mode",400,"VALIDATION_ERROR");
-  const result = await query<any>(`SELECT * FROM personal_concepts WHERE id=$1 AND user_id=$2`,[conceptId,userId]);
-  const concept = result.rows[0];
-  if (!concept) throw notFound("Concept not found","MISSING_CONCEPT");
   const attempts = await withTransaction(async (client) => {
+    let concept: any;
+    let conceptId = ownedConceptId;
+    if (canonicalConceptId) {
+      const canonicalResult = await client.query<any>(`SELECT c.id,c.name,c.description,c.difficulty,c.topic_id AS "topicId",
+          COALESCE(array_agg(kp.statement ORDER BY kp.importance DESC,kp.id) FILTER (WHERE kp.id IS NOT NULL),'{}') AS points
+        FROM canonical_concepts c LEFT JOIN knowledge_points kp ON kp.concept_id=c.id
+        WHERE c.id=$1 AND c.status='active' GROUP BY c.id`, [canonicalConceptId]);
+      const canonical = canonicalResult.rows[0];
+      if (!canonical) throw notFound("Canonical concept not found", "CANONICAL_CONCEPT_NOT_FOUND");
+      const eligible = await client.query<any>(`${ELIGIBLE_CANONICAL_QUESTIONS} HAVING i.canonical_concept_id=$1`, [canonicalConceptId]);
+      const counts = Object.fromEntries(eligible.rows.map((row: any) => [row.questionType, Number(row.count)]));
+      if (!supportedModes(counts).includes(mode)) throw new AppError("Approved question coverage is not sufficient for this assessment. Choose a supported mode or learn this topic first.",409,"QUESTION_BANK_COVERAGE_INSUFFICIENT");
+      const study = await client.query<any>(`INSERT INTO study_sessions(user_id,title,raw_material,source_type,status,completed_at,canonical_topic_id,canonical_concept_id)
+        VALUES($1,$2,'','manual','completed',now(),$3,$4) RETURNING id`, [userId,`Knowledge check: ${canonical.name}`,canonical.topicId,canonical.id]);
+      const personal = await client.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,difficulty,canonical_concept_id)
+        VALUES($1,$2,$3,$4,$5,$6,$7) RETURNING *`, [userId,study.rows[0].id,canonical.name,canonical.description,canonical.points,canonical.difficulty,canonical.id]);
+      concept = personal.rows[0]; conceptId = concept.id;
+    } else {
+      const result = await client.query<any>(`SELECT * FROM personal_concepts WHERE id=$1 AND user_id=$2`,[ownedConceptId,userId]);
+      concept = result.rows[0];
+      if (!concept) throw notFound("Concept not found","MISSING_CONCEPT");
+    }
+    if (!conceptId) throw new AppError("Assessment concept could not be resolved.",500,"ASSESSMENT_CONCEPT_MISSING");
     const attemptIds: string[] = [];
     const blueprint = assessmentBlueprint(mode);
     const history=await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,conceptId]);

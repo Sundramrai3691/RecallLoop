@@ -41,6 +41,12 @@ Goals with the same trimmed, case-insensitive title are distinct existing record
 
 Use bordered surfaces with 15–20px radii, compact status chips, readable body copy, and one clear primary action per section. Keep empty states short and pair them with a supported next action. Avoid oversized panels that push the principal action below the fold. Use Lucide icons consistently and include visible labels for navigation.
 
+## Learner intent and assessment setup
+
+Authenticated Home leads with three labeled intentions. Give Test my knowledge the strongest visual emphasis; keep Learn and Review as direct, clearly labeled alternatives. Put due or continuation context in a separate compact region so a due task does not replace the learner's choices. The catalog check is progressive: subject, topic, one concept, then only the assessment modes supported by live approved coverage. Show question-type counts and explain an unavailable topic with its Learn alternative. The backend blueprint fixes question count, so do not show controls that imply configurable counts or difficulty.
+
+The Learn form asks whether material is new, previously studied, or intended for application. Make the effect visible in the next screen and keep source-text limitations adjacent to the form. Review groups due schedule, submitted weakness evidence, unfinished study, and plan tasks with a short provenance-based explanation. Use empty states that distinguish no due/weak work from a failure state.
+
 ## Knowledge map and catalog
 
 Role maps use the real catalog hierarchy: role, skill, topic, concept, knowledge point. Display only persisted prerequisites, resources, and learner evidence. A decorative visual may illustrate relationships only when edges are backed by catalog data; the landing illustration is explicitly process-oriented and makes no catalog relationship claims.
@@ -56,3 +62,8 @@ Only chart API-supplied values. State the population or denominator, distinguish
 ## Why this?
 
 Tie recommendation explanations to available fields such as due state, prior coverage, weakness, or goal relevance. If the API does not provide a reason, keep the explanation minimal rather than implying one.
+
+
+## Learning navigation hierarchy
+
+Home keeps Test, Learn, and Review as its three primary intent choices. My Readiness is a directly reachable evidence view linked from Home?s compact tools area and primary navigation; it does not become another equal-sized Home feature panel. Readiness explains latest persisted evidence for a selected existing goal, while Review & Improve presents due and actionable work. Neither view invents mastery or confidence scores.

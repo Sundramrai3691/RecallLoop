@@ -1,13 +1,20 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../lib/auth.js";
-import { createAssessment, getAssessment } from "../services/question/assessmentService.js";
+import { createAssessment, createCanonicalKnowledgeCheck, getAssessment, listKnowledgeCheckCoverage } from "../services/question/assessmentService.js";
 import { serializeAttempt } from "../lib/serialize.js";
 
 export async function createAssessmentHandler(req: AuthenticatedRequest,res: Response,next: NextFunction): Promise<void> {
   try {
-    const result = await createAssessment(req.user!.id,req.body?.conceptId,req.body?.mode);
+    const result = req.body?.canonicalConceptId
+      ? await createCanonicalKnowledgeCheck(req.user!.id,req.body.canonicalConceptId,req.body?.mode)
+      : await createAssessment(req.user!.id,req.body?.conceptId,req.body?.mode);
     res.status(201).json({ assessment: result.assessment, questions: result.questions.map(serializeAttempt) });
   } catch (error) { next(error); }
+}
+
+export async function getKnowledgeCheckCoverageHandler(_req: AuthenticatedRequest,res: Response,next: NextFunction): Promise<void> {
+  try { res.json({ subjects: await listKnowledgeCheckCoverage() }); }
+  catch (error) { next(error); }
 }
 
 export async function getAssessmentHandler(req: AuthenticatedRequest,res: Response,next: NextFunction): Promise<void> {

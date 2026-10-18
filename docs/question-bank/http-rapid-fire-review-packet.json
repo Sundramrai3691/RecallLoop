@@ -1,0 +1,468 @@
+{
+  "packetVersion": 1,
+  "packetType": "canonical-question-subject-matter-review",
+  "generatedAt": "2026-10-18T19:44:24.615Z",
+  "instructions": "Review the exact immutable revision. Fill review.decision, review.notes, and every review.criteria field. Approval requires all applicable criteria to pass. Do not add reviewer identity or timestamp; import binds those to the authenticated RecallLoop account and database time.",
+  "entries": [
+    {
+      "revisionId": "f463ed45-fecd-4611-b0de-857f57d97974",
+      "questionSlug": "http-cache-recognition-freshness-directive",
+      "revision": 1,
+      "contentHash": "7d177c3a8a230d0c7b6574f3fbb9ea9a201fe06dfbb4c20b0e22e242b4574e01",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "question": {
+        "type": "mcq",
+        "cognitiveLevel": "recognition",
+        "difficulty": 1,
+        "objective": "Identify metadata that bounds reuse without an origin roundtrip.",
+        "title": "Recognize freshness",
+        "context": "",
+        "prompt": "A response contains `Cache-Control: max-age=120`. What does this directive primarily tell a cache?",
+        "expectedAnswer": "It gives the response's freshness lifetime in seconds, subject to the cache's age calculation.",
+        "rubric": [
+          {
+            "id": "answer-key",
+            "label": "Select the defensible answer",
+            "weight": 1,
+            "fullCredit": "Select the single answer matching the protocol behavior.",
+            "insufficient": "Selects a distractor.",
+            "partialCredit": "MCQ grading is binary; no partial credit is awarded."
+          }
+        ],
+        "expectedMisconceptions": [
+          "Freshness always contacts the origin.",
+          "Stale means immediately deleted."
+        ],
+        "options": [
+          {
+            "id": "correct",
+            "text": "The response can be considered fresh for the specified lifetime, so an equivalent request may be served without contacting the origin while it remains fresh."
+          },
+          {
+            "id": "d1",
+            "text": "The cache must ask the origin to validate every reuse for 120 seconds."
+          },
+          {
+            "id": "d2",
+            "text": "The response must be deleted from every cache after exactly 120 seconds."
+          },
+          {
+            "id": "d3",
+            "text": "The origin guarantees the representation cannot change for 120 seconds."
+          }
+        ],
+        "correctOptionId": "correct",
+        "correctOptionText": "The response can be considered fresh for the specified lifetime, so an equivalent request may be served without contacting the origin while it remains fresh.",
+        "explanation": "RFC 9111 defines max-age as a freshness-lifetime directive; freshness allows reuse without validation.",
+        "distractorRationales": [
+          {
+            "optionId": "d1",
+            "explanation": "Validation is a conditional origin check, normally relevant when a stored response is stale.",
+            "misconception": "Confuses freshness with validation."
+          },
+          {
+            "optionId": "d2",
+            "explanation": "A stale response is not automatically deleted; it may be validated before reuse.",
+            "misconception": "Confuses freshness expiry with mandatory deletion."
+          },
+          {
+            "optionId": "d3",
+            "explanation": "The directive governs cache freshness behavior; it is not a guarantee that the resource cannot change.",
+            "misconception": "Treats cache policy as an origin immutability guarantee."
+          }
+        ],
+        "hints": [
+          "Ask whether the stored response can be reused now without a network check.",
+          "Separate a response's age/freshness lifetime from a validator such as ETag.",
+          "For validation, trace the conditional request and possible 304 response."
+        ],
+        "canonicalPoints": [
+          {
+            "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+            "statement": "Can distinguish freshness from validation."
+          }
+        ],
+        "source": {
+          "origin": "original",
+          "title": "RFC 9111: HTTP Caching",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+          "publisher": "Internet Engineering Task Force (IETF)",
+          "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+          "accessedOn": "2026-10-17T18:30:00.000Z",
+          "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18."
+        }
+      },
+      "automatedAudit": [],
+      "existingReviewStatus": "awaiting_subject_matter_review",
+      "review": {
+        "decision": null,
+        "notes": "",
+        "criteria": {
+          "technical_correctness": null,
+          "expected_answer": null,
+          "explanation": null,
+          "mcq_key": null,
+          "distractors": null,
+          "rubric": null,
+          "point_mapping": null,
+          "cognitive_level_difficulty": null,
+          "source_attribution_license": null
+        }
+      },
+      "engineeringValidation": "Current database revision exported by the official workflow; this does not replace independent review."
+    },
+    {
+      "revisionId": "b92a7bee-902c-40f3-9d56-25d55e12dae4",
+      "questionSlug": "http-cache-analysis-no-cache-vs-no-store",
+      "revision": 2,
+      "contentHash": "709685b0be10cb6f6338f9f9945b027a4a220cec4bf68ff2c1b3c240833e7b04",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "question": {
+        "type": "mcq",
+        "cognitiveLevel": "depth",
+        "difficulty": 4,
+        "objective": "Diagnose a faulty claim by contrasting fresh reuse, validation, and storage directives.",
+        "title": "Diagnose an incorrect cache policy",
+        "context": "",
+        "prompt": "A teammate says, “`no-cache` forbids storage, while `max-age` requires an origin check on every reuse.” Diagnose the claim and state the correct roles of freshness and validation.",
+        "expectedAnswer": "Both claims are reversed: max-age sets a freshness lifetime that can permit reuse without an origin check while fresh; no-cache permits storage but requires validation before reuse; no-store prohibits storage.",
+        "rubric": [
+          {
+            "id": "answer-key",
+            "label": "Select the defensible answer",
+            "weight": 1,
+            "fullCredit": "Select the single answer matching the protocol behavior.",
+            "insufficient": "Selects a distractor.",
+            "partialCredit": "MCQ grading is binary; no partial credit is awarded."
+          }
+        ],
+        "expectedMisconceptions": [
+          "Directive names can be interpreted literally without checking semantics."
+        ],
+        "options": [
+          {
+            "id": "correct",
+            "text": "Both claims are reversed: max-age can permit reuse without validation while fresh; no-cache permits storage but requires validation; no-store prohibits storage."
+          },
+          {
+            "id": "d1",
+            "text": "The teammate is correct; no-cache deletes the response before a validator can be used."
+          },
+          {
+            "id": "d2",
+            "text": "The teammate is wrong because no-cache makes every response fresh forever."
+          },
+          {
+            "id": "d3",
+            "text": "The teammate is wrong because validators are only sent with POST requests."
+          }
+        ],
+        "correctOptionId": "correct",
+        "correctOptionText": "Both claims are reversed: max-age can permit reuse without validation while fresh; no-cache permits storage but requires validation; no-store prohibits storage.",
+        "explanation": "RFC 9111 separates freshness, validation, and storage prohibition rather than treating these directives as interchangeable.",
+        "distractorRationales": [
+          {
+            "optionId": "d1",
+            "explanation": "no-cache does not mean do not store.",
+            "misconception": "Reinforces the no-cache/no-store confusion."
+          },
+          {
+            "optionId": "d2",
+            "explanation": "no-cache does not make a response fresh; it requires validation before reuse.",
+            "misconception": "Treats validation-required as unlimited freshness."
+          },
+          {
+            "optionId": "d3",
+            "explanation": "Conditional GET is a common cache validation mechanism.",
+            "misconception": "Misstates conditional request applicability."
+          }
+        ],
+        "hints": [
+          "Ask whether the stored response can be reused now without a network check.",
+          "Separate a response's age/freshness lifetime from a validator such as ETag.",
+          "For validation, trace the conditional request and possible 304 response."
+        ],
+        "canonicalPoints": [
+          {
+            "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+            "statement": "Can distinguish freshness from validation."
+          }
+        ],
+        "source": {
+          "origin": "original",
+          "title": "RFC 9111: HTTP Caching",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+          "publisher": "Internet Engineering Task Force (IETF)",
+          "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+          "accessedOn": "2026-10-17T18:30:00.000Z",
+          "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18."
+        }
+      },
+      "automatedAudit": [],
+      "existingReviewStatus": "awaiting_subject_matter_review",
+      "review": {
+        "decision": null,
+        "notes": "",
+        "criteria": {
+          "technical_correctness": null,
+          "expected_answer": null,
+          "explanation": null,
+          "mcq_key": null,
+          "distractors": null,
+          "rubric": null,
+          "point_mapping": null,
+          "cognitive_level_difficulty": null,
+          "source_attribution_license": null
+        }
+      },
+      "engineeringValidation": "Current database revision exported by the official workflow; this does not replace independent review."
+    },
+    {
+      "revisionId": "555de991-2201-43d9-86c1-297b069be7b3",
+      "questionSlug": "http-cache-recall-no-cache",
+      "revision": 2,
+      "contentHash": "44ee7a863f6f53dc59ec3e1b4c411b46999cc12a4f5e400f97fdf523f316599d",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "question": {
+        "type": "rapid_recall",
+        "cognitiveLevel": "recall",
+        "difficulty": 1,
+        "objective": "Retrieve the distinction between freshness and validation using Cache-Control directives.",
+        "title": "Recall no-cache",
+        "context": "",
+        "prompt": "Contrast `max-age` with `no-cache`: when may a response be reused without contacting the origin, and what must happen before a stored no-cache response is reused?",
+        "expectedAnswer": "max-age sets a freshness lifetime during which a fresh response may be reused without an origin check; no-cache permits storage but requires validation with the origin before reuse.",
+        "rubric": [
+          {
+            "id": "freshness",
+            "label": "Freshness",
+            "weight": 1,
+            "fullCredit": "Explains that a fresh stored response may satisfy an equivalent request without contacting the origin while its freshness lifetime has not expired.",
+            "insufficient": "Treats freshness as an origin check or gives no usable reuse rule.",
+            "partialCredit": "Identifies a reuse period or max-age but omits the no-origin condition or expiry boundary."
+          },
+          {
+            "id": "validation",
+            "label": "Validation",
+            "weight": 1,
+            "fullCredit": "Explains that a stale stored response is conditionally checked with the origin using a validator such as ETag/If-None-Match; a 304 permits reuse of the stored body.",
+            "insufficient": "Claims validation is purely local or confuses it with freshness.",
+            "partialCredit": "Recognizes a conditional origin check but omits the validator or the 304/stored-body consequence."
+          }
+        ],
+        "expectedMisconceptions": [
+          "no-cache means do not store.",
+          "no-cache and max-age both mean fresh without validation."
+        ],
+        "options": null,
+        "correctOptionId": null,
+        "correctOptionText": null,
+        "explanation": "",
+        "distractorRationales": [],
+        "hints": [
+          "Ask whether the stored response can be reused now without a network check.",
+          "Separate a response's age/freshness lifetime from a validator such as ETag.",
+          "For validation, trace the conditional request and possible 304 response."
+        ],
+        "canonicalPoints": [
+          {
+            "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+            "statement": "Can distinguish freshness from validation."
+          }
+        ],
+        "source": {
+          "origin": "original",
+          "title": "RFC 9111: HTTP Caching",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+          "publisher": "Internet Engineering Task Force (IETF)",
+          "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+          "accessedOn": "2026-10-17T18:30:00.000Z",
+          "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18."
+        }
+      },
+      "automatedAudit": [],
+      "existingReviewStatus": "awaiting_subject_matter_review",
+      "review": {
+        "decision": null,
+        "notes": "",
+        "criteria": {
+          "technical_correctness": null,
+          "expected_answer": null,
+          "explanation": null,
+          "mcq_key": null,
+          "distractors": null,
+          "rubric": null,
+          "point_mapping": null,
+          "cognitive_level_difficulty": null,
+          "source_attribution_license": null
+        }
+      },
+      "engineeringValidation": "Current database revision exported by the official workflow; this does not replace independent review."
+    },
+    {
+      "revisionId": "92667c17-eaba-4e4f-8438-cbfebba7db29",
+      "questionSlug": "http-cache-recall-304-body",
+      "revision": 2,
+      "contentHash": "4904730b4ba1b99f79bc89f42583cfec8459c768effb0ef5e456764ee40d6743",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "question": {
+        "type": "rapid_recall",
+        "cognitiveLevel": "recall",
+        "difficulty": 2,
+        "objective": "Contrast fresh local reuse with stale-response validation and a 304 outcome.",
+        "title": "Recall a 304",
+        "context": "",
+        "prompt": "Compare what a cache does for a still-fresh response and for a stale response that receives `304 Not Modified` after validation.",
+        "expectedAnswer": "A fresh response may be reused without contacting the origin. A stale response requires validation; a 304 lets the cache reuse its stored body and update applicable metadata rather than replacing it with a new representation body.",
+        "rubric": [
+          {
+            "id": "freshness",
+            "label": "Freshness",
+            "weight": 1,
+            "fullCredit": "Explains that a fresh stored response may satisfy an equivalent request without contacting the origin while its freshness lifetime has not expired.",
+            "insufficient": "Treats freshness as an origin check or gives no usable reuse rule.",
+            "partialCredit": "Identifies a reuse period or max-age but omits the no-origin condition or expiry boundary."
+          },
+          {
+            "id": "validation",
+            "label": "Validation",
+            "weight": 1,
+            "fullCredit": "Explains that a stale stored response is conditionally checked with the origin using a validator such as ETag/If-None-Match; a 304 permits reuse of the stored body.",
+            "insufficient": "Claims validation is purely local or confuses it with freshness.",
+            "partialCredit": "Recognizes a conditional origin check but omits the validator or the 304/stored-body consequence."
+          }
+        ],
+        "expectedMisconceptions": [
+          "304 contains a complete replacement body.",
+          "Fresh responses always require validation."
+        ],
+        "options": null,
+        "correctOptionId": null,
+        "correctOptionText": null,
+        "explanation": "",
+        "distractorRationales": [],
+        "hints": [
+          "Ask whether the stored response can be reused now without a network check.",
+          "Separate a response's age/freshness lifetime from a validator such as ETag.",
+          "For validation, trace the conditional request and possible 304 response."
+        ],
+        "canonicalPoints": [
+          {
+            "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+            "statement": "Can distinguish freshness from validation."
+          }
+        ],
+        "source": {
+          "origin": "original",
+          "title": "RFC 9111: HTTP Caching",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+          "publisher": "Internet Engineering Task Force (IETF)",
+          "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+          "accessedOn": "2026-10-17T18:30:00.000Z",
+          "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18."
+        }
+      },
+      "automatedAudit": [],
+      "existingReviewStatus": "awaiting_subject_matter_review",
+      "review": {
+        "decision": null,
+        "notes": "",
+        "criteria": {
+          "technical_correctness": null,
+          "expected_answer": null,
+          "explanation": null,
+          "mcq_key": null,
+          "distractors": null,
+          "rubric": null,
+          "point_mapping": null,
+          "cognitive_level_difficulty": null,
+          "source_attribution_license": null
+        }
+      },
+      "engineeringValidation": "Current database revision exported by the official workflow; this does not replace independent review."
+    },
+    {
+      "revisionId": "da582a24-5c33-458b-bd72-1ac7c2fe63fc",
+      "questionSlug": "http-cache-recall-validators",
+      "revision": 2,
+      "contentHash": "f42b99238d0eceaeb8a0b7b4e9ed4eec04738e77bd6698d06be239d585779e9a",
+      "canonicalConceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+      "question": {
+        "type": "rapid_recall",
+        "cognitiveLevel": "recall",
+        "difficulty": 2,
+        "objective": "Contrast a freshness lifetime with a validator and its conditional request field.",
+        "title": "Recall validators",
+        "context": "",
+        "prompt": "Contrast `max-age` with one HTTP validator. Name the conditional request field used with that validator and explain when it is used.",
+        "expectedAnswer": "max-age sets how long a response can be fresh and reused without contacting the origin. An ETag is a validator sent in If-None-Match to ask the origin whether a stale stored response still matches; Last-Modified with If-Modified-Since is another pair.",
+        "rubric": [
+          {
+            "id": "freshness",
+            "label": "Freshness",
+            "weight": 1,
+            "fullCredit": "Explains that a fresh stored response may satisfy an equivalent request without contacting the origin while its freshness lifetime has not expired.",
+            "insufficient": "Treats freshness as an origin check or gives no usable reuse rule.",
+            "partialCredit": "Identifies a reuse period or max-age but omits the no-origin condition or expiry boundary."
+          },
+          {
+            "id": "validation",
+            "label": "Validation",
+            "weight": 1,
+            "fullCredit": "Explains that a stale stored response is conditionally checked with the origin using a validator such as ETag/If-None-Match; a 304 permits reuse of the stored body.",
+            "insufficient": "Claims validation is purely local or confuses it with freshness.",
+            "partialCredit": "Recognizes a conditional origin check but omits the validator or the 304/stored-body consequence."
+          }
+        ],
+        "expectedMisconceptions": [
+          "max-age is a validator.",
+          "ETag sets a freshness duration."
+        ],
+        "options": null,
+        "correctOptionId": null,
+        "correctOptionText": null,
+        "explanation": "",
+        "distractorRationales": [],
+        "hints": [
+          "Ask whether the stored response can be reused now without a network check.",
+          "Separate a response's age/freshness lifetime from a validator such as ETag.",
+          "For validation, trace the conditional request and possible 304 response."
+        ],
+        "canonicalPoints": [
+          {
+            "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+            "statement": "Can distinguish freshness from validation."
+          }
+        ],
+        "source": {
+          "origin": "original",
+          "title": "RFC 9111: HTTP Caching",
+          "url": "https://www.rfc-editor.org/rfc/rfc9111.html",
+          "publisher": "Internet Engineering Task Force (IETF)",
+          "permissionNote": "Original question with reference-only citation; RFC text is not reproduced.",
+          "accessedOn": "2026-10-17T18:30:00.000Z",
+          "notes": "Grounding: sections 4.2 (freshness), 4.3 (validation), 5.2 (Cache-Control directives). Accessed 2026-10-18."
+        }
+      },
+      "automatedAudit": [],
+      "existingReviewStatus": "awaiting_subject_matter_review",
+      "review": {
+        "decision": null,
+        "notes": "",
+        "criteria": {
+          "technical_correctness": null,
+          "expected_answer": null,
+          "explanation": null,
+          "mcq_key": null,
+          "distractors": null,
+          "rubric": null,
+          "point_mapping": null,
+          "cognitive_level_difficulty": null,
+          "source_attribution_license": null
+        }
+      },
+      "engineeringValidation": "Current database revision exported by the official workflow; this does not replace independent review."
+    }
+  ],
+  "scope": "Smallest current single-concept Rapid Fire blueprint: 2 MCQ + 3 rapid recall revisions for HTTP caching. This is an exact-revision review packet, not an approval. The five listed revisions remain ineligible until an authorized subject-matter reviewer completes and imports the review records."
+}

@@ -8,7 +8,7 @@ export function RecallPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawReturnTo=searchParams.get("returnTo") ?? "";
-  const returnTo=rawReturnTo==="/plan/today"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
+  const returnTo=rawReturnTo==="/plan/today"||rawReturnTo==="/review"||rawReturnTo==="/knowledge-check"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const [recall, setRecall] = useState<RecallAttempt | null>(null);
   const [conceptName, setConceptName] = useState("");
   const [answer, setAnswer] = useState("");
@@ -95,7 +95,7 @@ export function RecallPage() {
 
   return (
     <form className="card" onSubmit={onSubmit}>
-      {returnTo ? <p><Link className="back-link" to={returnTo}>Return to roadmap</Link></p> : null}
+      {returnTo ? <p><Link className="back-link" to={returnTo}>{returnTo==="/plan/today"?"Return to today’s plan":returnTo==="/review"?"Return to review and improve":returnTo==="/knowledge-check"?"Return to subject choices":"Return to roadmap"}</Link></p> : null}
       <p className="badge due">{recall.questionData?.title ?? recall.questionType} · ~{recall.questionData?.estimatedMinutes ?? 4} min</p>
       <h1>{conceptName}</h1>
       {recall.questionData?.context ? <><h2>Context</h2><p>{recall.questionData.context}</p></> : null}

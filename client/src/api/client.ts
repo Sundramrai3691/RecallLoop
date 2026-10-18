@@ -8,6 +8,7 @@ import {
   type BaselineQuestion,
   type KnowledgeRole,
   type KnowledgeRoadmapRole,
+  type KnowledgeCheckSubject,
   type PlanTask,
   type RecallAttempt,
   type ReviewState,
@@ -210,8 +211,14 @@ export const api = {
     return request<{ hint: string; maxHintLevel: number }>(`/api/recalls/${id}/hints`, { method: "POST" });
   },
 
+  knowledgeCheckCoverage() { return request<{ subjects: KnowledgeCheckSubject[] }>("/api/assessments/coverage"); },
+
   createAssessment(conceptId: string, mode: "rapid_fire" | "deep_recall" | "mastery_check" | "practice") {
     return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[] }>("/api/assessments", { method: "POST", body: JSON.stringify({ conceptId, mode }) });
+  },
+
+  createCanonicalKnowledgeCheck(canonicalConceptId: string, mode: "rapid_fire" | "deep_recall" | "mastery_check" | "practice") {
+    return request<{ assessment: { id: string; mode: string; status: string; current: number; total: number }; questions: RecallAttempt[] }>("/api/assessments", { method: "POST", body: JSON.stringify({ canonicalConceptId, mode }) });
   },
 
   getAssessment(id: string) {

@@ -94,6 +94,25 @@ export interface KnowledgeRoadmapRole extends KnowledgeRole {
   }>;
 }
 
+export interface KnowledgeCheckSubject {
+  id: string;
+  domainName: string;
+  name: string;
+  description: string;
+  topics: Array<{
+    id: string;
+    name: string;
+    description: string;
+    concepts: Array<{
+      id: string;
+      name: string;
+      description: string;
+      coverage: Record<string, number>;
+      supportedModes: Array<"rapid_fire" | "deep_recall" | "mastery_check" | "practice">;
+    }>;
+  }>;
+}
+
 export interface BaselineQuestion {
   id: string;
   conceptId: string;
@@ -213,7 +232,7 @@ export interface RecallAttempt {
   question: string;
   questionType: QuestionType;
   questionId?: string | null;
-  questionData: null | { assessmentLevel: string; difficulty: number; title: string; context: string; prompt: string; estimatedMinutes: number; options: Array<{ id: string; text: string }> | null; parts?: StructuredQuestionPart[] | null; revealedHints: string[]; hintsRemaining: number };
+  questionData: null | { assessmentLevel: string; difficulty: number; title: string; context: string; prompt: string; estimatedMinutes: number; options: Array<{ id: string; text: string }> | null; parts?: StructuredQuestionPart[] | null; revealedHints: string[]; hintsRemaining: number; explanation?: string; rubric?: Array<{ id?: string; label?: string; weight?: number; fullCredit?: string; partialCredit?: string; insufficient?: string }> };
   answer: string | null;
   structuredAnswers?: Array<{partId:string;answer:string}> | null;
   selectedOptionId: string | null;

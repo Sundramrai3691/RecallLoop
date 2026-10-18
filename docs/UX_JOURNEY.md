@@ -4,7 +4,37 @@
 **Scope:** First visit, study setup, practice and evidence, weakness follow-up, returning home, goals/readiness, daily plan, knowledge map, resources, and settings.  
 **Evidence rule:** This document describes routes and actions observed in the current React client and server call paths. API-owned outcomes remain authoritative. Where the implementation has no state or contract to support a proposed handoff, that limit is called out.
 
-## Intended learner journey
+## Current learner intent journey
+
+Home at `/dashboard` always presents three options: Test my knowledge, Learn something new, and Review and improve. Test is visually primary; Learn and Review remain equally reachable as secondary entry points. A separate continuation strip uses available due review, unfinished session, planned task, evidence-backed weakness, or active goal context. First-time learners see none of the empty metric warnings.
+
+### Test my knowledge
+
+`/dashboard` â†’ `/knowledge-check` â†’ choose a canonical skill subject, topic, and one canonical concept â†’ choose an eligible fixed assessment mode â†’ `/assessments/:id` â†’ question-level report and next action. The authenticated `GET /api/assessments/coverage` response is backed by active canonical catalog nodes and current published, quality-valid, exact-revision approved question revisions. Supported modes match `assessmentBlueprint`: Rapid Fire requires 2 MCQ and 3 rapid recall questions; Deep Recall requires 1 descriptive question; Practice requires 1 scenario; Mastery Check requires 1 each of MCQ, rapid recall, short explanation, scenario, descriptive, and transfer. Modes and coverage counts are shown only when those complete blueprints are available. The service rechecks coverage and creates the assessment in one transaction. Cross-topic combined assessments and whole-subject assessments are not supported by the current engine.
+
+For a supported canonical check, the transaction creates a completed no-material session as the existing recall schema's evidence parent, a user-owned canonical-mapped personal concept, the assessment, learner-scoped question snapshots, and attempts. A failed coverage check creates none of these records. Existing owner checks, deterministic MCQ grading, validated free-response grading, duplicate submission guards, and exact canonical revision links remain in use. Submitted reports show the learner's answer, actual outcome, point feedback and post-submit explanation/rubric reasoning; weak points link to focused resources and subsequent assessment uses the existing recommendation path.
+
+**Current bank limitation:** The PostgreSQL integration fixture finds 24 current HTTP pilot revisions awaiting subject-matter approval and zero approvals. Those concepts do not offer canonical assessment modes until enough approved questions form a complete blueprint. The UI presents this limitation and offers the Learn flow; it does not silently switch to generated questions.
+
+### Learn something new
+
+`/dashboard` â†’ `/study/new` â†’ choose whether the material is new, previously studied but not confidently remembered, or intended for application â†’ enter a topic and required pasted text (optionally save an HTTP(S) link as provenance) â†’ `POST /api/study-sessions` extracts and persists concepts â†’ `/study/:id?intent=…` confirms the session and exposes recall/practice. URL content is not fetched and files are not uploaded. The intent affects session guidance and opens the existing practice disclosure for application; it does not change extraction or grading behavior.
+
+### Review and improve
+
+`/dashboard` â†’ `/review` lists due recalls from scheduler state, weak concepts from submitted learner evidence, unfinished study sessions, and planned/in-progress plan tasks. Due work links to `/recall/:id?returnTo=/review`; weak concepts offer supported practice with a resource fallback; unfinished sessions resume at `/study/:id`; planner tasks remain in `/plan/today`. The page explains due status from the existing schedule and weakness from submitted missed-point evidence. It does not invent dates or treat unassessed concepts as weak. Its empty state links to Test or Learn.
+
+### My Readiness
+
+`/dashboard` ? `/readiness` is directly reachable from Home and primary navigation. Learners can select one of their existing goals; the page reads the existing authenticated `GET /api/goals/:goalId/readiness` projection. When there is no goal, it explains that the established readiness model is goal-scoped and offers goal setup without blocking access to the page. For each goal focus skill it shows canonical mapping state, latest submitted point outcomes (demonstrated, partial, incorrect, unanswered), unassessed points, and evidence recency. It links to study, Review & Improve, and the canonical knowledge map. It makes no confidence, mastery percentage, or aggregate readiness score.
+
+My Readiness explains what available evidence says. Review & Improve is the action queue for due reviews, submitted weaknesses, unfinished sessions, and plan tasks. The two pages use the same persisted learner state for different jobs.
+
+### Returning learner flexibility and utilities
+
+A due recall or another existing task can supply the contextual continuation without hiding the three Home intents. Goals, canonical knowledge maps, resources, today's plan, learner evidence, My Readiness, and settings remain accessible through navigation and utility links. Plan complete, keep-for-later (`in_progress`), and skip (`missed`) states remain distinct. Report/remediation paths preserve safe local return routes.
+
+## Previous flow audit snapshot (superseded by learner-intent flow below)
 
 ```mermaid
 flowchart LR
@@ -23,7 +53,7 @@ flowchart LR
   J --> F
 ```
 
-### State-aware Home
+### Previous State-aware Home snapshot (superseded)
 
 Home chooses one primary action from persisted data, in this order: a first goal for a learner with no saved goal or study history; a due recall; an in-progress study session; the first planned/in-progress task; a weak concept practice action; otherwise a new study session for an active goal. A due recall links to its existing attempt. A weak concept requests a practice assessment; if the approved question bank cannot support it, the learner sees the reason and a link to focused resources. First-visit Home hides the goal/plan/evidence summary cards so the setup action stays clear.
 
@@ -33,8 +63,11 @@ The user’s conceptual stages are not all represented by server state. In parti
 
 | Navigation entry | Route | Learner question it answers |
 |---|---|---|
-| Dashboard / Home | `/dashboard` | What is the most useful available next step? |
-| New study | `/study/new` | What topic and source text should I study? |
+| Dashboard / Home | `/dashboard` | Which learning intention should I choose, and what useful task can continue? |
+| Test my knowledge | `/knowledge-check` | Which canonical topic and assessment can I actually test? |
+| Learn | `/study/new` | What topic and supplied text should I study? |
+| Review and improve | `/review` | What is due, unfinished, or weak based on my evidence? |
+| My Readiness | `/readiness` | What does my submitted evidence show for this goal?s focus skills? |
 | Today’s plan | `/plan/today` | What steps are planned, and what is their status? |
 | Goals | `/goals` | Which outcomes organize my learning? |
 | Knowledge | `/knowledge` | What is in the curated role/skill/topic/concept map? |
@@ -42,9 +75,17 @@ The user’s conceptual stages are not all represented by server state. In parti
 | Learner | `/learner` | What do my submitted personal-concept recalls show? |
 | Settings | `/settings` | How should scheduled reviews be handled? |
 
-`My Learner` and goal-scoped `My Readiness` remain distinct. Learner is a rolling signal over a user’s personal concepts and recall mistakes. Readiness is the latest submitted point-level evidence for canonical skills attached to a particular goal, with mapped/unmapped and no-evidence states. The latter is reached through a goal and does not claim an aggregate skill score.
+`My Learner` and `My Readiness` remain distinct. Learner is a rolling signal over a user?s personal concepts and recall mistakes. Readiness is the latest submitted point-level evidence for canonical skills attached to a selected goal, with mapped/unmapped and no-evidence states. `/readiness` is available directly and selects an existing goal; it does not require a new assessment or completed roadmap. Neither view claims an aggregate readiness score.
 
-## Action inventory
+## Current learner-intent action map
+
+| Intent | Route/API transition | Persisted outcome and next step |
+|---|---|---|
+| Test my knowledge | `/dashboard` → `/knowledge-check` → authenticated `GET /api/assessments/coverage` → choose skill/topic/concept/mode → `POST /api/assessments` with canonical concept ID → `/assessments/:id` | A supported blueprint creates canonical-mapped evidence and immutable question snapshots transactionally. Submission creates actual answer and point evidence; the report links to resources or the existing recommendation. Unsupported coverage disables Start and routes to Learn. Current seeded HTTP pilot: no eligible complete blueprint due to pending SME approval. |
+| Learn something new | `/dashboard` → `/study/new` → choose new/remember/apply → provide text → `POST /api/study-sessions` → `/study/:id?intent=…` → recall or practice | The session and extracted concepts persist before the learner continues. Only pasted text is processed; the source link is optional provenance. Apply opens the existing practice disclosure. |
+| Review and improve | `/dashboard` → `/review` → due recall, submitted weakness, unfinished session, or planned task → existing recall/practice/resource/study/plan route | Due dates come from the current scheduler; weakness comes from submitted evidence. The selected activity retains a safe return path, and completed assessment/recall state is read back from the existing APIs. |
+
+## Previous action inventory snapshot (before the learner-intent entry points)
 
 “Failure” below means the visible recovery path for the action; the exact error text can vary by API error class. Form data remains in the page when a request fails unless the action succeeds.
 
@@ -73,7 +114,7 @@ The user’s conceptual stages are not all represented by server state. In parti
 | Settings: save review mode | Settings API | Persists automatic/confirm/manual review handling | Inline error and retained selection | Returning; no dedicated E2E assertion in this run |
 | Remediation: check what you remember | Grounded remediation API creates verification attempt → `/recall/:id` | Uses the targeted knowledge point to create follow-up evidence | Insufficient source/generation state is explained with fallback resources | Weakness recovery; browser E2E checks source attribution and improvement |
 
-## Audit findings and changes
+## Historical audit findings and changes (prior milestone)
 
 The following ten confusing or unreliable actions were observed before this pass. Severity describes learner impact, not code risk.
 
@@ -90,7 +131,7 @@ The following ten confusing or unreliable actions were observed before this pass
 | 9 | Medium — a plan-started assessment or recall exited to Home | Assessment/recall pages discarded the plan’s context | Added allow-listed `/plan/today` return context through recall/result and assessment pages | Browser E2E starts the scheduled recall and returns to plan |
 | 10 | Medium — result recommendation button always said “Practice now” | The actual destination could be resources, remediation, mastery check, or another recall mode | Button text now names the actual next action; Learner and My Readiness page roles are documented separately | Existing assessment and remediation E2E; text/action inventory |
 
-## Four end-to-end learner paths
+## Previously verified browser paths (previous milestone)
 
 | Journey | Browser steps | API/persistence evidence | Automated coverage |
 |---|---|---|---|

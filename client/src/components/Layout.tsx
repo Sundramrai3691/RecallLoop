@@ -6,7 +6,7 @@ import { ThemeToggle } from "./theme/ThemeToggle";
 const groups = [
   { label: "Workspace", items: [
     { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", Icon: LayoutDashboard, end: true },
-    { to: "/study/new", label: "New study", mobileLabel: "Study", Icon: BookOpen },
+    { to: "/study/new", label: "Learn", mobileLabel: "Learn", Icon: BookOpen },
     { to: "/plan/today", label: "Today's plan", mobileLabel: "Plan", Icon: CalendarDays },
     { to: "/goals", label: "Goals", mobileLabel: "Goals", Icon: Target },
   ] },
@@ -15,6 +15,7 @@ const groups = [
     { to: "/resources", label: "Resources", mobileLabel: "Read", Icon: Compass },
   ] },
   { label: "You", items: [
+    { to: "/readiness", label: "My Readiness", mobileLabel: "Ready", Icon: Target },
     { to: "/learner", label: "Learner", mobileLabel: "You", Icon: BrainCircuit },
     { to: "/settings", label: "Settings", mobileLabel: "Prefs", Icon: Settings },
   ] },

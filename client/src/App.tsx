@@ -23,6 +23,8 @@ import { GroundedRemediationPage } from "./pages/GroundedRemediationPage";
 import { LandingPage } from "./pages/LandingPage";
 import { OnboardingPage } from "./pages/OnboardingPage";
 import { ReadinessPage } from "./pages/ReadinessPage";
+import { KnowledgeCheckPage } from "./pages/KnowledgeCheckPage";
+import { ReviewImprovePage } from "./pages/ReviewImprovePage";
 
 export function App() {
   return (
@@ -32,6 +34,9 @@ export function App() {
       <Route path="/" element={<LandingPage />} />
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/knowledge-check" element={<KnowledgeCheckPage />} />
+        <Route path="/review" element={<ReviewImprovePage />} />
+        <Route path="/readiness" element={<ReadinessPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/study/new" element={<NewStudyPage />} />
         <Route path="/study/:id" element={<StudySessionPage />} />

@@ -9,7 +9,8 @@ export function StudySessionPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawReturnTo=searchParams.get("returnTo") ?? "";
-  const returnTo=rawReturnTo==="/plan/today"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
+  const returnTo=rawReturnTo==="/plan/today"||rawReturnTo==="/review"||rawReturnTo==="/knowledge-check"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
+  const learningIntent=searchParams.get("intent")==="apply"?"apply":searchParams.get("intent")==="remember"?"remember":"new";
   const [session, setSession] = useState<StudySession | null>(null);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [pendingRecalls, setPendingRecalls] = useState<RecallAttempt[]>([]);
@@ -50,12 +51,13 @@ export function StudySessionPage() {
   return (
     <div>
       <div className="hero">
-        {returnTo ? <Link className="back-link" to={returnTo}>{returnTo==="/plan/today"?"Return to today’s plan":"Return to roadmap"}</Link> : null}
+        {returnTo ? <Link className="back-link" to={returnTo}>{returnTo==="/plan/today"?"Return to today’s plan":returnTo==="/review"?"Return to review and improve":returnTo==="/knowledge-check"?"Return to knowledge check":"Return to roadmap"}</Link> : null}
         <h1>{studySessionDisplayTitle(session.title, concepts)}</h1>
         <p className="muted">
           Status: {session.status.replace("_", " ")}. {concepts.length} concept
           {concepts.length === 1 ? "" : "s"} extracted.
         </p>
+        <p className="muted">{learningIntent === "apply" ? "You chose to practise this material. Choose a supported practice mode for an extracted concept, or finish the review to start recall." : learningIntent === "remember" ? "You chose to strengthen your recall. Review the extracted concepts, then start a recall question." : "Review the extracted concepts, then start recall when you’re ready."}</p>
         {session.sourceUrl ? <p><a href={session.sourceUrl} target="_blank" rel="noreferrer">Open saved source link</a></p> : null}
       </div>
       {error ? <p className="error">{error}</p> : null}
@@ -70,8 +72,8 @@ export function StudySessionPage() {
                 <li key={point}>{point}</li>
               ))}
             </ul>
-            <details className="practice-options"><summary>Choose a practice mode for this concept</summary><div className="actions">
-              {(["rapid_fire","deep_recall","mastery_check"] as const).map((mode) => <button className="btn" key={mode} type="button" onClick={async () => { try { const run = await api.createAssessment(concept.id,mode); navigate(`/assessments/${run.assessment.id}${returnTo==="/plan/today"?`?returnTo=${encodeURIComponent(returnTo)}`:""}`); } catch (err) { setError(err instanceof ApiError ? err.message : "Could not start assessment"); } }}>{mode === "rapid_fire" ? "Start Rapid Fire" : mode === "deep_recall" ? "Start deep recall" : "Start mastery check"}</button>)}
+            <details className="practice-options" open={learningIntent === "apply"}><summary>Choose a practice mode for this concept</summary><div className="actions">
+              {(["rapid_fire","deep_recall","mastery_check"] as const).map((mode) => <button className="btn" key={mode} type="button" onClick={async () => { try { const run = await api.createAssessment(concept.id,mode); navigate(`/assessments/${run.assessment.id}${returnTo?`?returnTo=${encodeURIComponent(returnTo)}`:""}`); } catch (err) { setError(err instanceof ApiError ? err.message : "Could not start assessment"); } }}>{mode === "rapid_fire" ? "Start Rapid Fire" : mode === "deep_recall" ? "Start deep recall" : "Start mastery check"}</button>)}
             </div></details>
           </article>
         ))}
@@ -79,7 +81,7 @@ export function StudySessionPage() {
       {session.status !== "completed" ? (
         <div className="actions">
           <button className="btn btn-primary" disabled={busy} onClick={complete} type="button">
-            {busy ? "Preparing recall…" : "Finish review and start recall"}
+            {busy ? "Preparing recall…" : learningIntent === "remember" ? "Start recall practice" : "Finish review and start recall"}
           </button>
         </div>
       ) : pendingRecalls[0] ? (

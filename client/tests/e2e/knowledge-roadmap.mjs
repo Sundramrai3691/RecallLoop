@@ -6,7 +6,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Pool } from "pg";
-import { Builder, By, until } from "selenium-webdriver";
+import { Builder, By, until, Select } from "selenium-webdriver";
 import firefox from "selenium-webdriver/firefox.js";
 import { start as startGeckodriver } from "geckodriver";
 import { chromium } from "playwright";
@@ -81,6 +81,11 @@ async function waitForDriver() {
   throw new Error("Geckodriver did not become ready within 10 seconds");
 }
 
+async function chooseSelectValue(driverInstance, id, value) {
+  const select = await driverInstance.findElement(By.id(id));
+  await new Select(select).selectByValue(value);
+}
+
 try {
   const childEnv = {
     ...process.env,
@@ -130,6 +135,10 @@ try {
   await driver.wait(async () => (await driver.executeScript("return document.documentElement.dataset.theme")) === initialTheme, 3000);
   await driver.get(`${clientUrl}/dashboard`);
   await driver.wait(until.elementLocated(By.css(".sidebar")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//h1[contains(.,'What would you like to do?') or contains(.,'Choose your next learning step')]")), 10000);
+  for (const label of ["Test my knowledge", "Learn something new", "Review and improve"]) {
+    assert.ok(await driver.findElement(By.xpath(`//h2[normalize-space()='${label}']`)), `Home should keep the ${label} entry point visible`);
+  }
   for (const viewport of [{ width: 1440, height: 900 }, { width: 1024, height: 768 }, { width: 390, height: 844 }]) {
     await driver.manage().window().setRect({ width: viewport.width, height: viewport.height + 85, x: 0, y: 0 });
     await driver.wait(async () => (await driver.executeScript("return window.innerWidth")) > 0, 3000);
@@ -156,16 +165,17 @@ try {
     for (const viewport of [{ width: 1440, height: 900 }, { width: 768, height: 1024 }, { width: 390, height: 844 }]) {
       await page.setViewportSize(viewport);
       await page.goto(`${clientUrl}/dashboard`, { waitUntil: "networkidle" });
-      await page.getByRole("heading", { name: "Start with a clear direction" }).waitFor();
+      await page.getByRole("heading", { name: /What would you like to do\?|Choose your next learning step/ }).waitFor();
       const metrics = await page.evaluate(() => ({ width: innerWidth, height: innerHeight, scrollWidth: document.documentElement.scrollWidth }));
       assert.deepEqual([metrics.width, metrics.height], [viewport.width, viewport.height], "Playwright must render the requested CSS viewport exactly");
       assert.ok(metrics.scrollWidth <= viewport.width, `Home should not overflow at ${viewport.width}x${viewport.height}; scroll width was ${metrics.scrollWidth}`);
       if (viewport.width === 1440 || viewport.width === 390) await page.screenshot({ path: path.join(screenshotDirectory, `home-${viewport.width}.png`), fullPage: true });
       console.log(`Playwright viewport check: exact ${metrics.width}x${metrics.height}, no horizontal overflow`);
     }
+    for (const label of ["Test my knowledge", "Learn something new", "Review and improve"]) await page.getByRole("heading", { name: label, level: 2 }).waitFor();
     await page.setViewportSize({ width: 390, height: 844 });
     await page.goto(`${clientUrl}/study/new`, { waitUntil: "networkidle" });
-    await page.getByRole("heading", { name: "What are you studying?" }).waitFor();
+    await page.getByRole("heading", { name: "What would you like to learn?" }).waitFor();
     await page.screenshot({ path: path.join(screenshotDirectory, "study-setup-390.png"), fullPage: true });
     await page.goto(`${clientUrl}/plan/today`, { waitUntil: "networkidle" });
     await page.getByRole("heading", { name: "A learning journey for today" }).waitFor();
@@ -174,6 +184,130 @@ try {
     await page.screenshot({ path: path.join(screenshotDirectory, "plan-empty-390.png"), fullPage: true });
     await context.close();
   } finally { await browser.close(); }
+
+  // Journey A begins with the live canonical catalog. Coverage-gated topics remain disabled;
+  // if a fully supported blueprint exists, complete it through the existing assessment engine.
+  await driver.get(`${clientUrl}/knowledge-check`);
+  await driver.wait(until.elementLocated(By.id("knowledge-subject")), 10000);
+  const coverageSnapshot = await driver.executeAsyncScript(async (done) => {
+    const token = localStorage.getItem("recallloop_token");
+    const response = await fetch("/api/assessments/coverage", { headers: { Authorization: `Bearer ${token}` } });
+    done({ status: response.status, body: await response.json() });
+  });
+  assert.equal(coverageSnapshot.status, 200, "Knowledge check must load database-backed coverage");
+  assert.ok(coverageSnapshot.body.subjects.length > 0, "The seeded canonical subject taxonomy should be available");
+  const allCatalogConcepts = coverageSnapshot.body.subjects.flatMap((subject) => subject.topics.flatMap((topic) => topic.concepts.map((concept) => ({ subject, topic, concept }))));
+  const unsupportedConcept = allCatalogConcepts.find(({ concept }) => concept.supportedModes.length === 0);
+  if (unsupportedConcept) {
+    await chooseSelectValue(driver, "knowledge-subject", unsupportedConcept.subject.id);
+    await chooseSelectValue(driver, "knowledge-topic", unsupportedConcept.topic.id);
+    const conceptChoices = await driver.findElements(By.css("input[name='concept']"));
+    let selectedUnsupported = false;
+    for (const choice of conceptChoices) {
+      const label = await choice.findElement(By.xpath("ancestor::label"));
+      if ((await label.getText()).includes(unsupportedConcept.concept.name)) { await choice.click(); selectedUnsupported = true; break; }
+    }
+    assert.equal(selectedUnsupported, true, "The insufficient-coverage concept should be selectable for inspection");
+    await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'This topic is not testable yet.')]")), 5000);
+    assert.equal(await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).isEnabled(), false, "The application must not promise unsupported coverage");
+    assert.ok(await driver.findElement(By.linkText("Learn this topic")), "Insufficient coverage should link to study");
+    const rejectedKnowledgeCheck = await driver.executeAsyncScript(async (conceptId, done) => {
+      const token = localStorage.getItem("recallloop_token");
+      const response = await fetch("/api/assessments", { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ canonicalConceptId: conceptId, mode: "practice" }) });
+      done({ status: response.status, body: await response.json() });
+    }, unsupportedConcept.concept.id);
+    assert.equal(rejectedKnowledgeCheck.status, 409, "The server must reject a check without a complete approved blueprint");
+    assert.equal(rejectedKnowledgeCheck.body.code, "QUESTION_BANK_COVERAGE_INSUFFICIENT");
+    const userIdForCoverage = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0].id;
+    const writesAfterCoverageRejection = await pool.query(`SELECT (SELECT count(*)::int FROM study_sessions WHERE user_id=$1 AND title LIKE 'Knowledge check:%') AS sessions,(SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1) AS assessments`, [userIdForCoverage]);
+    assert.deepEqual(writesAfterCoverageRejection.rows[0], { sessions: 0, assessments: 0 }, "A blocked knowledge check must not leave a partial learner record");
+    console.log("PASS knowledge-check coverage gate: unsupported topic stays disabled and creates no learner records");
+  }
+  const supportedConcept = allCatalogConcepts.find(({ concept }) => concept.supportedModes.length > 0);
+  if (supportedConcept) {
+    await chooseSelectValue(driver, "knowledge-subject", supportedConcept.subject.id);
+    await chooseSelectValue(driver, "knowledge-topic", supportedConcept.topic.id);
+    const conceptChoices = await driver.findElements(By.css("input[name='concept']"));
+    for (const choice of conceptChoices) {
+      if ((await choice.findElement(By.xpath("ancestor::label")).getText()).includes(supportedConcept.concept.name)) { await choice.click(); break; }
+    }
+    const mode = supportedConcept.concept.supportedModes[0];
+    const modeChoice = await driver.findElement(By.css(`input[name='assessment-mode'][value='${mode}']`)).catch(async () => {
+      const inputs = await driver.findElements(By.css("input[name='assessment-mode']")); return inputs[0];
+    });
+    await modeChoice.click();
+    await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).click();
+    await driver.wait(until.urlContains("/assessments/"), 10000);
+    const assessmentId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const assessmentInitial = await driver.executeAsyncScript(async (id, done) => {
+      const token = localStorage.getItem("recallloop_token");
+      const response = await fetch(`/api/assessments/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      done({ status: response.status, body: await response.json() });
+    }, assessmentId);
+    assert.equal(assessmentInitial.status, 200);
+    assert.ok(assessmentInitial.body.questions.every((question) => question.canonicalQuestionRevisionId), "Knowledge checks must preserve immutable canonical question revision links");
+    const rapidIntro = await driver.findElements(By.xpath("//button[contains(.,'Start Rapid Fire')]"));
+    if (rapidIntro.length) await rapidIntro[0].click();
+    for (let index = 0; index < assessmentInitial.body.questions.length; index += 1) {
+      const currentQuestion = assessmentInitial.body.questions[index];
+      await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
+      const radios = await driver.findElements(By.css(".question-card input[type='radio']"));
+      if (radios.length) await radios[0].click();
+      else {
+        const textareas = await driver.findElements(By.css(".question-card textarea"));
+        for (const textarea of textareas) await textarea.sendKeys("I would explain the idea and connect it to the evidence in the question.");
+      }
+      const priorLabel = await driver.findElement(By.css(".assessment-progress .eyebrow")).getText().catch(() => "");
+      await driver.findElement(By.css(".question-card button[type='submit']")).click();
+      if (index < assessmentInitial.body.questions.length - 1) await driver.wait(async () => {
+        const report = await driver.findElements(By.css(".assessment-question-feedback"));
+        if (report.length) return true;
+        const label = await driver.findElement(By.css(".assessment-progress .eyebrow")).getText().catch(() => "");
+        return label !== priorLabel;
+      }, 15000);
+    }
+    await driver.wait(until.elementLocated(By.css(".assessment-question-feedback")), 20000);
+    const assessmentCompleted = await driver.executeAsyncScript(async (id, done) => {
+      const token = localStorage.getItem("recallloop_token");
+      const response = await fetch(`/api/assessments/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+      done({ status: response.status, body: await response.json() });
+    }, assessmentId);
+    assert.equal(assessmentCompleted.status, 200);
+    assert.equal(assessmentCompleted.body.result.total, assessmentInitial.body.questions.length, "The report should persist question-level evidence");
+    assert.ok(await driver.findElement(By.css(".assessment-question-feedback .assessment-feedback-row")), "The report should show individual answers and feedback");
+    console.log("PASS canonical knowledge-check journey: approved topic through persisted assessment report");
+  }
+  else console.log("LIMITATION knowledge-check completion: this database has no fully approved canonical assessment blueprint; the insufficient-coverage gate was tested instead");
+
+  // Journey B: a learner can study supplied text directly from Home without first taking a test.
+  await driver.get(`${clientUrl}/dashboard`);
+  const homeLearnLink = await driver.wait(until.elementLocated(By.css("a[href='/study/new']")), 10000);
+  await homeLearnLink.click();
+  await driver.wait(until.elementLocated(By.id("study-topic")), 10000);
+  await driver.findElement(By.id("study-topic")).sendKeys("E2E learning intent topic");
+  await driver.findElement(By.css("input[name='learningIntent'][value='remember']")).click();
+  await driver.findElement(By.id("material")).sendKeys("A cache reuses a response while it is fresh. Validation asks the origin whether a stale response has changed.");
+  await driver.findElement(By.css("form.study-form button[type='submit']")).click();
+  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+\?intent=remember/i), 15000);
+  const guidedStudyId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+  const guidedStudy = await driver.executeAsyncScript(async (id, done) => {
+    const token = localStorage.getItem("recallloop_token");
+    const response = await fetch(`/api/study-sessions/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    done({ status: response.status, body: await response.json() });
+  }, guidedStudyId);
+  assert.equal(guidedStudy.status, 200, "The guided learn flow should create a persisted session");
+  assert.ok(guidedStudy.body.concepts.length > 0, "The provided study text should produce persisted concepts for follow-up");
+  assert.match(await driver.findElement(By.css(".hero")).getText(), /strengthen your recall/i);
+  await driver.findElement(By.xpath("//button[contains(.,'Start recall practice')]")).click();
+  await driver.wait(until.urlMatches(/\/recall\/[0-9a-f-]+$/i), 10000);
+  const guidedRecallId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+  const guidedRecall = await driver.executeAsyncScript(async (id, done) => {
+    const token = localStorage.getItem("recallloop_token");
+    const response = await fetch(`/api/recalls/${id}`, { headers: { Authorization: `Bearer ${token}` } });
+    done({ status: response.status, body: await response.json() });
+  }, guidedRecallId);
+  assert.equal(guidedRecall.status, 200);
+  assert.equal(guidedRecall.body.recall.studySessionId, guidedStudyId, "The learn-to-recall handoff should use an attempt from its persisted study session");
 
   await driver.get(`${clientUrl}/onboarding`);
   await driver.wait(until.elementLocated(By.id("start-topic")), 10000);
@@ -187,7 +321,7 @@ try {
   assert.match(await driver.findElement(By.css(".study-next-steps")).getText(), /Review concepts[\s\S]*Recall/);
   await driver.findElement(By.id("material")).sendKeys("A cache reuses a response while it is fresh. Validation asks the origin whether a stale response has changed.");
   await driver.findElement(By.css("form.study-form button[type='submit']")).click();
-  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+$/i), 15000);
+  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+(?:\?.*)?$/i), 15000);
   const firstJourneySessionId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
   const firstJourneySession = await fetch(`${apiUrl}/api/study-sessions/${firstJourneySessionId}`, {
     headers: { Authorization: `Bearer ${await driver.executeScript("return localStorage.getItem('recallloop_token')")}` },
@@ -290,16 +424,21 @@ try {
   const canonicalPointCountBefore = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountBefore.rows[0].count, 1);
 
+  const learnerId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0].id;
+  const writesBeforeCanonicalGate = await pool.query(
+    `SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,
+            (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
+    [learnerId],
+  );
   const canonicalPractice = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
   assert.equal(canonicalPractice.status, 409);
   assert.equal(canonicalPractice.body.code, "QUESTION_BANK_COVERAGE_INSUFFICIENT");
-  const learnerId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0].id;
   const canonicalLearnerWrites = await pool.query(
     `SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,
             (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
     [learnerId],
   );
-  assert.deepEqual(canonicalLearnerWrites.rows[0], { sessions: 0, attempts: 0 }, "The unreviewed pilot must not create learner assessments or evidence");
+  assert.deepEqual(canonicalLearnerWrites.rows[0], writesBeforeCanonicalGate.rows[0], "The unreviewed pilot must not create learner assessments or evidence");
   const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
   await driver.get(`${clientUrl}/resources?conceptId=${mappedPersonalConcept.id}`);
@@ -327,8 +466,8 @@ try {
   await driver.findElement(By.id("source-url")).sendKeys(studySourceUrl);
   await driver.findElement(By.id("material")).sendKeys(studyMaterial);
   await driver.findElement(By.css("button[type='submit']")).click();
-  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+$/i), 15000);
-  const createdSessionId = (await driver.getCurrentUrl()).split("/study/")[1];
+  await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+(?:\?.*)?$/i), 15000);
+  const createdSessionId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
   const createdStudy = await learnerApi("GET", `/api/study-sessions/${createdSessionId}`);
   assert.equal(createdStudy.status, 200);
   assert.equal(createdStudy.body.session.title, studyTitle);
@@ -387,8 +526,44 @@ try {
   assert.equal(mappedReadiness.status, "mapped");
   assert.equal(mappedReadiness.assessedPoints, 0, "An unreviewed canonical pilot must not create readiness evidence");
   assert.equal(mappedReadiness.incorrect, 0);
+  assert.ok(mappedReadiness.totalPoints > 0, "The selected canonical skill should have mapped points to display as unassessed");
   const unmappedReadiness = readiness.body.skills.find((skill) => skill.name === "Uncatalogued systems topic");
   assert.equal(unmappedReadiness.status, "unmapped");
+  await driver.get(`${clientUrl}/dashboard`);
+  const readinessNavLink = await driver.wait(until.elementLocated(By.css(".sidebar a[href='/readiness']")), 10000);
+  assert.equal(await readinessNavLink.isDisplayed(), true, "My Readiness should be present in primary navigation");
+  await readinessNavLink.click();
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
+  await driver.wait(until.elementLocated(By.id("readiness-goal")), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Counts show the latest submitted outcome for each point.')]") ), 10000);
+  await driver.wait(until.elementLocated(By.xpath(`//*[contains(.,'No submitted recall evidence yet. All ${mappedReadiness.totalPoints} mapped points remain unassessed.')]`) ), 10000);
+  assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/review']")), "Readiness should offer a distinct Review & Improve action");
+  assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/knowledge']")), "Readiness should link to the canonical knowledge map");
+
+  // Add one submitted, point-mapped fixture to this disposable learner. Readiness must
+  // switch from unassessed to the actual latest persisted outcome and timestamp.
+  const readinessAttempt = (await pool.query(
+    `INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,answer,confidence,submitted_at)
+     VALUES($1,$2,$3,'descriptive','Readiness E2E evidence','Freshness is reuse while fresh; validation checks a stale response.',8,now()) RETURNING id`,
+    [learnerId, mappedPersonalConcept.id, canonicalSessionId],
+  )).rows[0];
+  const readinessEvaluation = (await pool.query(
+    `INSERT INTO recall_evaluations(recall_attempt_id,overall_coverage,feedback,suggested_recall_type,evaluator_version)
+     VALUES($1,0.5,'Disposable readiness evidence','short_explanation','e2e-fixture') RETURNING id`,
+    [readinessAttempt.id],
+  )).rows[0];
+  await pool.query(
+    `INSERT INTO recall_knowledge_point_results(evaluation_id,point,status,evidence,feedback,canonical_knowledge_point_id)
+     VALUES($1,$2,'partial','Freshness is reuse while fresh; validation checks a stale response.','Partial fixture evidence',$3)`,
+    [readinessEvaluation.id, concept.knowledgePoints[0].statement, concept.knowledgePoints[0].id],
+  );
+  await driver.navigate().refresh();
+  await driver.wait(until.elementLocated(By.xpath("//dt[normalize-space()='Partial']/following-sibling::dd[normalize-space()='1']")), 10000);
+  await driver.wait(until.elementLocated(By.xpath(`//dt[normalize-space()='No submitted evidence']/following-sibling::dd[normalize-space()='${mappedReadiness.totalPoints - 1}']`)), 10000);
+  await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Latest submitted evidence')]") ), 10000);
+  await driver.get(`${clientUrl}/review`);
+  await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Choose what to strengthen']")), 10000);
+  assert.match(await driver.findElement(By.css(".page-header")).getText(), /due reviews follow your saved schedule/i, "Review & Improve should explain actionable due work, distinct from the evidence summary");
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}`);
   await driver.wait(until.elementLocated(By.id("canonical-skill")), 10000);
   assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='Start baseline assessment']")).isDisplayed(), true);
@@ -409,7 +584,14 @@ try {
   );
   await driver.get(`${clientUrl}/dashboard`);
   await driver.wait(until.elementLocated(By.xpath(`//a[@href='/recall/${pendingRecallAttemptId}']`)), 10000);
-  assert.match(await driver.findElement(By.css(".next-action")).getText(), /due for review/i, "A returning learner with due work should see the recall as the primary home action");
+  assert.match(await driver.findElement(By.css(".home-continuation")).getText(), /due according to your saved review schedule/i, "A returning learner with due work should see the recall as the useful continuation");
+  for (const label of ["Test my knowledge", "Learn something new", "Review and improve"]) assert.ok(await driver.findElement(By.xpath(`//h2[normalize-space()='${label}']`)), `Returning learners should retain ${label}`);
+  await driver.get(`${clientUrl}/review`);
+  await driver.wait(until.elementLocated(By.xpath("//h2[normalize-space()='Due now']")), 10000);
+  const reviewStartLink = await driver.findElement(By.xpath(`//a[contains(@href,'/recall/${pendingRecallAttemptId}?returnTo=')]`));
+  await reviewStartLink.click();
+  await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}?returnTo=`), 10000);
+  assert.ok((await driver.getCurrentUrl()).includes("%2Freview"), "Review and Improve should preserve its return path into the due recall");
   const generatedPlan = await learnerApi("POST", `/api/goals/${dailyPlanGoalId}/plan/generate`, { availableMinutes: 120 });
   assert.equal(generatedPlan.status, 201);
   const scheduledRecall = generatedPlan.body.tasks.find((task) => task.recallAttemptId === pendingRecallAttemptId);
@@ -430,7 +612,11 @@ try {
   await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}?returnTo=`), 10000);
   const answerField = await driver.findElements(By.id("answer"));
   if (answerField.length) await answerField[0].sendKeys("Freshness tells a cache how long a response may be reused; validation checks with the origin whether stale content changed.");
-  else await driver.findElement(By.css("label.option input[type='radio']")).click();
+  else {
+    const partFields = await driver.findElements(By.css(".structured-answer-parts textarea"));
+    if (partFields.length) for (const field of partFields) await field.sendKeys("Freshness tells a cache how long a response may be reused; validation checks with the origin whether stale content changed.");
+    else await driver.findElement(By.css("label.option input[type='radio']")).click();
+  }
   await driver.findElement(By.css("form button[type='submit']")).click();
   await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}/result?returnTo=`), 15000);
   await driver.findElement(By.xpath("//a[normalize-space()='Done for now']")).click();
@@ -736,7 +922,7 @@ try {
   assert.equal(verifiedRemediation.body.remediation.status, "verified");
   assert.equal(verifiedRemediation.body.remediation.improved, true, "The targeted browser answer should demonstrate improved evidence");
 
-  console.log("PASS browser E2E: first-visit goal-to-study, weak-concept practice and grounded verification, due-recall Home action, plan return/complete/defer/skip/overdue, baseline/readiness, canonical evidence and resource handoffs, Rapid Fire report");
+  console.log("PASS browser E2E: three Home intents, coverage-safe knowledge-check entry, notes-first learning, goal/onboarding and study, weak-concept remediation/verification, Review and Improve due-review handoff, flexible returning Home, plan status/scheduling, baseline/readiness, canonical evidence, resources, and Rapid Fire feedback");
 } catch (error) {
   if (driver) {
     const currentUrl = await driver.getCurrentUrl().catch(() => "unavailable");

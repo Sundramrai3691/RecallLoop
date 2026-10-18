@@ -1,79 +1,60 @@
 import { useEffect, useState } from "react";
-import { ArrowRight, BookOpen, RotateCcw, Sparkles, Target } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
+import { ArrowRight, BookOpen, BrainCircuit, CalendarClock, RotateCcw, Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
 import { api } from "../api/client";
-import { EmptyState, PageHeader, ProgressBar } from "../components/Ui";
+import { EmptyState, PageHeader } from "../components/Ui";
 import { WhyThis } from "../components/WhyThis";
 import { useDashboard } from "../hooks/useDashboard";
 import type { Goal, LearnerSummary, PlanTask } from "../types";
 import { readableTitle } from "../utils/presentation";
 
 export function DashboardPage() {
-  const navigate = useNavigate();
   const { data, error } = useDashboard();
   const [goal, setGoal] = useState<Goal | null>(null);
-  const [hasGoals, setHasGoals] = useState<boolean | null>(null);
-  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
   const [tasks, setTasks] = useState<PlanTask[]>([]);
   const [learner, setLearner] = useState<LearnerSummary | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
-  const [startingPractice, setStartingPractice] = useState(false);
+  const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
+
   useEffect(() => {
     void Promise.allSettled([api.listGoals(), api.todayPlan(), api.learnerSummary()]).then(([goals, plan, summary]) => {
-      if (goals.status === "fulfilled") { setHasGoals(goals.value.goals.length > 0); setGoal(goals.value.goals.find((item) => item.status === "active") ?? null); }
+      if (goals.status === "fulfilled") setGoal(goals.value.goals.find((item) => item.status === "active") ?? null);
       if (plan.status === "fulfilled") setTasks(plan.value.tasks);
       if (summary.status === "fulfilled") setLearner(summary.value);
       setWorkspaceLoaded(true);
     });
   }, []);
 
-  if (error) return <div className="grid"><PageHeader eyebrow="Your learning workspace" title="Home"/><section className="error"><strong>We couldn’t load your learning data.</strong><p>{error.status === 401 ? "Sign in to see your learning workspace." : "Check that the app server and database are available, then refresh."}</p><div className="actions">{error.status === 401?<Link className="btn btn-primary" to="/login">Sign in</Link>:<button className="btn btn-primary" type="button" onClick={()=>window.location.reload()}>Try again</button>}</div></section></div>;
-  if (!data || !workspaceLoaded) return <div className="grid"><PageHeader eyebrow="Your learning workspace" title="Home"/><div className="card grid"><div className="skeleton"/><div className="skeleton"/><div className="skeleton"/></div></div>;
+  if (error) return <div className="grid"><PageHeader eyebrow="Your learning workspace" title="Home"/><section className="error"><strong>We couldn’t load your learning data.</strong><p>{error.status === 401 ? "Sign in to see your learning workspace." : "Check that the app server and database are available, then refresh."}</p><div className="actions">{error.status === 401 ? <Link className="btn btn-primary" to="/login">Sign in</Link> : <button className="btn btn-primary" type="button" onClick={() => window.location.reload()}>Try again</button>}</div></section></div>;
+  if (!data || !workspaceLoaded) return <div className="grid"><PageHeader eyebrow="Your learning workspace" title="Home"/><div className="card grid"><div className="skeleton"/><div className="skeleton"/></div></div>;
 
-  const recentSession = data.recentlyStudied.find((session) => session.status === "in_progress");
-  const weakConcept = learner?.weakConcepts[0];
-  const firstVisit = hasGoals === false && data.recentlyStudied.length === 0 && data.submittedRecallCount === 0;
+  const due = data.todayDue[0];
+  const unfinishedSession = data.recentlyStudied.find((session) => session.status === "in_progress");
   const pendingTask = tasks.find((task) => task.status === "planned" || task.status === "in_progress");
-  const action = firstVisit ? "goal" : data.todayDue[0] ? "recall" : recentSession ? "resume" : pendingTask ? "plan" : weakConcept ? "practice" : goal ? "study" : "goal";
-  async function practiceWeakConcept() {
-    if (!weakConcept) return;
-    setStartingPractice(true); setActionError(null);
-    try { const run = await api.createAssessment(weakConcept.conceptId, "practice"); navigate(`/assessments/${run.assessment.id}`); }
-    catch { setActionError("This concept doesn’t have an approved practice question yet. Open its learning resources or choose another study topic."); }
-    finally { setStartingPractice(false); }
-  }
-  const primary = action === "goal" ? {
-    eyebrow: "A good place to begin", title: "Choose a learning goal", detail: hasGoals ? "Choose a new direction to organize your next stretch of learning." : "Tell RecallLoop what you’re working toward. Then add a topic and start your first study session.",
-    button: <Link className="btn btn-primary" to="/goals/new">{hasGoals === false ? "Create your first goal" : "Choose or create a goal"} <ArrowRight size={16}/></Link>, icon: <Target size={30}/>,
-  } : action === "recall" ? {
-    eyebrow: "Due for review", title: readableTitle(data.todayDue[0].conceptName, "A recent study topic"), detail: "A recall is ready. Answer from memory to strengthen what you learned.",
-    button: <Link className="btn btn-primary" to={`/recall/${data.todayDue[0].recallId}`}>Start this recall <ArrowRight size={16}/></Link>, icon: <RotateCcw size={30}/>,
-  } : action === "resume" ? {
-    eyebrow: "Pick up where you left off", title: readableTitle(recentSession?.title, "Your study session"), detail: "This study session is still in progress. Continue reviewing its concepts and start recall when you’re ready.",
-    button: <Link className="btn btn-primary" to={`/study/${recentSession?.id}`}>Resume study <ArrowRight size={16}/></Link>, icon: <BookOpen size={30}/>,
-  } : action === "plan" ? {
-    eyebrow: "Continue today’s plan", title: readableTitle(pendingTask?.title, "Your next planned step"), detail: "Pick up the next step in your learning plan. You can keep it for later or skip it if today has changed.",
-    button: <Link className="btn btn-primary" to="/plan/today">Open today’s plan <ArrowRight size={16}/></Link>, icon: <Target size={30}/>,
-  } : action === "practice" ? {
-    eyebrow: "Focused practice", title: readableTitle(weakConcept?.conceptName, "A concept to revisit"), detail: "Your recall evidence shows this concept could use another pass. Try a focused practice round.",
-    button: <button className="btn btn-primary" type="button" disabled={startingPractice} onClick={()=>void practiceWeakConcept()}>{startingPractice ? "Preparing practice…" : "Practice this concept"} <ArrowRight size={16}/></button>, icon: <Sparkles size={30}/>,
-  } : {
-    eyebrow: "Keep learning", title: readableTitle(goal?.title, "Your learning goal"), detail: "Your next recall isn’t due yet. Study a topic now or check today’s plan for your next step.",
-    button: <Link className="btn btn-primary" to="/study/new">Start a study session <ArrowRight size={16}/></Link>, icon: <BookOpen size={30}/>,
-  };
-  const firstVisitCopy = firstVisit;
-  return <div>
-    <PageHeader eyebrow="Your learning workspace" title={firstVisitCopy ? "Start with a clear direction" : "What should you work on now?"} description={firstVisitCopy ? "Set one learning goal, then RecallLoop can help you choose a useful next step." : "Your next step is based on what’s due and the evidence from your recent learning."} />
-    <section className="next-action card"><div className="next-action-copy"><p className="eyebrow"><Sparkles size={13}/> {primary.eyebrow}</p><h2>{primary.title}</h2><p className="muted">{primary.detail}</p>{action === "recall" ? <WhyThis reason="This concept is due for review according to your recall schedule."/> : null}<div className="actions">{primary.button}{action === "goal" && !firstVisitCopy ? <Link className="btn" to="/goals">View your goals</Link> : null}{firstVisitCopy ? <Link className="btn" to="/knowledge">Explore the knowledge map</Link> : null}</div>{actionError ? <p className="error" role="alert">{actionError} <Link to={`/resources?conceptId=${encodeURIComponent(weakConcept?.conceptId ?? "")}`}>View related resources</Link></p> : null}</div><div className="next-action-mark" aria-hidden="true">{primary.icon}<span>{action === "recall" ? "RECALL" : action === "practice" ? "PRACTICE" : action === "goal" ? "DIRECTION" : "LEARN"}</span></div></section>
+  const weak = learner?.weakConcepts[0];
+  const firstVisit = data.recentlyStudied.length === 0 && data.submittedRecallCount === 0 && !goal && !due;
+  const continuation = due ? { icon: <RotateCcw size={18}/>, title: readableTitle(due.conceptName, "Scheduled recall"), reason: "This recall is due according to your saved review schedule.", href: `/recall/${due.recallId}`, label: "Review now" }
+    : unfinishedSession ? { icon: <BookOpen size={18}/>, title: readableTitle(unfinishedSession.title, "Your study session"), reason: "You have a study session in progress.", href: `/study/${unfinishedSession.id}`, label: "Continue study" }
+    : pendingTask ? { icon: <CalendarClock size={18}/>, title: readableTitle(pendingTask.title, "Your next planned step"), reason: pendingTask.reason || "This is the next available task in your plan.", href: "/plan/today", label: "Open today’s plan" }
+    : weak ? { icon: <Sparkles size={18}/>, title: readableTitle(weak.conceptName, "A concept to revisit"), reason: "Submitted recall evidence shows knowledge points to strengthen.", href: `/review#weak-${weak.conceptId}`, label: "Review and improve" }
+    : goal ? { icon: <TargetIcon/>, title: readableTitle(goal.title, "Your learning goal"), reason: "Continue toward your goal or choose another learning direction.", href: "/goals", label: "View goal" }
+    : null;
 
-    {!firstVisitCopy ? <>
-      <div className="grid dashboard-secondary" style={{ marginTop: 18 }}>
-        <article className="card"><div className="section-heading" style={{ marginTop: 0 }}><h2>Active goal</h2><Link to="/goals">All goals</Link></div>{goal ? <><h3>{readableTitle(goal.title, "Your learning goal")}</h3><p className="muted">{goal.weeklyTimeBudgetMinutes} minutes a week</p><Link to={`/goals/${goal.id}`}>View goal details <ArrowRight size={14}/></Link></> : <EmptyState title="Set a direction" to="/goals/new" action="Create a goal">A goal helps shape a focused learning plan.</EmptyState>}</article>
-        <article className="card"><div className="section-heading" style={{ marginTop: 0 }}><h2>Today’s plan</h2><Link to="/plan/today">Open plan</Link></div>{tasks.length ? <><p className="stat">{tasks.reduce((sum, task) => sum + task.estimatedMinutes, 0)} <span className="metadata">min planned</span></p><ProgressBar value={tasks.length ? tasks.filter((task) => task.status === "completed").length / tasks.length * 100 : 0} label="Plan completion"/><p className="muted" style={{ marginTop: 10 }}>{pendingTask ? `Up next: ${readableTitle(pendingTask.title, "Continue your planned learning")}` : "Today’s plan is complete."}</p></> : <p className="muted">A plan will appear when there’s work scheduled for today.</p>}</article>
-        <article className="card"><div className="section-heading" style={{ marginTop: 0 }}><h2>Recall evidence</h2><Link to="/learner">See learner view</Link></div>{data.submittedRecallCount?<><p className="stat">{data.submittedRecallCount}</p><p className="muted">submitted recall {data.submittedRecallCount===1?"attempt":"attempts"}</p></>:<p className="muted">Your first completed recall will appear here.</p>}</article>
+  return <div className="home-intent-page">
+    <PageHeader eyebrow="Your learning workspace" title={firstVisit ? "What would you like to do?" : "Choose your next learning step"} description={firstVisit ? "Start with what matters to you. You can check what you know, learn a topic, or strengthen past learning." : "Your schedule and submitted evidence can guide you, and you can always choose a different path."} />
+    <section className="intent-entry-grid" aria-label="Choose a learning intention">
+      <article className="intent-choice intent-choice-primary"><div className="intent-choice-icon"><BrainCircuit size={22}/></div><p className="eyebrow">CHECK WHAT YOU KNOW</p><h2>Test my knowledge</h2><p>Choose a subject and see which checks have enough approved questions.</p><Link className="btn btn-primary" to="/knowledge-check">Choose a knowledge check <ArrowRight size={15}/></Link></article>
+      <div className="intent-choice-secondary">
+        <article className="intent-choice"><div className="intent-choice-icon"><BookOpen size={20}/></div><div><p className="eyebrow">START FRESH</p><h2>Learn something new</h2><p>Pick a catalog topic or study notes you provide.</p></div><Link className="btn" to="/study/new">Choose a topic or add notes <ArrowRight size={15}/></Link></article>
+        <article className="intent-choice"><div className="intent-choice-icon"><RotateCcw size={20}/></div><div><p className="eyebrow">BUILD ON PAST WORK</p><h2>Review and improve</h2><p>See due reviews, unfinished activities, and assessed weak concepts.</p></div><Link className="btn" to="/review">Choose what to strengthen <ArrowRight size={15}/></Link></article>
       </div>
-      {learner?.weakConcepts.length ? <><div className="section-heading"><h2>Concepts to revisit</h2><Link to="/learner">See learner evidence</Link></div><section className="card">{learner.weakConcepts.slice(0, 4).map((concept) => <div className="evidence-row" key={concept.conceptId}><span><strong>{readableTitle(concept.conceptName, "Recent study topic")}</strong><span className="metadata">{concept.mistakeCount ? `${concept.mistakeCount} missed point${concept.mistakeCount === 1 ? "" : "s"}` : "Evaluated recall"}</span></span><Link to={`/resources?conceptId=${encodeURIComponent(concept.conceptId)}`}>Resources</Link></div>)}</section></> : null}
-      {data.recentlyStudied.length ? <><div className="section-heading"><h2>Recently studied</h2></div><section className="card">{data.recentlyStudied.slice(0,3).map((session)=><Link className="evidence-row" key={session.id} to={`/study/${session.id}`}><span><strong>{readableTitle(session.title, "Review recent study session")}</strong><span className="metadata">{new Date(session.startedAt).toLocaleDateString()}</span></span><span className="status-chip">{session.status.replaceAll("_"," ")}</span></Link>)}</section></> : null}
-    </> : null}
+    </section>
+
+    {continuation ? <section className="home-continuation card"><div className="home-continuation-icon" aria-hidden="true">{continuation.icon}</div><div className="home-continuation-copy"><p className="eyebrow">A useful next step</p><h2>{continuation.title}</h2><p className="muted">{continuation.reason}</p>{due ? <WhyThis reason="Due status comes from the existing review schedule."/> : null}</div><Link className="btn btn-primary" to={continuation.href}>{continuation.label} <ArrowRight size={15}/></Link></section> : null}
+
+    <section className="home-utilities" aria-label="Learning tools"><div><h2>Your learning tools</h2><p className="muted">Goals, maps, evidence, and planning stay available whenever you need them.</p></div><div className="utility-links"><Link to="/readiness">My Readiness</Link><Link to="/plan/today">Today’s plan</Link><Link to="/goals">Goals</Link><Link to="/knowledge">Knowledge map</Link><Link to="/resources">Resources</Link><Link to="/learner">Learner evidence</Link><Link to="/settings">Review settings</Link></div></section>
+    {!firstVisit && goal ? <section className="home-context-strip"><span><strong>Active goal</strong> {readableTitle(goal.title, "Learning goal")}</span><Link to={`/goals/${goal.id}`}>View details</Link></section> : null}
+    {!continuation && !firstVisit && !goal ? <EmptyState title="Your next step will appear here" to="/knowledge-check" action="Test my knowledge">Choose any of the three learning paths above to get started.</EmptyState> : null}
   </div>;
 }
+
+function TargetIcon() { return <CalendarClock size={18}/>; }
