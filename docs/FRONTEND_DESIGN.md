@@ -47,9 +47,13 @@ Authenticated Home leads with three labeled intentions. Give Test my knowledge t
 
 The Learn form asks whether material is new, previously studied, or intended for application. Make the effect visible in the next screen and keep source-text limitations adjacent to the form. Review groups due schedule, submitted weakness evidence, unfinished study, and plan tasks with a short provenance-based explanation. Use empty states that distinguish no due/weak work from a failure state.
 
+The knowledge-check page lists subject, topic, and concept using compact, labeled radio cards. Radio controls must retain intrinsic sizing inside the full-width labels. If a concept has no linked canonical question revisions, explain that no assessment questions have been added and keep the Learn action available. If questions exist but await independent review or do not satisfy a complete blueprint, explain that distinct coverage state without presenting it as a system error or implying that draft questions can be taken.
+
 ## Knowledge map and catalog
 
 Role maps use the real catalog hierarchy: role, skill, topic, concept, knowledge point. Display only persisted prerequisites, resources, and learner evidence. A decorative visual may illustrate relationships only when edges are backed by catalog data; the landing illustration is explicitly process-oriented and makes no catalog relationship claims.
+
+Goal detail forms use readable 15px control and label text, with explanatory copy at 14px or larger. Keep the baseline explanation on its own full-width line; place the primary baseline action and roadmap link together in a separate wrapping action row. At narrow widths, stack these actions as full-width controls. Checkbox labels keep the native checkbox compact instead of inheriting the global full-width text-input rule.
 
 ## Accessibility and responsive behavior
 

@@ -17,6 +17,7 @@ Presence of a test file alone does not mean it passed in this session.
 
 | Area | Status | Evidence |
 |---|---|---|
+| Goal detail baseline form readability | BUILD VERIFIED | Goal detail styles increase form text sizes, keep baseline explanation on a separate line, and align baseline/roadmap actions in a wrapping row; the production build passes. Browser screenshot verification remains pending. |
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
 | PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`019`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |

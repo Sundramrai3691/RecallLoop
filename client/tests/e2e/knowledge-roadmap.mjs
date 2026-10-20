@@ -217,7 +217,7 @@ try {
       if ((await label.getText()).includes(unsupportedConcept.concept.name)) { await choice.click(); selectedUnsupported = true; break; }
     }
     assert.equal(selectedUnsupported, true, "The insufficient-coverage concept should be selectable for inspection");
-    await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'This topic is not testable yet.')]")), 5000);
+    await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'No assessment questions yet') or contains(.,'awaiting independent review') or contains(.,'aren’t enough approved questions')]")), 5000);
     assert.equal(await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).isEnabled(), false, "The application must not promise unsupported coverage");
     assert.ok(await driver.findElement(By.linkText("Learn this topic")), "Insufficient coverage should link to study");
     const rejectedKnowledgeCheck = await driver.executeAsyncScript(async (conceptId, done) => {

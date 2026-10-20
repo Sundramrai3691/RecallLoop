@@ -297,3 +297,16 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Added domain-scoped review packet export with exact revision/content/mapping audits and a database-grounded domain coverage report command. Preserved the existing HTTP review packet and existing HTTP source content.
 - Added unit and integration coverage for candidate shape, availability states, domain catalog visibility, no-write assessment gating, and seed idempotence. A prior targeted run passed eight unit tests and a build passed; this session has not yet rerun full verification after the latest changes.
 - Local PostgreSQL verification is currently blocked: Docker Desktop's Linux engine pipe is unavailable and port 5432 is closed. The report JSON is an earlier database snapshot; fresh report generation, five exact-ID packet exports, and database-backed integration/E2E execution remain pending. No approval or live learner state was written. No commit was made.
+
+## 2026-10-20 — Knowledge-check UI repair
+
+- Fixed the concept and mode radio styles: the global full-width input rule had stretched radio controls across their label cards, hiding text and creating the large blank purple panel in the supplied screenshot.
+- Replaced the ambiguous empty-bank warning with an inline, accessible availability message that distinguishes no canonical question set, questions awaiting independent review, and insufficient approved coverage. Kept the Learn action available and clarify that the check is unavailable because coverage is missing, not because the page failed.
+- Updated the frontend design guidance, UX journey, and E2E assertion for the clearer coverage states.
+- Verification: `npm run build` passed. `node --check client/tests/e2e/knowledge-roadmap.mjs` and `git diff --check` passed. Database-backed browser verification was not run because the local PostgreSQL service is unavailable.
+
+## 2026-10-20 — Goal baseline form readability
+
+- Increased goal detail form labels, control text, helper text, and supporting metadata to readable sizes. The baseline explanation now occupies its own full-width row, separate from the baseline and roadmap buttons; those buttons align in a dedicated row and stack on narrow screens.
+- Kept the skip-baseline checkbox at a fixed native size so it does not inherit the global full-width text-input styling.
+- Verification: `npm run build`, `node --check client/tests/e2e/knowledge-roadmap.mjs`, and `git diff --check` passed. No database-backed browser run in this session; Vite reports its existing large-bundle advisory.

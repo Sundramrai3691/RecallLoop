@@ -83,7 +83,7 @@ export function GoalDetailPage() {
   if (!goal) return <p className="muted">Loading goal...</p>;
 
   return (
-    <div>
+    <div className="goal-detail-page">
       <section className="hero">
         <p className="eyebrow">Learning goal</p>
         <h1>{goal.title}</h1>
@@ -95,7 +95,7 @@ export function GoalDetailPage() {
           {goal.weeklyTimeBudgetMinutes} minutes per week · {goal.status}
         </p>
       </section>
-      <form className="card" style={{ marginTop: 16 }} onSubmit={startBaseline}>
+      <form className="card goal-baseline-form" onSubmit={startBaseline}>
         <h2>What do you already know?</h2>
         <label htmlFor="canonical-skill">Canonical skill</label>
         <select
@@ -121,22 +121,24 @@ export function GoalDetailPage() {
           <option value="familiar">Familiar</option>
           <option value="advanced">Advanced</option>
         </select>
-        <label>
+        <label className="baseline-skip-option">
           <input
             type="checkbox"
             checked={trustMe}
             onChange={(event) => setTrustMe(event.target.checked)}
           />{" "}
-          Skip the baseline assessment
+          <span>Skip the baseline assessment</span>
         </label>
-        <p className="metadata">The baseline checks what you currently remember. Skipping it leaves this goal without starting evidence.</p>
-        <button className="btn btn-primary" type="submit">
-          {trustMe ? "Continue without baseline" : "Start baseline assessment"}
-        </button>
-        {canonicalSkills.find((skill)=>skill.id===canonicalSkillId) ? <Link className="btn" to={`/knowledge/roles/${canonicalSkills.find((skill)=>skill.id===canonicalSkillId)!.roleId}#skill-${canonicalSkillId}`}>Open this skill&apos;s roadmap</Link> : <Link className="btn" to="/knowledge">Explore knowledge map</Link>}
+        <p className="baseline-guidance">The baseline checks what you currently remember. Skipping it means this goal starts without assessment evidence.</p>
+        <div className="baseline-actions">
+          <button className="btn btn-primary" type="submit">
+            {trustMe ? "Continue without baseline" : "Start baseline assessment"}
+          </button>
+          {canonicalSkills.find((skill)=>skill.id===canonicalSkillId) ? <Link className="btn" to={`/knowledge/roles/${canonicalSkills.find((skill)=>skill.id===canonicalSkillId)!.roleId}#skill-${canonicalSkillId}`}>Open this skill&apos;s roadmap</Link> : <Link className="btn" to="/knowledge">Explore knowledge map</Link>}
+        </div>
       </form>
       {error ? <p className="error">{error}</p> : null}
-      <form className="card" onSubmit={addSkill}>
+      <form className="card goal-skill-form" onSubmit={addSkill}>
         <h2>Add a skill</h2>
         <label htmlFor="skill-name">Skill or topic</label>
         <input

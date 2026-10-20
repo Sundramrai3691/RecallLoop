@@ -17,8 +17,27 @@ const availabilityDetails = {
   partial: "Partial eligible coverage; no complete blueprint yet",
   awaiting_review: "Awaiting subject-matter review",
   insufficient_eligible_questions: "Reviewed coverage is below the minimum question count",
-  study_only: "Available for study; no canonical questions yet",
+  study_only: "Study available · question bank not added yet",
 } as const;
+
+function unavailableMessage(concept: KnowledgeCheckSubject["topics"][number]["concepts"][number]) {
+  if (concept.currentRevisionCount === 0) {
+    return {
+      title: "No assessment questions yet",
+      detail: "There are no canonical questions linked to this concept yet. You can still learn it now; a check will appear when reviewed questions are added.",
+    };
+  }
+  if (concept.awaitingReviewCount > 0) {
+    return {
+      title: `${concept.awaitingReviewCount} question${concept.awaitingReviewCount === 1 ? " is" : "s are"} awaiting independent review`,
+      detail: "Questions become available for learner assessments only after an authorized subject-matter reviewer approves and publishes them.",
+    };
+  }
+  return {
+    title: "There aren’t enough approved questions for a complete check yet",
+    detail: "This check needs a complete set of approved questions. You can learn this concept while coverage is being completed.",
+  };
+}
 
 export function KnowledgeCheckPage() {
   const navigate = useNavigate();
@@ -42,6 +61,7 @@ export function KnowledgeCheckPage() {
   const topic = topics.find((item) => item.id === topicId) ?? null;
   const concepts = useMemo(() => (topic?.concepts ?? []).filter((item) => !search.trim() || `${item.name} ${item.description}`.toLowerCase().includes(search.trim().toLowerCase())), [topic, search]);
   const concept = topic?.concepts.find((item) => item.id === conceptId) ?? null;
+  const blockedMessage = concept ? unavailableMessage(concept) : null;
 
   function selectSubject(id: string) { setSubjectId(id); setTopicId(""); setConceptId(""); setMode(""); }
   function selectTopic(id: string) { setTopicId(id); setConceptId(""); setMode(""); setSearch(""); }
@@ -68,8 +88,8 @@ export function KnowledgeCheckPage() {
       {subject ? <section className="card intent-step"><p className="eyebrow">2 · TOPIC</p><label htmlFor="knowledge-topic">Choose a topic</label><select id="knowledge-topic" name="topic" value={topicId} onChange={(event) => selectTopic(event.target.value)}><option value="">Select a topic…</option>{topics.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select>{topic?.description ? <p className="metadata">{topic.description}</p> : null}
         {topic ? <div className="topic-concept-list">{topic.concepts.length > 20 ? <label className="concept-search" htmlFor="concept-search">Filter concepts<input id="concept-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search concepts…"/></label> : null}{concepts.map((item) => <label className={`concept-choice ${conceptId === item.id ? "selected" : ""}`} key={item.id}><input type="radio" name="concept" checked={conceptId === item.id} onChange={() => selectConcept(item.id)}/><span><strong>{item.name}</strong><span className="metadata">{item.description}</span><span className="metadata">{availabilityDetails[item.availability]} · {item.eligibleCount} eligible / {item.currentRevisionCount} current revisions</span><span className="metadata">{item.knowledgePoints.length ? `Knowledge points: ${item.knowledgePoints.map((point) => point.statement).join(" · ")}` : "No canonical knowledge points are mapped yet."}</span></span></label>)}</div> : null}
       </section> : null}
-      {concept ? <section className="card intent-step"><p className="eyebrow">3 · CHECK</p><h2>Choose a supported check</h2><p className="muted">Coverage is based on eligible published question revisions linked to this concept’s canonical knowledge points.</p><p className="metadata">Available bank coverage: {Object.entries(concept.coverage).length ? Object.entries(concept.coverage).map(([type, count]) => `${type.replaceAll("_", " ")}: ${count}`).join(" · ") : "No approved questions"}</p>
-        {concept.supportedModes.length ? <fieldset className="mode-choice-list"><legend>Assessment mode</legend>{concept.supportedModes.map((item) => <label className={`mode-choice ${mode === item ? "selected" : ""}`} key={item}><input type="radio" name="assessment-mode" checked={mode === item} onChange={() => setMode(item)}/><span><strong>{modeDetails[item].title}</strong><span className="metadata">{modeDetails[item].detail}</span></span></label>)}</fieldset> : <div className="coverage-empty"><CircleHelp size={18}/><span><strong>This topic is not testable yet: {availabilityDetails[concept.availability]}.</strong><span className="muted">{concept.availability === "awaiting_review" ? `${concept.awaitingReviewCount} current revisions are awaiting an independent reviewer. They cannot be used for normal assessments.` : "No complete approved assessment blueprint is available for this concept. No test will be created."}</span></span></div>}
+      {concept ? <section className="card intent-step"><p className="eyebrow">3 · CHECK</p><h2>Choose a supported check</h2><p className="muted">A check appears here when enough approved questions are linked to this concept.</p>{concept.currentRevisionCount > 0 ? <p className="metadata">Approved questions available now: {Object.entries(concept.coverage).length ? Object.entries(concept.coverage).map(([type, count]) => `${type.replaceAll("_", " ")}: ${count}`).join(" · ") : "None yet"}{concept.awaitingReviewCount > 0 ? ` · ${concept.awaitingReviewCount} awaiting review` : ""}</p> : null}
+        {concept.supportedModes.length ? <fieldset className="mode-choice-list"><legend>Assessment mode</legend>{concept.supportedModes.map((item) => <label className={`mode-choice ${mode === item ? "selected" : ""}`} key={item}><input type="radio" name="assessment-mode" checked={mode === item} onChange={() => setMode(item)}/><span><strong>{modeDetails[item].title}</strong><span className="metadata">{modeDetails[item].detail}</span></span></label>)}</fieldset> : blockedMessage ? <div className="coverage-empty" role="status" aria-live="polite"><CircleHelp size={18} aria-hidden="true"/><span><strong>{blockedMessage.title}</strong><span className="muted">{blockedMessage.detail}</span></span></div> : null}
         <div className="actions"><button className="btn btn-primary" type="button" disabled={!mode || busy} onClick={() => void startAssessment()}>{busy ? "Preparing your check…" : "Start knowledge check"} <ArrowRight size={16}/></button><Link className="btn" to={`/study/new?topic=${encodeURIComponent(concept.name)}&topicId=${encodeURIComponent(topicId)}&conceptId=${encodeURIComponent(concept.id)}&returnTo=${encodeURIComponent("/knowledge-check")}`}><BookOpen size={15}/> Learn this topic</Link></div>
       </section> : null}
     </div>}

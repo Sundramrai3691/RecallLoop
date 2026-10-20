@@ -237,7 +237,21 @@ a { color: var(--accent); }
 .concept-choice.selected,.mode-choice.selected { border-color: var(--accent); background: var(--accent-soft); }
 .concept-choice > span,.mode-choice > span,.learning-intent-options label > span { display: grid; gap: 3px; min-width: 0; }
 .concept-choice .metadata { overflow-wrap: anywhere; }
-.concept-choice input,.mode-choice input,.learning-intent-options input { flex: 0 0 auto; margin-top: 5px; accent-color: var(--accent); }
+.concept-choice input[type="radio"],.mode-choice input[type="radio"],.learning-intent-options input[type="radio"] { width: 16px; height: 16px; flex: 0 0 16px; margin: 3px 0 0; padding: 0; accent-color: var(--accent); }
+.goal-detail-page { display: grid; gap: 20px; min-width: 0; font-size: 15px; }
+.goal-detail-page .hero { margin: 0; }
+.goal-detail-page .hero .muted,.goal-detail-page .hero > p:last-child { font-size: 15px; }
+.goal-detail-page .metadata { font-size: 14px; }
+.goal-baseline-form,.goal-skill-form { display: grid; gap: 12px; }
+.goal-baseline-form h2,.goal-skill-form h2 { margin: 0 0 2px; font-size: 22px; }
+.goal-baseline-form > label:not(.baseline-skip-option),.goal-skill-form > label { margin: 0 0 -7px; font-size: 15px; }
+.goal-baseline-form select,.goal-skill-form input,.goal-skill-form textarea { min-height: 48px; font-size: 15px; }
+.goal-skill-form textarea { min-height: 130px; }
+.baseline-skip-option { display: flex; align-items: center; gap: 10px; min-width: 0; margin: 2px 0 0; font-size: 15px; font-weight: 600; cursor: pointer; }
+.baseline-skip-option input[type="checkbox"] { width: 18px; height: 18px; flex: 0 0 18px; margin: 0; padding: 0; accent-color: var(--accent); }
+.baseline-guidance { max-width: 68ch; margin: -2px 0 0; color: var(--muted); font-size: 14px; line-height: 1.55; }
+.baseline-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 2px; }
+.baseline-actions .btn { min-height: 46px; font-size: 14px; }
 .mode-choice-list,.learning-intent-options { display: grid; gap: 8px; min-width: 0; margin: 0; padding: 0; border: 0; }
 .mode-choice-list legend,.learning-intent-options legend { margin-bottom: 5px; font-weight: 650; }
 .coverage-empty,.review-action-row { display: flex; align-items: center; gap: 12px; min-width: 0; }
@@ -290,6 +304,8 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
   .review-action-row > .actions .btn { flex: 1; }
   .readiness-goal-picker { grid-template-columns: 1fr; gap: 5px; }
   .readiness-actions .btn { flex: 1 1 auto; }
+  .baseline-actions { align-items: stretch; flex-direction: column; }
+  .baseline-actions .btn { justify-content: center; width: 100%; }
 }
 @media (max-width:560px) {
   .study-next-steps { grid-template-columns: 1fr; gap: 7px; }
