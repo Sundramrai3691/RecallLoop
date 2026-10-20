@@ -144,3 +144,11 @@ This plan sequences work needed to make the learning loop traceable from a learn
 - **MCP:** Expose a narrow, authenticated tool surface after stable APIs, ownership checks and audit behavior are established.
 
 Each later item needs a measurable problem statement and acceptance evidence before implementation; its inclusion here is not a commitment to a particular technology.
+
+## Phase U3 — Core SDE knowledge coverage (2026-10-20)
+
+- Added an additive canonical taxonomy for Data Structures and Algorithms, Operating Systems, Database Management Systems, and Computer Networks; reused System Design and existing canonical topic/concept identities when reclassifying database and HTTP content.
+- Authored 114 new question candidates across 19 canonical points in five domains, with a 2 MCQ + 3 rapid recall + 1 distinct short explanation shape for each point. New candidates are drafts and remain blocked from normal assessment pending independent review.
+- Made the knowledge-check selector domain-aware and explicit about current revisions, human-review blockers, eligible count, mapped point text, and modes supported by the approved selector.
+- Added domain-specific review export and a database-grounded coverage report. Regeneration, review-packet production, and database/browser verification could not be completed in this session: Docker Desktop was unavailable and PostgreSQL on 127.0.0.1:5432 refused connections. The checked-in JSON remains a previous database snapshot.
+- Next: run migrations and seed with local PostgreSQL, regenerate coverage and five packets, execute full test/build/integration/E2E workflows, then obtain authorized independent review. Within-concept individual point selection remains future scope.

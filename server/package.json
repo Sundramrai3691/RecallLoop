@@ -16,6 +16,8 @@
     "question-bank:benchmark": "tsx src/scripts/questionBankWorkflow.ts benchmark-report",
     "question-bank:benchmark:export": "tsx src/scripts/questionBankWorkflow.ts benchmark-export",
     "question-bank:benchmark:import": "tsx src/scripts/questionBankWorkflow.ts benchmark-import",
+    "question-bank:review:export-domain": "tsx src/scripts/questionBankWorkflow.ts review-export-domain",
+    "question-bank:coverage": "tsx src/scripts/coreSdeCoverage.ts",
     "db:import-legacy": "tsx ../scripts/migrate-mongo-to-postgres.ts",
     "config:check": "tsx src/scripts/checkConfig.ts",
     "test:providers:live": "vitest run src/services/providers/providerSmoke.live.test.ts --reporter=verbose",

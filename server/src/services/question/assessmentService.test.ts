@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { summarizeAssessmentEvidence } from "./assessmentService.js";
+import { assessmentAvailability, summarizeAssessmentEvidence } from "./assessmentService.js";
+
+describe("assessmentAvailability",()=>{
+  it("distinguishes full, partial, awaiting-review, insufficient, and study-only catalog states",()=>{
+    expect(assessmentAvailability({supportedModeCount:1,eligibleCount:2,currentRevisionCount:2,awaitingReviewCount:0})).toBe("available");
+    expect(assessmentAvailability({supportedModeCount:0,eligibleCount:1,currentRevisionCount:4,awaitingReviewCount:0})).toBe("partial");
+    expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:6,awaitingReviewCount:6})).toBe("awaiting_review");
+    expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:6,awaitingReviewCount:0})).toBe("insufficient_eligible_questions");
+    expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:0,awaitingReviewCount:0})).toBe("study_only");
+  });
+});
 
 describe("summarizeAssessmentEvidence", () => {
   it("counts correct, partial, incorrect, and unanswered questions accurately", () => {

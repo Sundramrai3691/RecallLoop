@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { postgres, withTransaction } from "../db/postgres.js";
 import { verifyToken } from "../lib/auth.js";
 import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuestionBank.js";
+import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "../services/questionBank/coreSdeQuestionBank.js";
 import { pilotQuestionInventory, questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
 import { benchmarkAnnotationStatus, buildHumanBenchmarkReport, reviewCriterionKeys, validateHumanBenchmark, validateReviewAssessment, type HumanBenchmarkDataset } from "../services/questionBank/questionBankGovernance.js";
 import { listEligibleCanonicalQuestions } from "../services/questionBank/questionBankService.js";
@@ -78,7 +79,8 @@ function questionPacketContent(row: any) {
   };
 }
 
-async function currentRows() {
+async function currentRows(scope: "http" | "all" | string = "http") {
+  const filter=scope === "http" ? "i.slug LIKE 'http-%'" : scope === "all" ? "TRUE" : "d.name=$1 AND r.publication_status<>'retired'";
   const result = await postgres.query<any>(`SELECT i.id AS item_id,i.canonical_concept_id,i.slug,i.current_revision,r.id AS revision_id,r.revision,r.content_hash,
       r.question_type,r.assessment_level,r.difficulty,r.objective,r.title,r.context,r.prompt,r.expected_answer,r.rubric,
       r.expected_misconceptions,r.estimated_minutes,r.options,r.correct_option_id,r.explanation,r.distractor_rationales,
@@ -88,9 +90,10 @@ async function currentRows() {
       (SELECT count(*)::int FROM canonical_question_reviews cr WHERE cr.question_revision_id=r.id) AS review_count,
       (SELECT cr.decision FROM canonical_question_reviews cr WHERE cr.question_revision_id=r.id ORDER BY cr.reviewed_at DESC,cr.id DESC LIMIT 1) AS latest_review_decision
     FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
+    JOIN canonical_concepts cc ON cc.id=i.canonical_concept_id JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills s ON s.id=t.skill_id JOIN knowledge_domains d ON d.id=s.domain_id
     LEFT JOIN canonical_question_revision_points rp ON rp.question_revision_id=r.id
     LEFT JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id
-    WHERE i.slug LIKE 'http-%' GROUP BY i.id,r.id ORDER BY i.slug`);
+    WHERE ${filter} GROUP BY i.id,r.id ORDER BY i.slug`,scope === "http" || scope === "all" ? [] : [scope]);
   return result.rows;
 }
 
@@ -157,14 +160,32 @@ async function runInventory(writeToDocs = false) {
   return payload;
 }
 
-async function exportReviewPacket(output: string) {
-  const inventory = await runInventory();
-  const rows = await currentRows();
+async function exportReviewPacket(output: string, scope: "http" | string = "http") {
+  const inventory = scope === "http" ? await runInventory() : null;
+  const rows = await currentRows(scope);
+  if(!rows.length)throw new Error(`No current canonical question revisions were found for ${scope}.`);
+  if(scope!=="http"){
+    const issues=[...validateCoreSdeQuestionBank(),...(scope==="Computer Networks"?validatePilotQuestionBank():[])];
+    if(issues.length)throw new Error(`Core SDE engineering validation failed:\n${issues.join("\n")}`);
+  }
+  const authoredBySlug=new Map([...canonicalHttpPilotQuestions,...canonicalCoreSdeQuestions].map((question)=>[question.slug,question]));
+  const auditIssues=new Map<string,string[]>();
+  for(const row of rows){
+    const source=authoredBySlug.get(row.slug);const issues:string[]=[];
+    if(!source)issues.push(`${row.slug}: no authored source was found`);
+    else{
+      if(questionContentHash(source)!==row.content_hash)issues.push(`${row.slug}: authored content hash differs from database current revision`);
+      if(row.mapped_points.length!==1||row.mapped_points[0].statement!==source.knowledgePoint)issues.push(`${row.slug}: canonical knowledge-point mapping differs from authored source`);
+    }
+    if(issues.length)auditIssues.set(row.slug,issues);
+  }
+  if(auditIssues.size)throw new Error(`Domain packet export blocked by database/authored-source drift:\n${[...auditIssues.values()].flat().join("\n")}`);
   const packet = {
     packetVersion: 1,
     packetType: "canonical-question-subject-matter-review",
     generatedAt: new Date().toISOString(),
     instructions: "Review the exact immutable revision. Fill review.decision, review.notes, and every review.criteria field. Approval requires all applicable criteria to pass. Do not add reviewer identity or timestamp; import binds those to the authenticated RecallLoop account and database time.",
+    domainSummary: scope === "http" ? undefined : { domain:scope, currentRevisions:rows.length, awaitingSubjectMatterReview:rows.filter((row:any)=>row.review_status==="awaiting_subject_matter_review").length, approved:rows.filter((row:any)=>row.review_status==="subject_matter_reviewed").length, engineeringNote:"Export is for independent review. Passing engineering validation does not approve or publish a revision." },
     entries: rows.map((row: any) => ({
       revisionId: row.revision_id,
       questionSlug: row.slug,
@@ -172,7 +193,7 @@ async function exportReviewPacket(output: string) {
       contentHash: row.content_hash,
       canonicalConceptId: row.canonical_concept_id,
       question: questionPacketContent(row),
-      automatedAudit: inventory.questions.find((question: any) => question.questionSlug === row.slug)?.automatedValidationIssues ?? [],
+      automatedAudit: inventory?.questions.find((question: any) => question.questionSlug === row.slug)?.automatedValidationIssues ?? auditIssues.get(row.slug) ?? [],
       existingReviewStatus: row.review_status,
       review: { decision: null, notes: "", criteria: expectedCriterionTemplate() },
     })),
@@ -186,7 +207,7 @@ async function importReviewPacket(filename: string) {
   const decisions = validateReviewPacket(packet);
   const reviewerId = await activeReviewer();
   const seen = new Set<string>();
-  const authoritativeRows = new Map((await currentRows()).map((row: any) => [row.revision_id, row]));
+  const authoritativeRows = new Map((await currentRows(decisions.some((entry:any)=>!entry.questionSlug.startsWith("http-"))?"all":"http")).map((row: any) => [row.revision_id, row]));
   for (const entry of decisions) { if (seen.has(entry.revisionId)) throw new Error(`${entry.questionSlug}: duplicate decision for revision ${entry.revisionId}`); seen.add(entry.revisionId); }
   let imported = 0;
   let repeated = 0;
@@ -375,6 +396,11 @@ async function main() {
     const output = readOption("--out"); if (!output) throw new Error("Use review-export --out <packet.json>.");
     process.stdout.write(`${JSON.stringify(await exportReviewPacket(output),null,2)}\n`); return;
   }
+  if (command === "review-export-domain") {
+    const output=readOption("--out"); const domain=readOption("--domain");
+    if(!output||!domain)throw new Error("Use review-export-domain --domain <canonical-domain-name> --out <packet.json>.");
+    process.stdout.write(`${JSON.stringify(await exportReviewPacket(output,domain),null,2)}\n`); return;
+  }
   if (command === "review-import") {
     const input = readOption("--in"); if (!input) throw new Error("Use review-import --in <completed-packet.json>.");
     process.stdout.write(`${JSON.stringify(await importReviewPacket(input),null,2)}\n`); return;
@@ -382,7 +408,7 @@ async function main() {
   if (command === "review-validate") {
     const input = readOption("--in"); if (!input) throw new Error("Use review-validate --in <completed-private-packet.json>.");
     const packet = await readJson<any>(input); const entries = validateReviewPacket(packet);
-    const authoritative = new Map((await currentRows()).map((row: any) => [row.revision_id, row]));
+    const authoritative = new Map((await currentRows(entries.some((entry:any)=>!entry.questionSlug.startsWith("http-"))?"all":"http")).map((row: any) => [row.revision_id, row]));
     for (const entry of entries) {
       const row: any = authoritative.get(entry.revisionId);
       if (!row || row.slug !== entry.questionSlug || Number(row.revision) !== entry.revision || row.content_hash !== entry.contentHash || Number(row.current_revision) !== entry.revision) throw new Error(`${entry.questionSlug}@${entry.revision}: stale or mismatched revision/hash; re-export before review import.`);
@@ -407,7 +433,7 @@ async function main() {
     const input = readOption("--in"); if (!input) throw new Error("Use benchmark-import --in <completed-packet.json>.");
     process.stdout.write(`${JSON.stringify(await importBenchmarkPacket(input),null,2)}\n`); return;
   }
-  throw new Error("Choose inventory, review-export, review-validate, review-import, activation-report, benchmark-report, benchmark-export, or benchmark-import.");
+  throw new Error("Choose inventory, review-export, review-export-domain, review-validate, review-import, activation-report, benchmark-report, benchmark-export, or benchmark-import.");
 }
 
 main().catch((error) => {

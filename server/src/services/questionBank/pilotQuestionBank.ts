@@ -28,7 +28,7 @@ export interface PilotQuestion {
   options: Array<{ id: string; text: string }> | null;
   explanation: string;
   distractorRationales: Array<{ optionId: string; misconception: string; explanation: string }>;
-  source: { title: string; url: string; publisher: string; license: string; notes: string };
+  source: { title: string; url: string; publisher: string; license: string; notes: string; accessedOn?: string };
 }
 
 const cacheSource = {

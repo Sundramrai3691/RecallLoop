@@ -37,15 +37,25 @@ function supportedModes(counts: Record<string, number>) {
   }).map(([mode]) => mode as AssessmentMode);
 }
 
+export function assessmentAvailability(input: { supportedModeCount: number; eligibleCount: number; currentRevisionCount: number; awaitingReviewCount: number }): "available" | "partial" | "awaiting_review" | "insufficient_eligible_questions" | "study_only" {
+  if (input.supportedModeCount > 0) return "available";
+  if (input.eligibleCount > 0) return "partial";
+  if (input.currentRevisionCount > 0 && input.awaitingReviewCount > 0) return "awaiting_review";
+  if (input.currentRevisionCount > 0) return "insufficient_eligible_questions";
+  return "study_only";
+}
+
 export async function listKnowledgeCheckCoverage() {
   const result = await query<any>(`
     SELECT d.name AS "domainName", s.id AS "skillId", s.name AS "skillName", s.description AS "skillDescription",
       t.id AS "topicId", t.name AS "topicName", t.description AS "topicDescription",
       c.id AS "conceptId", c.name AS "conceptName", c.description AS "conceptDescription",
+      COALESCE((SELECT jsonb_agg(jsonb_build_object('id',kp.id,'statement',kp.statement,'importance',kp.importance,'difficulty',kp.difficulty) ORDER BY kp.importance DESC,kp.id) FROM knowledge_points kp WHERE kp.concept_id=c.id),'[]'::jsonb) AS "knowledgePoints",
+      (SELECT count(*)::int FROM canonical_question_items qi JOIN canonical_question_revisions qr ON qr.question_item_id=qi.id AND qr.revision=qi.current_revision WHERE qi.canonical_concept_id=c.id) AS "currentRevisionCount",
+      (SELECT count(*)::int FROM canonical_question_items qi JOIN canonical_question_revisions qr ON qr.question_item_id=qi.id AND qr.revision=qi.current_revision WHERE qi.canonical_concept_id=c.id AND qr.review_status='awaiting_subject_matter_review') AS "awaitingReviewCount",
       COALESCE((SELECT jsonb_object_agg(eligible."questionType", eligible.count)
         FROM (${ELIGIBLE_CANONICAL_QUESTIONS}) eligible WHERE eligible."conceptId"=c.id), '{}'::jsonb) AS coverage
-    FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id JOIN canonical_skills s ON s.id=t.skill_id
-    JOIN role_skills rs ON rs.skill_id=s.id JOIN roles r ON r.id=rs.role_id JOIN knowledge_domains d ON d.id=r.domain_id
+    FROM canonical_concepts c JOIN topics t ON t.id=c.topic_id JOIN canonical_skills s ON s.id=t.skill_id JOIN knowledge_domains d ON d.id=s.domain_id
     WHERE c.status='active'
     GROUP BY d.name,s.id,t.id,c.id ORDER BY d.name,s.name,t.name,c.name`);
   const subjects = new Map<string, any>();
@@ -56,7 +66,11 @@ export async function listKnowledgeCheckCoverage() {
     let topic = subject.topics.find((item: any) => item.id === row.topicId);
     if (!topic) { topic = { id: row.topicId, name: row.topicName, description: row.topicDescription, concepts: [] }; subject.topics.push(topic); }
     const coverage = Object.fromEntries(Object.entries(row.coverage ?? {}).map(([type, count]) => [type, Number(count)]));
-    topic.concepts.push({ id: row.conceptId, name: row.conceptName, description: row.conceptDescription, coverage, supportedModes: supportedModes(coverage) });
+    const modes=supportedModes(coverage);
+    const eligibleCount=Object.values(coverage).reduce((sum,count)=>sum+Number(count),0);
+    const currentRevisionCount=Number(row.currentRevisionCount);
+    const awaitingReviewCount=Number(row.awaitingReviewCount);
+    topic.concepts.push({ id: row.conceptId, name: row.conceptName, description: row.conceptDescription, knowledgePoints:row.knowledgePoints, coverage, currentRevisionCount, awaitingReviewCount, eligibleCount, availability:assessmentAvailability({supportedModeCount:modes.length,eligibleCount,currentRevisionCount,awaitingReviewCount}), supportedModes:modes });
   }
   return [...subjects.values()];
 }

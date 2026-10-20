@@ -107,7 +107,12 @@ export interface KnowledgeCheckSubject {
       id: string;
       name: string;
       description: string;
+        knowledgePoints: Array<{ id: string; statement: string; importance: number; difficulty: number }>;
       coverage: Record<string, number>;
+        currentRevisionCount: number;
+        awaitingReviewCount: number;
+        eligibleCount: number;
+        availability: "available" | "partial" | "awaiting_review" | "insufficient_eligible_questions" | "study_only";
       supportedModes: Array<"rapid_fire" | "deep_recall" | "mastery_check" | "practice">;
     }>;
   }>;

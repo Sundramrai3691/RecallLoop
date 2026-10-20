@@ -1,0 +1,2858 @@
+{
+  "reportVersion": 1,
+  "generatedAt": "2026-10-18T20:42:43.021Z",
+  "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
+  "catalog": {
+    "domains": 6,
+    "topicClusters": 28,
+    "knowledgePoints": 26
+  },
+  "bank": {
+    "totalRevisions": 161,
+    "currentRevisions": 150,
+    "currentQuestionIdentityCount": 150,
+    "mappedCurrentRevisions": 150,
+    "provenanceCompleteCurrentRevisions": 150,
+    "authoredHashMatches": 138,
+    "engineeringIssueCount": 0,
+    "engineeringIssues": [],
+    "humanReviewApprovals": 0
+  },
+  "assessmentBlueprints": {
+    "rapid_fire": {
+      "mcq": 2,
+      "rapid_recall": 3
+    },
+    "deep_recall": {
+      "descriptive": 1
+    },
+    "practice": {
+      "scenario": 1
+    },
+    "mastery_check": {
+      "mcq": 1,
+      "rapid_recall": 1,
+      "short_explanation": 1,
+      "scenario": 1,
+      "descriptive": 1,
+      "transfer": 1
+    }
+  },
+  "domains": [
+    {
+      "domain": "Backend Engineering",
+      "topicClusterCount": 13,
+      "knowledgePointCount": 5,
+      "topics": [
+        {
+          "id": "2a971def-40df-4bf5-a4a1-7c2ae2d7df2f",
+          "name": "Authentication",
+          "description": "Identity verification and token handling.",
+          "concepts": [
+            {
+              "id": "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
+              "name": "Token authentication",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "e6226706-c0f8-432e-89d2-b077d35fe980",
+          "name": "Authorization",
+          "description": "Access control and ownership boundaries.",
+          "concepts": [
+            {
+              "id": "f6b832ed-4321-4caf-a338-885bd89a8d9a",
+              "name": "Resource ownership",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "3019dacc-9182-4f0c-b31b-bff489520907",
+          "name": "Caching",
+          "description": "Cache-aside and invalidation.",
+          "concepts": [
+            {
+              "id": "90753a3e-f059-4b1d-adf2-eacdbd0fc97f",
+              "name": "Cache-aside pattern",
+              "points": [
+                {
+                  "id": "02fcaa53-390d-4fbd-9502-395709299def",
+                  "statement": "Can explain cache hit, miss, load, and populate steps.",
+                  "currentRevisionCount": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "ff55f876-4795-4f92-b57c-b1a964f41d4d",
+          "name": "Concurrency",
+          "description": "Coordination of simultaneous work.",
+          "concepts": [
+            {
+              "id": "d388c9bb-10ff-4663-a0e2-3d716e968894",
+              "name": "Work coordination",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "bf9c75f7-02d6-4e11-bbd2-f4479a55c634",
+          "name": "Docker",
+          "description": "Reproducible service packaging.",
+          "concepts": [
+            {
+              "id": "8bd2fcca-3204-4c50-9911-0525e26b12ab",
+              "name": "Container fundamentals",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "184916a8-f3a6-4dc3-affd-24b191fa6357",
+          "name": "Eviction",
+          "description": "LRU, LFU, and memory pressure.",
+          "concepts": [
+            {
+              "id": "10407aba-bd86-45e3-9622-b4bc185a502a",
+              "name": "LRU and LFU eviction",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "8e9126d0-ce40-4ca5-89d0-98b335ff2bca",
+          "name": "Load Balancing",
+          "description": "Traffic distribution and health checks.",
+          "concepts": [
+            {
+              "id": "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
+              "name": "Health-aware routing",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
+          "name": "Message Queues",
+          "description": "Asynchronous work and consumer delivery.",
+          "concepts": [
+            {
+              "id": "088badd0-c87a-413c-a698-d41f9aaf1cd2",
+              "name": "Consumer acknowledgements",
+              "points": [
+                {
+                  "id": "048ea4ad-0c06-487c-86d1-58c974152ef9",
+                  "statement": "Can explain acknowledgement timing and redelivery.",
+                  "currentRevisionCount": 0
+                }
+              ]
+            },
+            {
+              "id": "b3237c90-4478-40cd-8855-f0b3253c42d9",
+              "name": "Dead letter handling",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "06f1e6b3-4073-4862-a105-97a4206e1ec2",
+          "name": "Observability",
+          "description": "Logs, metrics, traces, and diagnosis.",
+          "concepts": [
+            {
+              "id": "b994e420-d68d-4114-97e8-76ecc0319da2",
+              "name": "Service telemetry",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "1838347d-ce2f-43ce-862b-a74e337f6fa2",
+          "name": "Pub/Sub",
+          "description": "Fanout and event notification.",
+          "concepts": [
+            {
+              "id": "c4964bfd-8f82-40b9-9837-2f6d06cca243",
+              "name": "Event fanout",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "8cf2aba7-cb16-48f6-9881-9eb4d373c16d",
+          "name": "Rate Limiting",
+          "description": "Protecting services from excess traffic.",
+          "concepts": [
+            {
+              "id": "175fb8e9-e8ac-4c1a-b22d-6b738bb001d9",
+              "name": "Distributed rate limiting",
+              "points": [
+                {
+                  "id": "02c15ae4-4b1e-49d7-ac32-5bfa6005574d",
+                  "statement": "Can explain coordination across service instances.",
+                  "currentRevisionCount": 0
+                }
+              ]
+            },
+            {
+              "id": "f623e929-cae2-4010-be86-be8bb7a5d705",
+              "name": "Token bucket rate limiting",
+              "points": [
+                {
+                  "id": "016cdf17-c613-466e-8e71-b7e4c0c11044",
+                  "statement": "Can compare burst capacity and sustained rate.",
+                  "currentRevisionCount": 0
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "10ef0a27-d703-429d-b83b-641881fb04e0",
+          "name": "REST",
+          "description": "Resource-oriented API design.",
+          "concepts": [
+            {
+              "id": "76bdf077-6dc9-4239-91d9-aa07eb8a4a23",
+              "name": "Resource-oriented API design",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
+          "name": "Retries and Idempotency",
+          "description": "Safe failure recovery.",
+          "concepts": [
+            {
+              "id": "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
+              "name": "Idempotent operations",
+              "points": [
+                {
+                  "id": "038856d1-b2ba-4a8c-bd00-42a3e233e2a7",
+                  "statement": "Can design a safe repeated operation.",
+                  "currentRevisionCount": 0
+                }
+              ]
+            },
+            {
+              "id": "eec45bbe-da6e-4c5c-b84a-74272032137a",
+              "name": "Retry backoff",
+              "points": []
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 0,
+      "currentQuestionRevisions": 0,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 0,
+      "byQuestionType": {},
+      "byCognitiveLevel": {},
+      "byDifficulty": {},
+      "byReviewState": {},
+      "byPublicationState": {},
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 0,
+        "totalCurrentRevisions": 0
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 0,
+        "totalCurrentRevisions": 0
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "90753a3e-f059-4b1d-adf2-eacdbd0fc97f",
+          "concept": "Cache-aside pattern",
+          "topic": "Caching",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "10407aba-bd86-45e3-9622-b4bc185a502a",
+          "concept": "LRU and LFU eviction",
+          "topic": "Eviction",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "175fb8e9-e8ac-4c1a-b22d-6b738bb001d9",
+          "concept": "Distributed rate limiting",
+          "topic": "Rate Limiting",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "f623e929-cae2-4010-be86-be8bb7a5d705",
+          "concept": "Token bucket rate limiting",
+          "topic": "Rate Limiting",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "d388c9bb-10ff-4663-a0e2-3d716e968894",
+          "concept": "Work coordination",
+          "topic": "Concurrency",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
+          "concept": "Token authentication",
+          "topic": "Authentication",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "f6b832ed-4321-4caf-a338-885bd89a8d9a",
+          "concept": "Resource ownership",
+          "topic": "Authorization",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "76bdf077-6dc9-4239-91d9-aa07eb8a4a23",
+          "concept": "Resource-oriented API design",
+          "topic": "REST",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "088badd0-c87a-413c-a698-d41f9aaf1cd2",
+          "concept": "Consumer acknowledgements",
+          "topic": "Message Queues",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "b3237c90-4478-40cd-8855-f0b3253c42d9",
+          "concept": "Dead letter handling",
+          "topic": "Message Queues",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "c4964bfd-8f82-40b9-9837-2f6d06cca243",
+          "concept": "Event fanout",
+          "topic": "Pub/Sub",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
+          "concept": "Idempotent operations",
+          "topic": "Retries and Idempotency",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "eec45bbe-da6e-4c5c-b84a-74272032137a",
+          "concept": "Retry backoff",
+          "topic": "Retries and Idempotency",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "8bd2fcca-3204-4c50-9911-0525e26b12ab",
+          "concept": "Container fundamentals",
+          "topic": "Docker",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
+          "concept": "Health-aware routing",
+          "topic": "Load Balancing",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "b994e420-d68d-4114-97e8-76ecc0319da2",
+          "concept": "Service telemetry",
+          "topic": "Observability",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 16,
+      "reviewBlockerCount": 0
+    },
+    {
+      "domain": "Computer Networks",
+      "topicClusterCount": 2,
+      "knowledgePointCount": 4,
+      "topics": [
+        {
+          "id": "56762e33-de3a-4fed-aa59-8516371f193d",
+          "name": "HTTP",
+          "description": "HTTP semantics, caching, and transport behavior.",
+          "concepts": [
+            {
+              "id": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+              "name": "HTTP caching",
+              "points": [
+                {
+                  "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+                  "statement": "Can distinguish freshness from validation.",
+                  "currentRevisionCount": 18
+                }
+              ]
+            },
+            {
+              "id": "85789bff-da2f-419a-9025-02daef956331",
+              "name": "HTTP request lifecycle",
+              "points": [
+                {
+                  "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+                  "statement": "Can explain method, status, headers, and body roles.",
+                  "currentRevisionCount": 18
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "604ab306-a12f-495e-b1c3-b4c39e1088ca",
+          "name": "TCP Reliability",
+          "description": "Explain ordered delivery, retransmission, and connection state without assuming application messages.",
+          "concepts": [
+            {
+              "id": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
+              "name": "TCP reliable byte streams",
+              "points": [
+                {
+                  "id": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+                  "statement": "Can explain how sequence numbers and retransmission recover missing bytes while preserving ordered delivery.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "0353e4bb-9708-4975-8f99-797169371161",
+                  "statement": "Can explain that TCP exposes a byte stream and does not preserve application write or message boundaries.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 59,
+      "currentQuestionRevisions": 48,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 48,
+      "byQuestionType": {
+        "descriptive": 2,
+        "mcq": 18,
+        "rapid_recall": 18,
+        "scenario": 2,
+        "short_explanation": 6,
+        "transfer": 2
+      },
+      "byCognitiveLevel": {
+        "application": 8,
+        "depth": 4,
+        "explanation": 8,
+        "recall": 18,
+        "recognition": 6,
+        "transfer": 4
+      },
+      "byDifficulty": {
+        "1": 8,
+        "2": 14,
+        "3": 16,
+        "4": 6,
+        "5": 4
+      },
+      "byReviewState": {
+        "awaiting_subject_matter_review": 48
+      },
+      "byPublicationState": {
+        "draft": 48
+      },
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 48,
+        "totalCurrentRevisions": 48
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 48,
+        "totalCurrentRevisions": 48
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+          "concept": "HTTP caching",
+          "topic": "HTTP",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 18,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "85789bff-da2f-419a-9025-02daef956331",
+          "concept": "HTTP request lifecycle",
+          "topic": "HTTP",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 18,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
+          "concept": "TCP reliable byte streams",
+          "topic": "TCP Reliability",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 3,
+      "reviewBlockerCount": 3
+    },
+    {
+      "domain": "Database Management Systems",
+      "topicClusterCount": 4,
+      "knowledgePointCount": 4,
+      "topics": [
+        {
+          "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
+          "name": "Indexes",
+          "description": "Query access paths and index tradeoffs.",
+          "concepts": [
+            {
+              "id": "c3845193-fb08-4e92-847e-380e21cd480b",
+              "name": "Index selection",
+              "points": [
+                {
+                  "id": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+                  "statement": "Can explain how a composite B-tree index column order affects equality and range predicates.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "820a6a53-19a5-4ad2-b403-330ea1ea1563",
+                  "statement": "Can weigh index selectivity and read benefit against write, storage, and maintenance cost.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+          "name": "Replication and Sharding",
+          "description": "Scaling reads and partitioning data.",
+          "concepts": [
+            {
+              "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+              "name": "Data partitioning",
+              "points": []
+            },
+            {
+              "id": "f2f44101-3c97-4be9-9883-c010a982b124",
+              "name": "Read replication",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+          "name": "SQL",
+          "description": "Relational queries and data modeling.",
+          "concepts": [
+            {
+              "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+              "name": "Join and aggregation queries",
+              "points": []
+            },
+            {
+              "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+              "name": "Relational data modeling",
+              "points": []
+            }
+          ]
+        },
+        {
+          "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
+          "name": "Transactions",
+          "description": "Atomicity, isolation, and consistency.",
+          "concepts": [
+            {
+              "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+              "name": "Isolation and atomicity",
+              "points": [
+                {
+                  "id": "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
+                  "statement": "Can describe atomic commit and isolation tradeoffs.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+                  "statement": "Can predict a non-repeatable read or serialization anomaly from a transaction schedule and isolation level.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 24,
+      "currentQuestionRevisions": 24,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 24,
+      "byQuestionType": {
+        "mcq": 8,
+        "rapid_recall": 12,
+        "short_explanation": 4
+      },
+      "byCognitiveLevel": {
+        "application": 4,
+        "explanation": 4,
+        "recall": 12,
+        "recognition": 4
+      },
+      "byDifficulty": {
+        "1": 4,
+        "2": 8,
+        "3": 12
+      },
+      "byReviewState": {
+        "awaiting_subject_matter_review": 24
+      },
+      "byPublicationState": {
+        "draft": 24
+      },
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "c3845193-fb08-4e92-847e-380e21cd480b",
+          "concept": "Index selection",
+          "topic": "Indexes",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+          "concept": "Data partitioning",
+          "topic": "Replication and Sharding",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "f2f44101-3c97-4be9-9883-c010a982b124",
+          "concept": "Read replication",
+          "topic": "Replication and Sharding",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+          "concept": "Join and aggregation queries",
+          "topic": "SQL",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+          "concept": "Relational data modeling",
+          "topic": "SQL",
+          "availability": "study_only",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 0,
+          "distinctVerificationCandidateAvailable": false,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+          "concept": "Isolation and atomicity",
+          "topic": "Transactions",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 6,
+      "reviewBlockerCount": 2
+    },
+    {
+      "domain": "Data Structures and Algorithms",
+      "topicClusterCount": 2,
+      "knowledgePointCount": 4,
+      "topics": [
+        {
+          "id": "17625537-7806-4430-8c10-d27018fc76b7",
+          "name": "Arrays and Hashing",
+          "description": "Compare sequential storage with keyed lookup for concrete workloads.",
+          "concepts": [
+            {
+              "id": "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
+              "name": "Array and hash lookup trade-offs",
+              "points": [
+                {
+                  "id": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+                  "statement": "Can choose between array scanning and hash lookup from operation mix and expected complexity.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "49508cd2-9e1b-4b8a-ab74-e809b2d11cfa",
+                  "statement": "Can explain collision handling, key equality, and expected-versus-worst-case hash lookup.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "693726c0-8f88-4291-80af-948bff4fd3dd",
+          "name": "Trees and Graphs",
+          "description": "Choose traversal and search strategies from structure and requirements.",
+          "concepts": [
+            {
+              "id": "2453287e-c330-4071-9836-e1b9848abcc2",
+              "name": "Tree and graph traversal decisions",
+              "points": [
+                {
+                  "id": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+                  "statement": "Can choose BFS or DFS to satisfy shortest unweighted path, reachability, or traversal requirements.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "70e4f409-a21b-4538-8cca-283338c5be63",
+                  "statement": "Can explain when a visited set is required and bound traversal work by vertices and edges.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 24,
+      "currentQuestionRevisions": 24,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 24,
+      "byQuestionType": {
+        "mcq": 8,
+        "rapid_recall": 12,
+        "short_explanation": 4
+      },
+      "byCognitiveLevel": {
+        "application": 4,
+        "explanation": 4,
+        "recall": 12,
+        "recognition": 4
+      },
+      "byDifficulty": {
+        "1": 4,
+        "2": 8,
+        "3": 12
+      },
+      "byReviewState": {
+        "awaiting_subject_matter_review": 24
+      },
+      "byPublicationState": {
+        "draft": 24
+      },
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
+          "concept": "Array and hash lookup trade-offs",
+          "topic": "Arrays and Hashing",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "2453287e-c330-4071-9836-e1b9848abcc2",
+          "concept": "Tree and graph traversal decisions",
+          "topic": "Trees and Graphs",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 2,
+      "reviewBlockerCount": 2
+    },
+    {
+      "domain": "Operating Systems",
+      "topicClusterCount": 2,
+      "knowledgePointCount": 4,
+      "topics": [
+        {
+          "id": "6ef4a451-c37e-4ed8-b00b-deea08fa4d14",
+          "name": "Processes and Scheduling",
+          "description": "Explain process and thread state and how scheduling affects progress.",
+          "concepts": [
+            {
+              "id": "d958799a-b864-43a1-bec7-aac5f638c8b7",
+              "name": "Processes, threads, and scheduling",
+              "points": [
+                {
+                  "id": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+                  "statement": "Can distinguish process isolation from threads sharing an address space and resources.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "84e9d627-468b-4759-8004-5eab1145e1b5",
+                  "statement": "Can explain how preemption and scheduling policy affect latency, fairness, and throughput.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "b37490ce-4724-4430-8df7-6803976577a1",
+          "name": "Synchronization",
+          "description": "Diagnose races and deadlocks and choose synchronization conditions.",
+          "concepts": [
+            {
+              "id": "9c70fa17-885d-422a-aa95-d2e1701a9b9b",
+              "name": "Synchronization and deadlocks",
+              "points": [
+                {
+                  "id": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+                  "statement": "Can identify a data race and state the synchronization needed to protect an invariant.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "de995cf0-7aad-47aa-b6f0-4257620807d4",
+                  "statement": "Can diagnose deadlock using the four necessary conditions and propose a condition-breaking remedy.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 24,
+      "currentQuestionRevisions": 24,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 24,
+      "byQuestionType": {
+        "mcq": 8,
+        "rapid_recall": 12,
+        "short_explanation": 4
+      },
+      "byCognitiveLevel": {
+        "application": 4,
+        "explanation": 4,
+        "recall": 12,
+        "recognition": 4
+      },
+      "byDifficulty": {
+        "1": 4,
+        "2": 8,
+        "3": 12
+      },
+      "byReviewState": {
+        "awaiting_subject_matter_review": 24
+      },
+      "byPublicationState": {
+        "draft": 24
+      },
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 24,
+        "totalCurrentRevisions": 24
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "d958799a-b864-43a1-bec7-aac5f638c8b7",
+          "concept": "Processes, threads, and scheduling",
+          "topic": "Processes and Scheduling",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "9c70fa17-885d-422a-aa95-d2e1701a9b9b",
+          "concept": "Synchronization and deadlocks",
+          "topic": "Synchronization",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 2,
+      "reviewBlockerCount": 2
+    },
+    {
+      "domain": "System Design",
+      "topicClusterCount": 5,
+      "knowledgePointCount": 5,
+      "topics": [
+        {
+          "id": "a21c4082-77c5-4e76-aec6-6de4eaab7593",
+          "name": "Capacity Planning",
+          "description": "Estimating load and bottlenecks.",
+          "concepts": [
+            {
+              "id": "539f01ae-8c51-4c52-967a-84188355d620",
+              "name": "Back-of-the-envelope capacity",
+              "points": [
+                {
+                  "id": "c9464d7f-7de9-4281-b4ed-d4db06203684",
+                  "statement": "Can estimate request rate and storage from explicit workload assumptions and unit conversions.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "6d39e440-d94d-4c16-9fd2-997f2a6e5e65",
+          "name": "Consistency and Durability",
+          "description": "Correctness during failures.",
+          "concepts": [
+            {
+              "id": "1bd816b8-5f1b-4ad5-be85-ca6a93450202",
+              "name": "Consistency models",
+              "points": [
+                {
+                  "id": "acb868d7-c07d-4849-9ef9-be8c2b139464",
+                  "statement": "Can distinguish strong read-after-write behavior from eventual convergence for replicated data.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "6da3d7d4-2bc9-4bf5-b3d5-cecf8c5fa784",
+          "name": "Distributed Systems",
+          "description": "Coordination across independent nodes.",
+          "concepts": [
+            {
+              "id": "da378ab5-d4a3-48bc-b3de-be396ec9cac9",
+              "name": "Failure and partition tradeoffs",
+              "points": [
+                {
+                  "id": "d79dd3bd-1197-40ae-afdd-e85d0fde3f3b",
+                  "statement": "Can explain which consistency and availability behavior a client observes during a network partition.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "1248bccc-ddf5-4a41-88ac-7467d648bb0a",
+          "name": "Failure Recovery",
+          "description": "Degradation, retries, and recovery.",
+          "concepts": [
+            {
+              "id": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
+              "name": "Graceful degradation",
+              "points": [
+                {
+                  "id": "d80798b0-4f29-49f1-9f6d-7aead2e9dd89",
+                  "statement": "Can choose a bounded fallback when a dependency fails and state which user-visible guarantee changes.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "fad7fa11-ae44-46c6-ba32-da787b7ded98",
+          "name": "System Design Fundamentals",
+          "description": "Tradeoffs and component boundaries.",
+          "concepts": [
+            {
+              "id": "a1ed3b23-9aff-4493-9b2f-3dbf9da628fa",
+              "name": "Component boundary tradeoffs",
+              "points": [
+                {
+                  "id": "030aa17d-78fe-442b-9fd9-f835a1416019",
+                  "statement": "Can justify a boundary using scale and failure reasoning.",
+                  "currentRevisionCount": 6
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "totalQuestionRevisions": 30,
+      "currentQuestionRevisions": 30,
+      "learnerCreatedQuestions": 0,
+      "canonicalCurrentQuestions": 30,
+      "byQuestionType": {
+        "mcq": 10,
+        "rapid_recall": 15,
+        "short_explanation": 5
+      },
+      "byCognitiveLevel": {
+        "application": 5,
+        "explanation": 5,
+        "recall": 15,
+        "recognition": 5
+      },
+      "byDifficulty": {
+        "1": 5,
+        "2": 10,
+        "3": 15
+      },
+      "byReviewState": {
+        "awaiting_subject_matter_review": 30
+      },
+      "byPublicationState": {
+        "draft": 30
+      },
+      "mappingCompleteness": {
+        "mappedCurrentRevisions": 30,
+        "totalCurrentRevisions": 30
+      },
+      "provenanceCompleteness": {
+        "completeCurrentRevisions": 30,
+        "totalCurrentRevisions": 30
+      },
+      "assessmentCoverage": [
+        {
+          "conceptId": "a1ed3b23-9aff-4493-9b2f-3dbf9da628fa",
+          "concept": "Component boundary tradeoffs",
+          "topic": "System Design Fundamentals",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 6,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "1bd816b8-5f1b-4ad5-be85-ca6a93450202",
+          "concept": "Consistency models",
+          "topic": "Consistency and Durability",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 6,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
+          "concept": "Graceful degradation",
+          "topic": "Failure Recovery",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 6,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "539f01ae-8c51-4c52-967a-84188355d620",
+          "concept": "Back-of-the-envelope capacity",
+          "topic": "Capacity Planning",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 6,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "da378ab5-d4a3-48bc-b3de-be396ec9cac9",
+          "concept": "Failure and partition tradeoffs",
+          "topic": "Distributed Systems",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 6,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        }
+      ],
+      "coverageGapCount": 5,
+      "reviewBlockerCount": 5
+    }
+  ]
+}

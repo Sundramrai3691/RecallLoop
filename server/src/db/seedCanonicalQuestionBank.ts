@@ -1,12 +1,14 @@
 import { withTransaction } from "./postgres.js";
 import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuestionBank.js";
+import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "../services/questionBank/coreSdeQuestionBank.js";
 import { questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
 
 export async function seedCanonicalQuestionBank(): Promise<void> {
   const issues = validatePilotQuestionBank();
+  issues.push(...validateCoreSdeQuestionBank());
   if (issues.length) throw new Error(`Canonical question bank validation failed:\n${issues.join("\n")}`);
   await withTransaction(async (client) => {
-    for (const question of canonicalHttpPilotQuestions) {
+    for (const question of [...canonicalHttpPilotQuestions,...canonicalCoreSdeQuestions]) {
       const canonical = await client.query<{ concept_id: string; point_id: string }>(`SELECT cc.id AS concept_id,kp.id AS point_id
         FROM canonical_concepts cc JOIN knowledge_points kp ON kp.concept_id=cc.id
         WHERE cc.status='active' AND lower(trim(cc.name))=lower(trim($1))
@@ -24,12 +26,12 @@ export async function seedCanonicalQuestionBank(): Promise<void> {
           expected_misconceptions,estimated_minutes,options,correct_option_id,explanation,distractor_rationales,hints,
           question_origin,source_title,source_url,source_publisher,source_license,source_accessed_on,source_notes,
           content_hash,review_status,quality_status,publication_status
-        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'original',$19,$20,$21,$22,'2026-10-18',$23,$24,'awaiting_subject_matter_review','valid','draft')
+        ) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,'original',$19,$20,$21,$22,$23,$24,$25,'awaiting_subject_matter_review','valid','draft')
         ON CONFLICT(question_item_id,revision) DO NOTHING RETURNING id`, [
         item.id,question.revision,question.questionType,question.assessmentLevel,question.difficulty,question.objective,question.title,question.context,
         question.prompt,question.expectedAnswer,JSON.stringify(question.rubric),JSON.stringify(question.misconceptions),question.estimatedMinutes,
         question.options?JSON.stringify(question.options):null,question.correctOptionId,question.explanation,JSON.stringify(question.distractorRationales),
-        question.hints,question.source.title,question.source.url,question.source.publisher,question.source.license,question.source.notes,hash,
+        question.hints,question.source.title,question.source.url,question.source.publisher,question.source.license,question.source.accessedOn??"2026-10-18",question.source.notes,hash,
       ]);
       const revisionResult = inserted.rows[0] ? { rows: inserted.rows } : await client.query<{ id: string; content_hash: string }>(`SELECT id,content_hash FROM canonical_question_revisions WHERE question_item_id=$1 AND revision=$2`, [item.id,question.revision]);
       const revision = revisionResult.rows[0] as { id: string; content_hash?: string };

@@ -16,6 +16,7 @@
     "test:e2e": "node client/tests/e2e/knowledge-roadmap.mjs",
     "test:assessment-loop": "node scripts/run-isolated-assessment-loop.mjs",
     "question-bank:activate": "node scripts/activate-question-bank-review.mjs",
+    "question-bank:coverage": "npm run question-bank:coverage -w server",
     "start": "npm run start -w server"
   },
   "engines": {

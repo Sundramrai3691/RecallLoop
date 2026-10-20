@@ -1,6 +1,6 @@
 # Project status
 
-Status is based on checked-in source and commands run as of 2026-10-19. This is not a claim about any deployed environment or production usage.
+Status is based on checked-in source and commands run as of 2026-10-20. This is not a claim about any deployed environment or production usage.
 
 ## Status definitions
 
@@ -18,7 +18,7 @@ Presence of a test file alone does not mean it passed in this session.
 | Area | Status | Evidence |
 |---|---|---|
 | React/Vite client and Express API workspace | IMPLEMENTED | Root and workspace package scripts; `client/src`, `server/src`. |
-| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`017`. |
+| PostgreSQL runtime and ordered migrations | IMPLEMENTED | `server/src/db/*`, additive migrations `001`–`019`. |
 | Authenticated goals, skills, plans, and dashboard | IMPLEMENTED | Goal/dashboard services and authenticated routes. |
 | UI/UX 2.0 visual system and responsive shell | TESTED | Aurora Ink tokens, persistent light/dark themes, responsive navigation, accessible skip link, reduced-motion route transitions, and process-based landing illustration. Playwright/Edge checked exact 1440×900, 768×1024, and 390×844 Home layouts without horizontal overflow; Firefox continues to cover interactive routes. Screenshots were inspected and are in the temp directory recorded in the session log. |
 | Learner-intent Home, canonical knowledge checks, guided Learn, and Review | TESTED | Home keeps Test, Learn, and Review visible, with state-aware continuation separate from those choices. `/knowledge-check` reads live eligible canonical coverage and only exposes complete supported blueprints; an insufficient request is rejected before writes. `/study/new` carries new/remember/apply intent into the existing study flow; `/review` uses due scheduler state, submitted weakness, unfinished sessions, and plan tasks. See [UX Journey](UX_JOURNEY.md); this turn's exact browser, unit, integration, build, and whitespace evidence is appended in [Session Log](SESSION_LOG.md). |
@@ -65,6 +65,15 @@ Presence of a test file alone does not mean it passed in this session.
 | Generic question quality | PARTIALLY TESTED | Source confirms built-in deterministic blueprints and curated MCQs; LLM is not used to generate questions. Semantic quality remains a Phase C task. |
 | Provider behavior and live-check boundaries | TESTED | Live Gemini smoke cases are opt-in only when `RECALLLOOP_LIVE_PROVIDER_SMOKE=1`; they have 120-second per-case limits. This turn made no live provider calls. Default unit/integration/E2E verification is mock-backed. Source inspection confirms bounded request timeouts, allowlisted provider error classification without raw-body exposure, structured evaluation validation, and provider failure before study/evidence persistence; integration regression verifies recoverability with no partial evidence. Evaluator pedagogical quality remains unmeasured.
 | Readiness evidence policy | TESTED | ADR 010 documents the read-time policy and trade-offs. No schema migration was needed. Invalid evaluator JSON and provider failures both leave the recall attempt pending and create no evaluation or learner point state in PostgreSQL integration tests. Prompt framing is tested, but prompt-injection resistance is not established by an offline test.
+
+## Phase U3 Core SDE status (2026-10-20)
+
+| Area | Status | Evidence |
+|---|---|---|
+| Core SDE taxonomy | IMPLEMENTED | Additive migrations `018` and `019` add/reclassify canonical domains and retire twelve duplicate HTTP draft candidates while preserving revision history. |
+| Core SDE question authoring | IMPLEMENTED / PARTIALLY TESTED | 114 deterministic authored candidates cover 19 points in five domains; validator and seed integration are implemented. Independent subject-matter approval is still pending. |
+| Honest catalog coverage selector | IMPLEMENTED | API and client show domain, current and eligible counts, pending-review status, mapped point text, and only modes supported by eligible approved questions. Individual point-level choice within a concept remains a future improvement. |
+| Review packets and fresh database coverage report | BLOCKED LOCALLY | Packet export and report generation query PostgreSQL. Docker Desktop is unavailable and port 5432 refused connections in this session; the checked-in report is a prior database snapshot, not fresh verification. |
 
 ## Local verification commands
 

@@ -21,6 +21,7 @@ import { env } from "../../src/config/env.js";
 import { resetEvaluatorForTests } from "../../src/services/evaluator/index.js";
 import { seedCanonicalQuestionBank } from "../../src/db/seedCanonicalQuestionBank.js";
 import { listEligibleCanonicalQuestions } from "../../src/services/questionBank/questionBankService.js";
+import { canonicalCoreSdeQuestions } from "../../src/services/questionBank/coreSdeQuestionBank.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -65,6 +66,42 @@ describe("PostgreSQL runtime integration", () => {
     }finally{
       await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
     }
+  });
+
+  it("exposes the five Core SDE domains, exact current question coverage, and honest review blockers",async()=>{
+    const before=await postgres.query<any>(`SELECT count(*)::int revisions,count(DISTINCT i.id)::int identities FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id`);
+    const domains=await postgres.query<any>(`SELECT d.name,count(DISTINCT t.id)::int topics,count(DISTINCT kp.id)::int points FROM knowledge_domains d JOIN canonical_skills s ON s.domain_id=d.id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id AND c.status='active' LEFT JOIN knowledge_points kp ON kp.concept_id=c.id GROUP BY d.name`);
+    const coreNames=["Data Structures and Algorithms","Operating Systems","Database Management Systems","Computer Networks","System Design"];
+    for(const name of coreNames)expect(domains.rows.some((row:any)=>row.name===name)).toBe(true);
+    const coreCoverage=await listKnowledgeCheckCoverage();
+    const coreSubjects=coreCoverage.filter((subject:any)=>coreNames.includes(subject.domainName));
+    expect(new Set(coreSubjects.map((subject:any)=>subject.domainName))).toEqual(new Set(coreNames));
+    expect(canonicalCoreSdeQuestions).toHaveLength(114);
+    const candidates=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.revision=i.current_revision)::int current,
+      count(*) FILTER(WHERE r.review_status='awaiting_subject_matter_review' AND r.publication_status='draft')::int pending,
+      count(*) FILTER(WHERE r.review_status='subject_matter_reviewed' OR r.publication_status='published')::int approved_or_published
+      FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id WHERE i.slug LIKE 'sde-%' AND i.slug NOT LIKE 'sde-net-http-%'`);
+    expect(candidates.rows[0]).toEqual({total:114,current:114,pending:114,approved_or_published:0});
+    const retiredHttpCandidates=await postgres.query<any>(`SELECT count(*)::int count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'sde-net-http-%' AND r.publication_status='retired'`);
+    expect(retiredHttpCandidates.rows[0].count).toBe(12);
+    for(const subject of coreSubjects){
+      for(const topic of subject.topics){
+        for(const concept of topic.concepts){
+          if(concept.currentRevisionCount>0){expect(concept.availability).toBe("awaiting_review");expect(concept.supportedModes).toEqual([]);}
+          else expect(concept.availability).toBe("study_only");
+        }
+      }
+    }
+    for(const name of coreNames){
+      const concept=coreSubjects.find((subject:any)=>subject.domainName===name)!.topics.flatMap((topic:any)=>topic.concepts).find((item:any)=>item.currentRevisionCount>0);
+      const beforeSessions=await postgres.query<any>(`SELECT count(*)::int count FROM assessment_sessions`);
+      await expect(createCanonicalKnowledgeCheck(randomUUID(),concept.id,"rapid_fire")).rejects.toMatchObject({code:"QUESTION_BANK_COVERAGE_INSUFFICIENT",status:409});
+      const afterSessions=await postgres.query<any>(`SELECT count(*)::int count FROM assessment_sessions`);
+      expect(afterSessions.rows[0].count).toBe(beforeSessions.rows[0].count);
+    }
+    await seedCanonicalQuestionBank();
+    const after=await postgres.query<any>(`SELECT count(*)::int revisions,count(DISTINCT i.id)::int identities FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id`);
+    expect(after.rows[0]).toEqual(before.rows[0]);
   });
 
   it("requires an authorized exact-revision approval and lets a later review withdraw eligibility", async () => {
