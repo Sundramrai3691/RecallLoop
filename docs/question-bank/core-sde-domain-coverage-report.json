@@ -1,6 +1,6 @@
 {
   "reportVersion": 1,
-  "generatedAt": "2026-10-18T20:42:43.021Z",
+  "generatedAt": "2026-10-25T19:19:53.657Z",
   "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
   "catalog": {
     "domains": 6,
@@ -1317,7 +1317,8 @@
         "awaiting_subject_matter_review": 48
       },
       "byPublicationState": {
-        "draft": 48
+        "draft": 36,
+        "retired": 12
       },
       "mappingCompleteness": {
         "mappedCurrentRevisions": 48,

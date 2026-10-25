@@ -36,17 +36,28 @@ export async function listEligibleCanonicalQuestions(client: PoolClient, canonic
     FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
     JOIN canonical_question_revision_points rp ON rp.question_revision_id=r.id
     JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id
-    WHERE i.canonical_concept_id=$1 AND r.revision=i.current_revision AND r.publication_status='published' AND r.review_status='subject_matter_reviewed' AND r.quality_status='valid'
-      AND EXISTS (
-        SELECT 1 FROM canonical_question_reviews approved
-        JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
-        WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
-          AND approved.reviewed_at>=reviewer.granted_at
-          AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
-          AND NOT EXISTS (
-            SELECT 1 FROM canonical_question_reviews later
-            WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
-          )
+    WHERE i.canonical_concept_id=$1 AND r.revision=i.current_revision AND r.publication_status='published' AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
+      AND (
+        EXISTS (
+          SELECT 1 FROM canonical_question_reviews approved
+          JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
+          WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
+            AND approved.reviewed_at>=reviewer.granted_at
+            AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
+            AND NOT EXISTS (
+              SELECT 1 FROM canonical_question_reviews later
+              WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
+            )
+        )
+        OR EXISTS (
+          SELECT 1 FROM canonical_question_automated_reviews auto_review
+          WHERE auto_review.question_revision_id=r.id AND auto_review.decision='approved' AND auto_review.content_hash=r.content_hash
+            AND (auto_review.review_method='copilot_automated_review' OR auto_review.review_method='automated_quality_gate')
+            AND NOT EXISTS (
+              SELECT 1 FROM canonical_question_automated_reviews later
+              WHERE later.question_revision_id=r.id AND later.reviewed_at>auto_review.reviewed_at
+            )
+        )
       )
     GROUP BY r.id,i.slug ORDER BY r.question_type,r.difficulty,i.slug,r.revision DESC`, [canonicalConceptId]);
   return result.rows.map((row) => ({
