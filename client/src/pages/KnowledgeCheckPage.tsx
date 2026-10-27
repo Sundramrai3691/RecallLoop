@@ -15,7 +15,7 @@ const modeDetails = {
 const availabilityDetails = {
   available: "Assessment available",
   partial: "Partial eligible coverage; no complete blueprint yet",
-  awaiting_review: "Awaiting subject-matter review",
+  awaiting_review: "Question review in progress",
   insufficient_eligible_questions: "Reviewed coverage is below the minimum question count",
   study_only: "Study available · question bank not added yet",
 } as const;
@@ -29,8 +29,8 @@ function unavailableMessage(concept: KnowledgeCheckSubject["topics"][number]["co
   }
   if (concept.awaitingReviewCount > 0) {
     return {
-      title: `${concept.awaitingReviewCount} question${concept.awaitingReviewCount === 1 ? " is" : "s are"} awaiting independent review`,
-      detail: "Questions become available for learner assessments only after an authorized subject-matter reviewer approves and publishes them.",
+      title: `${concept.awaitingReviewCount} question${concept.awaitingReviewCount === 1 ? " still needs" : "s still need"} review`,
+      detail: "A check appears when enough current questions pass the applicable quality checks. You can learn this concept while review continues.",
     };
   }
   return {

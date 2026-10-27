@@ -1,6 +1,6 @@
 {
-  "reportVersion": 1,
-  "generatedAt": "2026-10-25T19:56:55.628Z",
+  "reportVersion": 2,
+  "generatedAt": "2026-10-27T19:24:27.186Z",
   "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
   "catalog": {
     "domains": 6,
@@ -270,6 +270,7 @@
           "topic": "Caching",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -330,6 +331,7 @@
           "topic": "Eviction",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -390,6 +392,7 @@
           "topic": "Rate Limiting",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -450,6 +453,7 @@
           "topic": "Rate Limiting",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -510,6 +514,7 @@
           "topic": "Concurrency",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -570,6 +575,7 @@
           "topic": "Authentication",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -630,6 +636,7 @@
           "topic": "Authorization",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -690,6 +697,7 @@
           "topic": "REST",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -750,6 +758,7 @@
           "topic": "Message Queues",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -810,6 +819,7 @@
           "topic": "Message Queues",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -870,6 +880,7 @@
           "topic": "Pub/Sub",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -930,6 +941,7 @@
           "topic": "Retries and Idempotency",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -990,6 +1002,7 @@
           "topic": "Retries and Idempotency",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1050,6 +1063,7 @@
           "topic": "Docker",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1110,6 +1124,7 @@
           "topic": "Load Balancing",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1170,6 +1185,7 @@
           "topic": "Observability",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1314,11 +1330,10 @@
         "5": 4
       },
       "byReviewState": {
-        "automated_reviewed": 36,
-        "awaiting_subject_matter_review": 12
+        "awaiting_subject_matter_review": 48
       },
       "byPublicationState": {
-        "published": 36,
+        "draft": 36,
         "retired": 12
       },
       "mappingCompleteness": {
@@ -1334,60 +1349,20 @@
           "conceptId": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
           "concept": "HTTP caching",
           "topic": "HTTP",
-          "availability": "available",
-          "eligibleByType": {
-            "descriptive": 1,
-            "mcq": 5,
-            "rapid_recall": 3,
-            "scenario": 1,
-            "short_explanation": 1,
-            "transfer": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
-            "deep_recall": {},
-            "practice": {},
-            "mastery_check": {}
-          },
-          "currentQuestionRevisions": 18,
-          "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
-        },
-        {
-          "conceptId": "85789bff-da2f-419a-9025-02daef956331",
-          "concept": "HTTP request lifecycle",
-          "topic": "HTTP",
-          "availability": "available",
-          "eligibleByType": {
-            "descriptive": 1,
-            "mcq": 5,
-            "rapid_recall": 3,
-            "scenario": 1,
-            "short_explanation": 1,
-            "transfer": 1
-          },
-          "missingBlueprintRequirements": {
-            "rapid_fire": {},
-            "deep_recall": {},
-            "practice": {},
-            "mastery_check": {}
-          },
-          "currentQuestionRevisions": 18,
-          "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
-        },
-        {
-          "conceptId": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
-          "concept": "TCP reliable byte streams",
-          "topic": "TCP Reliability",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
-          "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1401,6 +1376,140 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 18,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "85789bff-da2f-419a-9025-02daef956331",
+          "concept": "HTTP request lifecycle",
+          "topic": "HTTP",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              },
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              },
+              "transfer": {
+                "required": 1,
+                "eligible": 0
+              }
+            }
+          },
+          "currentQuestionRevisions": 18,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": false
+        },
+        {
+          "conceptId": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
+          "concept": "TCP reliable byte streams",
+          "topic": "TCP Reliability",
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
+          "missingBlueprintRequirements": {
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
+            "deep_recall": {
+              "descriptive": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "practice": {
+              "scenario": {
+                "required": 1,
+                "eligible": 0
+              }
+            },
+            "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1417,11 +1526,11 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         }
       ],
-      "coverageGapCount": 0,
-      "reviewBlockerCount": 0
+      "coverageGapCount": 3,
+      "reviewBlockerCount": 3
     },
     {
       "domain": "Database Management Systems",
@@ -1530,10 +1639,10 @@
         "3": 12
       },
       "byReviewState": {
-        "automated_reviewed": 24
+        "awaiting_subject_matter_review": 24
       },
       "byPublicationState": {
-        "published": 24
+        "draft": 24
       },
       "mappingCompleteness": {
         "mappedCurrentRevisions": 24,
@@ -1548,14 +1657,20 @@
           "conceptId": "c3845193-fb08-4e92-847e-380e21cd480b",
           "concept": "Index selection",
           "topic": "Indexes",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1569,6 +1684,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1585,7 +1712,7 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
@@ -1593,6 +1720,7 @@
           "topic": "Replication and Sharding",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1653,6 +1781,7 @@
           "topic": "Replication and Sharding",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1713,6 +1842,7 @@
           "topic": "SQL",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1773,6 +1903,7 @@
           "topic": "SQL",
           "availability": "study_only",
           "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
             "rapid_fire": {
               "mcq": {
@@ -1831,14 +1962,20 @@
           "conceptId": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
           "concept": "Isolation and atomicity",
           "topic": "Transactions",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1852,6 +1989,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1868,11 +2017,11 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         }
       ],
-      "coverageGapCount": 4,
-      "reviewBlockerCount": 0
+      "coverageGapCount": 6,
+      "reviewBlockerCount": 2
     },
     {
       "domain": "Data Structures and Algorithms",
@@ -1947,10 +2096,10 @@
         "3": 12
       },
       "byReviewState": {
-        "automated_reviewed": 24
+        "awaiting_subject_matter_review": 24
       },
       "byPublicationState": {
-        "published": 24
+        "draft": 24
       },
       "mappingCompleteness": {
         "mappedCurrentRevisions": 24,
@@ -1965,14 +2114,20 @@
           "conceptId": "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
           "concept": "Array and hash lookup trade-offs",
           "topic": "Arrays and Hashing",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1986,6 +2141,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2002,20 +2169,26 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "2453287e-c330-4071-9836-e1b9848abcc2",
           "concept": "Tree and graph traversal decisions",
           "topic": "Trees and Graphs",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2029,6 +2202,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2045,11 +2230,11 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         }
       ],
-      "coverageGapCount": 0,
-      "reviewBlockerCount": 0
+      "coverageGapCount": 2,
+      "reviewBlockerCount": 2
     },
     {
       "domain": "Operating Systems",
@@ -2124,10 +2309,10 @@
         "3": 12
       },
       "byReviewState": {
-        "automated_reviewed": 24
+        "awaiting_subject_matter_review": 24
       },
       "byPublicationState": {
-        "published": 24
+        "draft": 24
       },
       "mappingCompleteness": {
         "mappedCurrentRevisions": 24,
@@ -2142,14 +2327,20 @@
           "conceptId": "d958799a-b864-43a1-bec7-aac5f638c8b7",
           "concept": "Processes, threads, and scheduling",
           "topic": "Processes and Scheduling",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2163,6 +2354,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2179,20 +2382,26 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "9c70fa17-885d-422a-aa95-d2e1701a9b9b",
           "concept": "Synchronization and deadlocks",
           "topic": "Synchronization",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 4,
-            "rapid_recall": 6,
-            "short_explanation": 2
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2206,6 +2415,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2222,11 +2443,11 @@
           },
           "currentQuestionRevisions": 12,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         }
       ],
-      "coverageGapCount": 0,
-      "reviewBlockerCount": 0
+      "coverageGapCount": 2,
+      "reviewBlockerCount": 2
     },
     {
       "domain": "System Design",
@@ -2345,10 +2566,10 @@
         "3": 15
       },
       "byReviewState": {
-        "automated_reviewed": 30
+        "awaiting_subject_matter_review": 30
       },
       "byPublicationState": {
-        "published": 30
+        "draft": 30
       },
       "mappingCompleteness": {
         "mappedCurrentRevisions": 30,
@@ -2363,14 +2584,20 @@
           "conceptId": "a1ed3b23-9aff-4493-9b2f-3dbf9da628fa",
           "concept": "Component boundary tradeoffs",
           "topic": "System Design Fundamentals",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 2,
-            "rapid_recall": 3,
-            "short_explanation": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2384,6 +2611,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2400,20 +2639,26 @@
           },
           "currentQuestionRevisions": 6,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "1bd816b8-5f1b-4ad5-be85-ca6a93450202",
           "concept": "Consistency models",
           "topic": "Consistency and Durability",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 2,
-            "rapid_recall": 3,
-            "short_explanation": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2427,6 +2672,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2443,20 +2700,26 @@
           },
           "currentQuestionRevisions": 6,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
           "concept": "Graceful degradation",
           "topic": "Failure Recovery",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 2,
-            "rapid_recall": 3,
-            "short_explanation": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2470,6 +2733,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2486,20 +2761,26 @@
           },
           "currentQuestionRevisions": 6,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "539f01ae-8c51-4c52-967a-84188355d620",
           "concept": "Back-of-the-envelope capacity",
           "topic": "Capacity Planning",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 2,
-            "rapid_recall": 3,
-            "short_explanation": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2513,6 +2794,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2529,20 +2822,26 @@
           },
           "currentQuestionRevisions": 6,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         },
         {
           "conceptId": "da378ab5-d4a3-48bc-b3de-be396ec9cac9",
           "concept": "Failure and partition tradeoffs",
           "topic": "Distributed Systems",
-          "availability": "available",
-          "eligibleByType": {
-            "mcq": 2,
-            "rapid_recall": 3,
-            "short_explanation": 1
-          },
+          "availability": "awaiting_review",
+          "eligibleByType": {},
+          "supportedModes": [],
           "missingBlueprintRequirements": {
-            "rapid_fire": {},
+            "rapid_fire": {
+              "mcq": {
+                "required": 2,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 3,
+                "eligible": 0
+              }
+            },
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -2556,6 +2855,18 @@
               }
             },
             "mastery_check": {
+              "mcq": {
+                "required": 1,
+                "eligible": 0
+              },
+              "rapid_recall": {
+                "required": 1,
+                "eligible": 0
+              },
+              "short_explanation": {
+                "required": 1,
+                "eligible": 0
+              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -2572,11 +2883,11 @@
           },
           "currentQuestionRevisions": 6,
           "distinctVerificationCandidateAvailable": true,
-          "distinctVerificationEligible": true
+          "distinctVerificationEligible": false
         }
       ],
-      "coverageGapCount": 0,
-      "reviewBlockerCount": 0
+      "coverageGapCount": 5,
+      "reviewBlockerCount": 5
     }
   ]
 }

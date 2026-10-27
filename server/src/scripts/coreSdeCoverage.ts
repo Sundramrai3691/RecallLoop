@@ -14,6 +14,12 @@ function deficits(counts:Record<string,number>){
   return Object.fromEntries(Object.entries(blueprints).map(([mode,required])=>[mode,Object.fromEntries(Object.entries(required).filter(([type,count])=>(counts[type]??0)<count).map(([type,count])=>[type,{required:count,eligible:counts[type]??0}]))]));
 }
 
+function supportedModes(counts:Record<string,number>){
+  return Object.entries(blueprints)
+    .filter(([,required])=>Object.entries(required).every(([type,count])=>(counts[type]??0)>=count))
+    .map(([mode])=>mode);
+}
+
 async function main(){
   const [catalog,allRevisions,current,eligible,learnerQuestions,coverage]=await Promise.all([
     postgres.query<any>(`SELECT d.name domain,t.id topic_id,t.name topic,t.description topic_description,c.id concept_id,c.name concept,kp.id point_id,kp.statement point
@@ -89,7 +95,7 @@ async function main(){
       const counts=Object.fromEntries((reviewByConcept.get(concept.id)??[]).map((item:any)=>[item.question_type,Number(item.count)]));
       const missing=deficits(counts);
       const status=concept.availability;
-      return {conceptId:concept.id,concept:concept.name,topic:concept.topic,availability:status,eligibleByType:counts,missingBlueprintRequirements:missing,currentQuestionRevisions:domainRows.filter((r:any)=>r.concept_id===concept.id).length,distinctVerificationCandidateAvailable:domainRows.some((r:any)=>r.concept_id===concept.id&&r.question_type==="short_explanation"),distinctVerificationEligible:Object.values(counts).length>0&&((counts.short_explanation??0)>0)};
+      return {conceptId:concept.id,concept:concept.name,topic:concept.topic,availability:status,eligibleByType:counts,supportedModes:supportedModes(counts),missingBlueprintRequirements:missing,currentQuestionRevisions:domainRows.filter((r:any)=>r.concept_id===concept.id).length,distinctVerificationCandidateAvailable:domainRows.some((r:any)=>r.concept_id===concept.id&&r.question_type==="short_explanation"),distinctVerificationEligible:Object.values(counts).length>0&&((counts.short_explanation??0)>0)};
     });
     const gapRows=perConcept.filter((item:any)=>item.availability!=="available");
     return {domain:domain.name,topicClusterCount:domain.topics.size,knowledgePointCount:concepts.reduce((sum:number,c:any)=>sum+c.points.length,0),topics:[...domain.topics.values()].map((t:any)=>({...t,concepts:[...t.concepts.values()]})),totalQuestionRevisions:revisionCounts.get(domain.name)?.total??0,currentQuestionRevisions:revisionCounts.get(domain.name)?.current??0,learnerCreatedQuestions:learnerCreatedCounts.get(domain.name)??0,canonicalCurrentQuestions:domainRows.length,byQuestionType:byType,byCognitiveLevel:byLevel,byDifficulty:byDifficulty,byReviewState:reviewStates,byPublicationState:publicationStates,mappingCompleteness:{mappedCurrentRevisions:domainRows.filter((r:any)=>r.mappings===1&&r.point_id).length,totalCurrentRevisions:domainRows.length},provenanceCompleteness:{completeCurrentRevisions:domainRows.filter((r:any)=>r.source_title&&r.source_url&&r.source_publisher&&r.source_license&&r.source_accessed_on&&r.source_notes).length,totalCurrentRevisions:domainRows.length},assessmentCoverage:perConcept,coverageGapCount:gapRows.length,reviewBlockerCount:perConcept.filter((item:any)=>item.availability==="awaiting_review").length};
@@ -102,7 +108,7 @@ async function main(){
     if(!(row.source_title&&row.source_url&&row.source_publisher&&row.source_license&&row.source_accessed_on&&row.source_notes))issues.push(`${row.slug}: source provenance is incomplete`);
     return issues;
   });
-  const report={reportVersion:1,generatedAt:new Date().toISOString(),scope:"Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",catalog:{domains:domains.length,topicClusters:domains.reduce((sum,d)=>sum+d.topicClusterCount,0),knowledgePoints:domains.reduce((sum,d)=>sum+d.knowledgePointCount,0)},bank:{totalRevisions:allRevisions.rows.reduce((sum:number,r:any)=>sum+Number(r.total_revisions),0),currentRevisions:uniqueCurrent.length,currentQuestionIdentityCount:new Set(uniqueCurrent.map((r:any)=>r.item_id)).size,mappedCurrentRevisions:mapped,provenanceCompleteCurrentRevisions:provenance,authoredHashMatches:hashValid,engineeringIssueCount:automaticIssues.length+databaseIssues.length,engineeringIssues:[...automaticIssues,...databaseIssues],humanReviewApprovals:uniqueCurrent.filter((r:any)=>r.review_status==="subject_matter_reviewed").length},assessmentBlueprints:blueprints,domains};
+  const report={reportVersion:2,generatedAt:new Date().toISOString(),scope:"Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",catalog:{domains:domains.length,topicClusters:domains.reduce((sum,d)=>sum+d.topicClusterCount,0),knowledgePoints:domains.reduce((sum,d)=>sum+d.knowledgePointCount,0)},bank:{totalRevisions:allRevisions.rows.reduce((sum:number,r:any)=>sum+Number(r.total_revisions),0),currentRevisions:uniqueCurrent.length,currentQuestionIdentityCount:new Set(uniqueCurrent.map((r:any)=>r.item_id)).size,mappedCurrentRevisions:mapped,provenanceCompleteCurrentRevisions:provenance,authoredHashMatches:hashValid,engineeringIssueCount:automaticIssues.length+databaseIssues.length,engineeringIssues:[...automaticIssues,...databaseIssues],humanReviewApprovals:uniqueCurrent.filter((r:any)=>r.review_status==="subject_matter_reviewed").length},assessmentBlueprints:blueprints,domains};
   await mkdir(path.dirname(output),{recursive:true});await writeFile(output,`${JSON.stringify(report,null,2)}\n`);console.log(JSON.stringify({output,domains:domains.map(d=>({domain:d.domain,topics:d.topicClusterCount,points:d.knowledgePointCount,current:d.currentQuestionRevisions,reviewersPending:d.reviewBlockerCount,blueprintGaps:d.coverageGapCount})),reportBank:report.bank},null,2));
 }
 

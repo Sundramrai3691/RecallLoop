@@ -4,6 +4,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { createServer } from "node:net";
 import dotenv from "dotenv";
 import { Pool } from "pg";
 import { Builder, By, until, Select } from "selenium-webdriver";
@@ -14,6 +15,18 @@ import { chromium } from "playwright";
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 dotenv.config({ path: path.join(root, ".env") });
 
+async function findFreePort() {
+  const server = createServer();
+  await new Promise((resolve, reject) => {
+    server.once("error", reject);
+    server.listen(0, "127.0.0.1", resolve);
+  });
+  const address = server.address();
+  if (!address || typeof address === "string") throw new Error("Could not allocate a loopback port for E2E.");
+  await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
+  return address.port;
+}
+
 const databaseUrl = new URL(process.env.DATABASE_URL ?? "");
 assert(["127.0.0.1", "localhost", "::1"].includes(databaseUrl.hostname), "E2E cleanup is restricted to a loopback PostgreSQL host");
 const isolatedRun = process.env.RECALLLOOP_E2E_ISOLATED === "1";
@@ -21,10 +34,12 @@ assert(isolatedRun ? /^\/recallloop_u2_it_[a-f0-9]{16}$/.test(databaseUrl.pathna
 
 const email = `e2e-roadmap-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
 const password = `E2e-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+let foreignAccountEmail;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const options = new firefox.Options().setBinary("C:\\Program Files\\Mozilla Firefox\\firefox.exe").addArguments("-headless");
-const apiPort = 3101;
-const clientPort = 5174;
+const apiPort = await findFreePort();
+const clientPort = await findFreePort();
+const driverPort = await findFreePort();
 const apiUrl = `http://127.0.0.1:${apiPort}`;
 const clientUrl = `http://127.0.0.1:${clientPort}`;
 const processes = [];
@@ -68,11 +83,11 @@ async function stopProcess(processInfo) {
   if (child.exitCode === null && child.signalCode === null) child.kill("SIGKILL");
 }
 
-async function waitForDriver() {
+async function waitForDriver(port) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
     try {
-      const response = await fetch("http://127.0.0.1:4444/status");
+      const response = await fetch(`http://127.0.0.1:${port}/status`);
       if (response.ok) return;
     } catch {
       // The driver process is still opening its local port.
@@ -88,6 +103,7 @@ async function chooseSelectValue(driverInstance, id, value) {
 }
 
 try {
+  console.log(`E2E isolated ports: API ${apiPort}, client ${clientPort}, Firefox driver ${driverPort}`);
   const childEnv = {
     ...process.env,
     PORT: String(apiPort),
@@ -109,18 +125,22 @@ try {
   ], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
   await waitForUrl(clientUrl, clientProcess);
 
-  geckodriver = await startGeckodriver({ host: "127.0.0.1", port: 4444 });
-  await waitForDriver();
-  driver = await new Builder().usingServer("http://127.0.0.1:4444").forBrowser("firefox").setFirefoxOptions(options).build();
-  await driver.manage().setTimeouts({ implicit: 0, pageLoad: 20000, script: 10000 });
-  await driver.get(`${clientUrl}/register`);
-  await driver.findElement(By.id("name")).sendKeys("RecallLoop E2E");
-  await driver.findElement(By.id("email")).sendKeys(email);
-  await driver.findElement(By.id("password")).sendKeys(password);
-  await driver.findElement(By.css("button[type='submit']")).click();
-  await driver.wait(until.urlContains("/onboarding"), 10000);
+  geckodriver = await startGeckodriver({ host: "127.0.0.1", port: driverPort });
+  await waitForDriver(driverPort);
+  driver = await new Builder().usingServer(`http://127.0.0.1:${driverPort}`).forBrowser("firefox").setFirefoxOptions(options).build();
+  await driver.manage().setTimeouts({ implicit: 0, pageLoad: 45000, script: 10000 });
+  const registration = await fetch(`${apiUrl}/api/auth/register`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name: "RecallLoop E2E", email, password }),
+  });
+  const registeredLearner = await registration.json();
+  assert.equal(registration.status, 201, `Could not create the disposable learner through the application API: ${JSON.stringify(registeredLearner)}`);
+  const token = registeredLearner.token;
+  await driver.get(clientUrl);
+  await driver.executeScript("localStorage.setItem('recallloop_token', arguments[0])", token);
 
-  const screenshotDirectory = path.join(os.tmpdir(), "recallloop-ux-2026-10-19");
+  const screenshotDirectory = path.join(os.tmpdir(), `recallloop-ux-${new Date().toISOString().slice(0, 10)}`);
   await mkdir(screenshotDirectory, { recursive: true });
   await driver.manage().window().setRect({ width: 1440, height: 985, x: 0, y: 0 });
   await driver.get(clientUrl);
@@ -190,6 +210,11 @@ try {
     const planWidth = await page.evaluate(() => document.documentElement.scrollWidth);
     assert.ok(planWidth <= 390, `Today’s plan should not overflow at 390px; scroll width was ${planWidth}`);
     await page.screenshot({ path: path.join(screenshotDirectory, "plan-empty-390.png"), fullPage: true });
+    await page.goto(`${clientUrl}/knowledge-check`, { waitUntil: "networkidle" });
+    await page.getByRole("heading", { name: "What would you like to check?" }).waitFor();
+    const knowledgeCheckWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+    assert.ok(knowledgeCheckWidth <= 390, `Knowledge Check should not overflow at 390px; scroll width was ${knowledgeCheckWidth}`);
+    await page.screenshot({ path: path.join(screenshotDirectory, "knowledge-check-390.png"), fullPage: true });
     await context.close();
   } finally { await browser.close(); }
 
@@ -198,9 +223,13 @@ try {
   await driver.get(`${clientUrl}/knowledge-check`);
   await driver.wait(until.elementLocated(By.id("knowledge-subject")), 10000);
   const coverageSnapshot = await driver.executeAsyncScript(async (done) => {
+    try {
     const token = localStorage.getItem("recallloop_token");
     const response = await fetch("/api/assessments/coverage", { headers: { Authorization: `Bearer ${token}` } });
     done({ status: response.status, body: await response.json() });
+    } catch (error) {
+      done({ networkError: String(error) });
+    }
   });
   assert.equal(coverageSnapshot.status, 200, "Knowledge check must load database-backed coverage");
   assert.ok(coverageSnapshot.body.subjects.length > 0, "The seeded canonical subject taxonomy should be available");
@@ -217,7 +246,7 @@ try {
       if ((await label.getText()).includes(unsupportedConcept.concept.name)) { await choice.click(); selectedUnsupported = true; break; }
     }
     assert.equal(selectedUnsupported, true, "The insufficient-coverage concept should be selectable for inspection");
-    await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'No assessment questions yet') or contains(.,'awaiting independent review') or contains(.,'aren’t enough approved questions')]")), 5000);
+    await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'No assessment questions yet') or contains(.,'needs review') or contains(.,'need review') or contains(.,'aren’t enough approved questions')]")), 5000);
     assert.equal(await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).isEnabled(), false, "The application must not promise unsupported coverage");
     assert.ok(await driver.findElement(By.linkText("Learn this topic")), "Insufficient coverage should link to study");
     const rejectedKnowledgeCheck = await driver.executeAsyncScript(async (conceptId, done) => {
@@ -260,8 +289,12 @@ try {
     assert.deepEqual(assessmentInitial.body.questions.map((question) => question.questionType).sort(), ["mcq", "mcq", "rapid_recall", "rapid_recall", "rapid_recall"].sort());
     assert.ok(assessmentInitial.body.questions.every((question) => !Object.hasOwn(question.questionData, "explanation") && !Object.hasOwn(question.questionData, "rubric")), "Expected answers and explanations must stay hidden before each answer is submitted");
     assert.equal(new Set(assessmentInitial.body.questions.map((question) => question.canonicalQuestionRevisionId)).size, 5, "An assessment must not repeat a revision within its blueprint");
-    const rapidIntro = await driver.findElements(By.xpath("//button[contains(.,'Start Rapid Fire')]"));
-    if (rapidIntro.length) await rapidIntro[0].click();
+    const rapidIntro = await driver.wait(until.elementLocated(By.xpath("//button[contains(.,'Start Rapid Fire')]")), 10000);
+    await driver.wait(until.elementIsVisible(rapidIntro), 5000);
+    await writeFile(path.join(screenshotDirectory, "assessment-intro.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
+    await rapidIntro.click();
+    await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
+    await writeFile(path.join(screenshotDirectory, "assessment-question.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
     for (let index = 0; index < assessmentInitial.body.questions.length; index += 1) {
       const currentQuestion = assessmentInitial.body.questions[index];
       await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
@@ -295,7 +328,7 @@ try {
     assert.equal(assessmentCompleted.body.result.total, assessmentInitial.body.questions.length, "The report should persist question-level evidence");
     assert.ok(assessmentCompleted.body.questions.every((question) => question.submittedAt && question.questionData.explanation !== undefined), "The report should reveal explanations only for submitted answers");
     assert.ok(assessmentCompleted.body.questions.every((question) => question.evaluation || question.questionType === "mcq"), "Submitted free responses should include validated evaluator evidence");
-    assert.equal(assessmentCompleted.body.result.recommendation.actionType, "learn", "A new retest must not be offered after the five approved revisions have all been used");
+    assert.equal(assessmentCompleted.body.result.recommendation.actionType, "remediation", "An evidence-backed weakness should offer focused remediation instead of a generic retest");
     assert.ok(await driver.findElement(By.css(".assessment-question-feedback .assessment-feedback-row")), "The report should show individual answers and feedback");
     const submittedAttempt = assessmentCompleted.body.questions[0];
     const evaluationCountBeforeDuplicate = await pool.query("SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=$1", [submittedAttempt.id]);
@@ -307,21 +340,107 @@ try {
     assert.equal(duplicateSubmission.status, 409, "A completed canonical attempt must reject duplicate submission");
     const evaluationCountAfterDuplicate = await pool.query("SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=$1", [submittedAttempt.id]);
     assert.equal(evaluationCountAfterDuplicate.rows[0].count, evaluationCountBeforeDuplicate.rows[0].count, "A duplicate response must not replace or append learner evidence");
-    const foreignAccountResponse = await fetch(`${apiUrl}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "U2 foreign owner", email: `u2-foreign-${Date.now()}@test.invalid`, password: `U2-${Math.random().toString(36).slice(2)}-Password` }) });
+    foreignAccountEmail = `u2-foreign-${Date.now()}@test.invalid`;
+    const foreignAccountResponse = await fetch(`${apiUrl}/api/auth/register`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: "U2 foreign owner", email: foreignAccountEmail, password: `U2-${Math.random().toString(36).slice(2)}-Password` }) });
     assert.equal(foreignAccountResponse.status, 201, "The isolated ownership check should create a disposable second learner");
     const foreignAccount = await foreignAccountResponse.json();
     const foreignRead = await fetch(`${apiUrl}/api/assessments/${assessmentId}`, { headers: { Authorization: `Bearer ${foreignAccount.token}` } });
     assert.equal(foreignRead.status, 404, "A different authenticated learner must not read this assessment report");
     const nextActionButton = await driver.findElement(By.css(".next-step-card button"));
-    assert.match(await nextActionButton.getText(), /focused resources/i, "When no fresh approved verification blueprint exists, the report should point to relevant learning resources");
+    assert.match(await nextActionButton.getText(), /focused review/i, "An evidence-backed weakness should offer a relevant focused review");
     await nextActionButton.click();
-    await driver.wait(until.urlContains(`/resources?conceptId=${assessmentInitial.body.assessment.conceptId}`), 10000);
-    assert.equal(new URL(await driver.getCurrentUrl()).searchParams.get("conceptId"), assessmentInitial.body.assessment.conceptId, "The recommended follow-up must preserve the assessed learner concept");
+    await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+\?returnTo=/i), 10000);
+    const recommendedReviewId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const recommendedReview = await learnerApi("GET", `/api/assessments/${recommendedReviewId}`);
+    assert.equal(recommendedReview.status, 200);
+    assert.equal(recommendedReview.body.assessment.mode, "deep_recall", "Focused review should use the existing deep-recall assessment path");
+    assert.equal(recommendedReview.body.assessment.conceptId, assessmentInitial.body.assessment.conceptId, "The focused review must preserve the diagnosed learner concept");
     canonicalAssessmentState = { assessmentId, ...assessmentCompleted.body };
     console.log("PASS canonical knowledge-check journey: approved topic through persisted assessment report");
-    await driver.navigate().back();
+    await driver.get(`${clientUrl}/assessments/${assessmentId}?returnTo=%2Fknowledge-check`);
   }
   else console.log("LIMITATION knowledge-check completion: this database has no fully approved canonical assessment blueprint; the insufficient-coverage gate was tested instead");
+
+  const domainJourneys = new Map();
+  for (const candidate of allCatalogConcepts) {
+    if (candidate.concept.supportedModes.includes("rapid_fire") && !domainJourneys.has(candidate.subject.domainName)) {
+      domainJourneys.set(candidate.subject.domainName, candidate);
+    }
+  }
+  const expectedDomains = ["Computer Networks", "Database Management Systems", "Data Structures and Algorithms", "Operating Systems", "System Design"];
+  for (const domainName of expectedDomains) {
+    const candidate = domainJourneys.get(domainName);
+    assert.ok(candidate, `${domainName} should have at least one current, eligible Rapid Fire concept in the configured database`);
+    await driver.get(`${clientUrl}/knowledge-check`);
+    await driver.wait(until.elementLocated(By.id("knowledge-subject")), 10000);
+    await chooseSelectValue(driver, "knowledge-subject", candidate.subject.id);
+    await chooseSelectValue(driver, "knowledge-topic", candidate.topic.id);
+    const choices = await driver.findElements(By.css("input[name='concept']"));
+    let selectedConcept = false;
+    for (const choice of choices) {
+      if ((await choice.findElement(By.xpath("ancestor::label")).getText()).includes(candidate.concept.name)) {
+        await choice.click();
+        selectedConcept = true;
+        break;
+      }
+    }
+    assert.equal(selectedConcept, true, `${candidate.concept.name} should be available under ${domainName}`);
+    await driver.wait(until.elementLocated(By.css("input[name='assessment-mode']")), 5000);
+    await driver.findElement(By.css("input[name='assessment-mode']")).click();
+    await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).click();
+    await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+/i), 10000);
+    const domainAssessmentId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const domainAssessment = await learnerApi("GET", `/api/assessments/${domainAssessmentId}`);
+    assert.equal(domainAssessment.status, 200);
+    assert.equal(domainAssessment.body.assessment.mode, "rapid_fire");
+    const mappedAssessmentConcept = await pool.query(
+      "SELECT canonical_concept_id FROM personal_concepts WHERE id=$1 AND user_id=(SELECT id FROM app_users WHERE email=$2)",
+      [domainAssessment.body.assessment.conceptId, email],
+    );
+    assert.equal(mappedAssessmentConcept.rows[0]?.canonical_concept_id, candidate.concept.id, `${domainName} assessment should retain its canonical concept mapping`);
+    assert.equal(domainAssessment.body.questions.length, 5);
+    const domainRevisionIds = domainAssessment.body.questions.map((question) => question.canonicalQuestionRevisionId);
+    assert.ok(domainRevisionIds.every(Boolean), `${domainName} assessment should pin every question to an immutable canonical revision`);
+    const eligibleRevisionCount = await pool.query(
+      `SELECT count(*)::int AS count FROM canonical_question_items i
+       JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
+       WHERE r.id=ANY($1::uuid[]) AND r.publication_status='published' AND r.quality_status='valid'
+         AND r.review_status IN ('automated_reviewed','subject_matter_reviewed')`,
+      [domainRevisionIds],
+    );
+    assert.equal(eligibleRevisionCount.rows[0].count, domainRevisionIds.length, `${domainName} assessment must use only eligible current revisions`);
+    const domainSlug = domainName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    await driver.wait(until.elementLocated(By.xpath("//button[contains(.,'Start Rapid Fire')]")), 10000);
+    await writeFile(path.join(screenshotDirectory, `domain-${domainSlug}-intro.png`), Buffer.from(await driver.takeScreenshot(), "base64"));
+    await driver.findElement(By.xpath("//button[contains(.,'Start Rapid Fire')]")).click();
+    for (let index = 0; index < domainAssessment.body.questions.length; index += 1) {
+      await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
+      const progress = await driver.findElement(By.css(".assessment-progress .eyebrow")).getText();
+      const options = await driver.findElements(By.css(".question-card input[type='radio']"));
+      if (options.length) await options[0].click();
+      else {
+        const answerField = await driver.findElement(By.id("assessment-answer"));
+        await answerField.sendKeys(`For ${candidate.concept.name}, I would explain the underlying mechanism, the conditions that matter, and its practical trade-off.`);
+      }
+      if (index === 0) await writeFile(path.join(screenshotDirectory, `domain-${domainSlug}-question.png`), Buffer.from(await driver.takeScreenshot(), "base64"));
+      await driver.findElement(By.css(".question-card button[type='submit']")).click();
+      if (index < domainAssessment.body.questions.length - 1) {
+        await driver.wait(async () => (await driver.findElement(By.css(".assessment-progress .eyebrow")).getText()) !== progress, 15000);
+      }
+    }
+    await driver.wait(until.elementLocated(By.css(".assessment-question-feedback")), 20000);
+    const completedDomainAssessment = await learnerApi("GET", `/api/assessments/${domainAssessmentId}`);
+    assert.equal(completedDomainAssessment.status, 200);
+    assert.equal(completedDomainAssessment.body.result.total, 5);
+    assert.ok(completedDomainAssessment.body.questions.every((question) => question.submittedAt), `${domainName} browser journey should submit every Rapid Fire answer`);
+    const domainEvidenceCount = await pool.query(
+      "SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=ANY($1::uuid[])",
+      [completedDomainAssessment.body.questions.map((question) => question.id)],
+    );
+    assert.equal(domainEvidenceCount.rows[0].count, 5, `${domainName} journey should persist evidence for all submitted answers`);
+    await writeFile(path.join(screenshotDirectory, `domain-${domainSlug}-report.png`), Buffer.from(await driver.takeScreenshot(), "base64"));
+    console.log(`PASS browser assessment journey: ${domainName} / ${candidate.concept.name} — 5 submitted answers, exact eligible revisions, persisted evidence`);
+  }
 
   // Journey B: a learner can study supplied text directly from Home without first taking a test.
   await driver.get(`${clientUrl}/dashboard`);
@@ -341,6 +460,7 @@ try {
   }, guidedStudyId);
   assert.equal(guidedStudy.status, 200, "The guided learn flow should create a persisted session");
   assert.ok(guidedStudy.body.concepts.length > 0, "The provided study text should produce persisted concepts for follow-up");
+  await driver.wait(until.elementLocated(By.css(".hero")), 10000);
   assert.match(await driver.findElement(By.css(".hero")).getText(), /strengthen your recall/i);
   await driver.findElement(By.xpath("//button[contains(.,'Start recall practice')]")).click();
   await driver.wait(until.urlMatches(/\/recall\/[0-9a-f-]+$/i), 10000);
@@ -361,8 +481,9 @@ try {
   await starterSelect.findElement(By.css("option:not([value=''])")).click();
   await driver.findElement(By.css("form.onboarding-form button[type='submit']")).click();
   await driver.wait(until.urlContains("/study/new?topic="), 10000);
-  await driver.wait(until.elementLocated(By.css(".study-next-steps")), 10000);
-  assert.match(await driver.findElement(By.css(".study-next-steps")).getText(), /Review concepts[\s\S]*Recall/);
+  const studyNextSteps = await driver.wait(until.elementLocated(By.css(".study-next-steps")), 10000);
+  await driver.wait(async () => /Review concepts[\s\S]*Recall/.test(await studyNextSteps.getText()), 10000);
+  assert.match(await studyNextSteps.getText(), /Review concepts[\s\S]*Recall/);
   await driver.findElement(By.id("material")).sendKeys("A cache reuses a response while it is fresh. Validation asks the origin whether a stale response has changed.");
   await driver.findElement(By.css("form.study-form button[type='submit']")).click();
   await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+(?:\?.*)?$/i), 15000);
@@ -379,15 +500,14 @@ try {
   await driver.findElement(By.xpath("//h2[normalize-space()='Backend Engineer']/ancestor::a")).click();
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Backend Engineer']")), 10000);
 
-  const topicElement = await driver.findElement(By.xpath("//h3[normalize-space()='HTTP']/ancestor::section[contains(@class,'card')]"));
-  const httpCaching = await topicElement.findElement(By.xpath(".//h4[normalize-space()='HTTP caching']/ancestor::article[contains(@class,'card')]"));
-  const summary = await httpCaching.findElement(By.css("summary"));
+  const topicElement = await driver.findElement(By.xpath("//h3[normalize-space()='Caching']/ancestor::section[contains(@class,'card')]"));
+  const cacheAside = await topicElement.findElement(By.xpath(".//h4[normalize-space()='Cache-aside pattern']/ancestor::article[contains(@class,'card')]"));
+  const summary = await cacheAside.findElement(By.css("summary"));
   const pointSummary = await summary.getText();
-  assert.match(pointSummary, /^1 knowledge points$/i, "HTTP caching should render one distinct knowledge point");
+  assert.match(pointSummary, /^1 knowledge points$/i, "Cache-aside should render one distinct knowledge point");
   await summary.click();
-  const pointText = await httpCaching.findElement(By.xpath(".//li[contains(.,'Can distinguish freshness from validation.')]")).getText();
-  assert.match(pointText, /Can distinguish freshness from validation\./);
-  await driver.findElement(By.xpath("//h3[normalize-space()='Caching']"));
+  const pointText = await cacheAside.findElement(By.xpath(".//li[contains(.,'Can explain cache hit, miss, load, and populate steps.')]")).getText();
+  assert.match(pointText, /Can explain cache hit, miss, load, and populate steps\./);
 
   const apiRole = await driver.executeAsyncScript(async (done) => {
     const token = localStorage.getItem("recallloop_token");
@@ -399,9 +519,14 @@ try {
     done(await response.json());
   });
   assert.ok(apiRole.role, `Authenticated roadmap API failed: ${JSON.stringify(apiRole)}`);
-  const http = apiRole.role.skills.flatMap((skill) => skill.topics).find((topic) => topic.name === "HTTP");
-  const concept = http?.concepts.find((item) => item.name === "HTTP caching");
-  assert.deepEqual(concept?.knowledgePoints.map((point) => point.statement), ["Can distinguish freshness from validation."]);
+  const caching = apiRole.role.skills.flatMap((skill) => skill.topics).find((topic) => topic.name === "Caching");
+  const cacheConcept = caching?.concepts.find((item) => item.name === "Cache-aside pattern");
+  assert.deepEqual(cacheConcept?.knowledgePoints.map((point) => point.statement), ["Can explain cache hit, miss, load, and populate steps."]);
+  const httpSelection = allCatalogConcepts.find(({ subject, concept }) => subject.domainName === "Computer Networks" && concept.name === "HTTP caching");
+  assert.ok(httpSelection, "The canonical HTTP caching concept should remain present in current topic coverage");
+  const httpTopic = httpSelection.topic;
+  const concept = httpSelection.concept;
+  assert.deepEqual(concept?.knowledgePoints.map((point) => point.statement), ["Can distinguish freshness from validation."], "HTTP assessment coverage should use its current canonical Computer Networks mapping");
 
   const persistedCountBeforeRejectedInputs = await pool.query(
     "SELECT count(*)::int AS count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1)",
@@ -431,7 +556,6 @@ try {
   );
   assert.equal(persistedSessions.rows[0].count, persistedCountBeforeRejectedInputs.rows[0].count, "Rejected study inputs must not leave orphan sessions");
 
-  const token = await driver.executeScript("return localStorage.getItem('recallloop_token')");
   async function learnerApi(method, route, body) {
     const response = await fetch(`${apiUrl}${route}`, {
       method,
@@ -459,6 +583,7 @@ try {
     assert.ok(httpRemediation.sources.some((source) => source.sourceId === httpSource.body.source.id && source.reference === httpSourceReference), "Targeted remediation must cite the learner-provided source relevant to the assessed point");
     await driver.get(`${clientUrl}/remediations/${httpRemediation.id}`);
     await driver.wait(until.elementLocated(By.css(".remediation-explanation")), 10000);
+    await writeFile(path.join(screenshotDirectory, "targeted-remediation.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
     await driver.findElement(By.xpath("//button[contains(.,'Check what you remember')]")).click();
     await driver.wait(until.urlMatches(/\/recall\/[0-9a-f-]+$/i), 10000);
     const verificationAttemptId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
@@ -467,6 +592,8 @@ try {
     assert.ok(!canonicalAssessmentState.questions.some((question) => question.questionData.prompt === targetedQuestion.body.recall.questionData.prompt), "Verification should ask different wording from the assessment prompts");
     assert.ok(targetedQuestion.body.recall.canonicalQuestionRevisionId, "An unseen approved canonical question should be used when the review gate makes one available");
     assert.ok(!canonicalAssessmentState.questions.some((question) => question.canonicalQuestionRevisionId === targetedQuestion.body.recall.canonicalQuestionRevisionId), "Verification must use a different immutable revision from the completed Rapid Fire round");
+    await driver.wait(until.elementLocated(By.id("answer")), 10000);
+    await writeFile(path.join(screenshotDirectory, "verification-question.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
     await driver.findElement(By.id("answer")).sendKeys("I can distinguish freshness from validation. A fresh response can be reused without contacting the origin. A stale response is validated with an ETag or Last-Modified validator; a 304 response lets the cache reuse the stored body.");
     await driver.findElement(By.css("form button[type='submit']")).click();
     await driver.wait(until.urlContains(`/recall/${verificationAttemptId}/result`), 10000);
@@ -487,25 +614,29 @@ try {
     console.log("PASS canonical assessment-to-remediation-to-verification-to-readiness loop in disposable PostgreSQL");
   }
 
+  assert.ok(caching && cacheConcept, "Backend Engineer should retain its actual Cache-aside topic mapping");
   await driver.get(`${clientUrl}/knowledge/roles/${apiRole.role.id}`);
-  await driver.wait(until.elementLocated(By.id(`concept-${concept.id}`)), 10000);
-  const canonicalArticle = await driver.findElement(By.id(`concept-${concept.id}`));
+  await driver.wait(until.elementLocated(By.id(`concept-${cacheConcept.id}`)), 10000);
+  const canonicalArticle = await driver.findElement(By.id(`concept-${cacheConcept.id}`));
   const canonicalStudyLink = await canonicalArticle.findElement(By.xpath(".//a[normalize-space()='Study concept']"));
   await canonicalStudyLink.click();
   await driver.wait(until.urlContains("/study/new?"), 10000);
   const handoffUrl = new URL(await driver.getCurrentUrl());
-  assert.equal(handoffUrl.searchParams.get("topicId"), http.id);
-  assert.equal(handoffUrl.searchParams.get("conceptId"), concept.id, "Roadmap study link should preserve the selected canonical concept ID");
+  assert.equal(handoffUrl.searchParams.get("topicId"), caching.id);
+  assert.equal(handoffUrl.searchParams.get("conceptId"), cacheConcept.id, "Roadmap study link should preserve the selected canonical concept ID");
   await driver.wait(until.elementLocated(By.id("study-topic")), 10000);
   const canonicalTitleInput = await driver.findElement(By.id("study-topic"));
-  assert.equal(await canonicalTitleInput.getAttribute("value"), "HTTP caching");
+  assert.equal(await canonicalTitleInput.getAttribute("value"), "Cache-aside pattern");
+  await driver.get(`${clientUrl}/study/new?${new URLSearchParams({ topic: concept.name, topicId: httpTopic.id, conceptId: concept.id })}`);
+  await driver.wait(until.elementLocated(By.id("study-topic")), 10000);
+  assert.equal(await driver.findElement(By.id("study-topic")).getAttribute("value"), "HTTP caching");
   await driver.findElement(By.id("material")).sendKeys("# HTTP caching.\n\nCan distinguish freshness from validation.");
   await driver.findElement(By.css("button[type='submit']")).click();
   await driver.wait(until.urlMatches(/\/study\/[0-9a-f-]+\?/i), 15000);
   const canonicalSessionId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
   const canonicalStudy = await learnerApi("GET", `/api/study-sessions/${canonicalSessionId}`);
   assert.equal(canonicalStudy.status, 200);
-  assert.equal(canonicalStudy.body.session.canonicalTopicId, http.id);
+  assert.equal(canonicalStudy.body.session.canonicalTopicId, httpTopic.id);
   assert.equal(canonicalStudy.body.session.canonicalConceptId, concept.id);
   const mappedPersonalConcept = canonicalStudy.body.concepts.find((item) => item.name === "HTTP caching");
   assert.ok(mappedPersonalConcept, "The extracted concept should retain the canonical concept name");
@@ -515,20 +646,17 @@ try {
   assert.equal(canonicalPointCountBefore.rows[0].count, 1);
 
   const learnerId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0].id;
-  const writesBeforeCanonicalGate = await pool.query(
-    `SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,
-            (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
-    [learnerId],
-  );
   const canonicalPractice = await learnerApi("POST", "/api/assessments", { conceptId: mappedPersonalConcept.id, mode: "deep_recall" });
-  assert.equal(canonicalPractice.status, 409);
-  assert.equal(canonicalPractice.body.code, "QUESTION_BANK_COVERAGE_INSUFFICIENT");
-  const canonicalLearnerWrites = await pool.query(
-    `SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,
-            (SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,
-    [learnerId],
+  assert.equal(canonicalPractice.status, 201, `The eligible HTTP deep-recall mode should create an assessment: ${JSON.stringify(canonicalPractice.body)}`);
+  const canonicalPracticeDetails = await learnerApi("GET", `/api/assessments/${canonicalPractice.body.assessment.id}`);
+  assert.equal(canonicalPracticeDetails.status, 200);
+  assert.ok(canonicalPracticeDetails.body.questions.every((question) => question.canonicalQuestionRevisionId), "Canonical assessment snapshots must retain exact question revisions");
+  const exactRevisions = await pool.query(
+    `SELECT count(*)::int count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
+     WHERE r.id = ANY($1::uuid[]) AND r.publication_status='published' AND r.review_status IN ('automated_reviewed','subject_matter_reviewed')`,
+    [canonicalPracticeDetails.body.questions.map((question) => question.canonicalQuestionRevisionId)],
   );
-  assert.deepEqual(canonicalLearnerWrites.rows[0], writesBeforeCanonicalGate.rows[0], "A canonical mode without a complete eligible blueprint must not create learner assessments or evidence");
+  assert.equal(exactRevisions.rows[0].count, canonicalPracticeDetails.body.questions.length, "Assessment must use only eligible exact current revisions");
   const canonicalPointCountAfter = await pool.query("SELECT count(*)::int AS count FROM knowledge_points WHERE concept_id=$1", [concept.id]);
   assert.equal(canonicalPointCountAfter.rows[0].count, canonicalPointCountBefore.rows[0].count, "Studying and assessing the canonical concept must not create duplicate catalog points");
   await driver.get(`${clientUrl}/resources?conceptId=${mappedPersonalConcept.id}`);
@@ -625,6 +753,7 @@ try {
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
   await driver.wait(until.elementLocated(By.id("readiness-goal")), 10000);
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Counts show the latest submitted outcome for each point.')]") ), 10000);
+  await writeFile(path.join(screenshotDirectory, "readiness-evidence.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
   assert.equal(await driver.findElements(By.xpath("//*[contains(.,'No submitted recall evidence yet.')]")).then((items) => items.length), 0, "Readiness should not call the submitted canonical assessment unassessed");
   assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/review']")), "Readiness should offer a distinct Review & Improve action");
   assert.ok(await driver.findElement(By.css(".readiness-actions a[href='/knowledge']")), "Readiness should link to the canonical knowledge map");
@@ -652,13 +781,14 @@ try {
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'Latest submitted evidence')]") ), 10000);
   await driver.get(`${clientUrl}/review`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='Choose what to strengthen']")), 10000);
+  await writeFile(path.join(screenshotDirectory, "review-improve.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
   assert.match(await driver.findElement(By.css(".page-header")).getText(), /due reviews follow your saved schedule/i, "Review & Improve should explain actionable due work, distinct from the evidence summary");
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}`);
   await driver.wait(until.elementLocated(By.id("canonical-skill")), 10000);
   assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='Start baseline assessment']")).isDisplayed(), true);
   await driver.findElement(By.css("input[type='checkbox']")).click();
   assert.equal(await driver.findElement(By.xpath("//button[normalize-space()='Continue without baseline']")).isDisplayed(), true);
-  assert.match(await driver.findElement(By.css("form.card[style]")).getText(), /leaves this goal without starting evidence/i);
+  assert.match(await driver.findElement(By.css("form.goal-baseline-form")).getText(), /starts without assessment evidence/i);
   await driver.findElement(By.css("input[type='checkbox']")).click();
   await driver.get(`${clientUrl}/goals/${dailyPlanGoalId}/readiness`);
   await driver.wait(until.elementLocated(By.xpath("//h1[normalize-space()='My Readiness']")), 10000);
@@ -667,6 +797,7 @@ try {
   }
   await driver.wait(until.elementLocated(By.xpath("//*[contains(.,'No exact canonical skill mapping is available yet')]") ), 10000);
   const pendingRecallAttemptId = generatedAssessment.body.questions[0].id;
+  await pool.query("UPDATE review_states SET due_at=now() + interval '30 days' WHERE user_id=$1", [learnerId]);
   await pool.query(
     `INSERT INTO review_states (user_id,concept_id,state,due_at,interval_days)
      VALUES ($1,$2,'review',now() - interval '1 day',1)
@@ -701,6 +832,7 @@ try {
   const recallCard = await driver.findElement(By.css(`[data-task-id='${scheduledRecall.id}']`));
   await recallCard.findElement(By.xpath(".//button[contains(.,'Start recall') or contains(.,'Start this step')]")).click();
   await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}?returnTo=`), 10000);
+  await driver.wait(until.elementLocated(By.css("form")), 15000);
   const answerField = await driver.findElements(By.id("answer"));
   if (answerField.length) await answerField[0].sendKeys("Freshness tells a cache how long a response may be reused; validation checks with the origin whether stale content changed.");
   else {
@@ -942,6 +1074,7 @@ try {
   }
   await driver.wait(until.urlContains(`/assessments/${rapidAssessmentId}`), 15000);
   await driver.wait(until.elementLocated(By.css(".report-hero")), 15000);
+  await writeFile(path.join(screenshotDirectory, "assessment-report.png"), Buffer.from(await driver.takeScreenshot(), "base64"));
   const rapidResult = await learnerApi("GET", `/api/assessments/${rapidAssessmentId}`);
   assert.equal(rapidResult.status, 200);
   assert.equal(rapidResult.body.assessment.status, "completed");
@@ -1020,12 +1153,14 @@ try {
     const visibleText = await driver.findElement(By.tagName("body")).getText().catch(() => "unavailable");
     console.error(`Browser state at failure (${currentUrl}):\n${visibleText.slice(-2000)}`);
   }
+  const apiProcess = processes.find((processInfo) => processInfo.name === "mock-provider API");
+  if (apiProcess?.output) console.error(`API output at failure:\n${apiProcess.output}`);
   throw error;
 } finally {
   if (driver) await driver.quit().catch(() => {});
   geckodriver?.kill();
   try {
-    await pool.query("DELETE FROM app_users WHERE email=$1", [email]);
+    await pool.query("DELETE FROM app_users WHERE email = ANY($1::text[])", [[email, foreignAccountEmail].filter(Boolean)]);
   } finally {
     await pool.end();
     for (const processInfo of processes.reverse()) await stopProcess(processInfo);
