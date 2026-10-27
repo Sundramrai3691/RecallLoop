@@ -13,9 +13,8 @@ const authoredBySlug = new Map(allAuthored.map((question) => [question.slug, que
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const manifestPath = path.resolve(moduleDirectory, "../../../docs/question-bank/automated-review-manifest.json");
 
-function readOption(name: string): string | null {
-  const index = process.argv.indexOf(name);
-  return index >= 0 ? process.argv[index + 1] ?? null : null;
+function readOption(name: string): boolean {
+  return process.argv.includes(name);
 }
 
 async function readJson<T>(filename: string): Promise<T> {
@@ -142,7 +141,7 @@ async function applyAutomatedReview() {
 }
 
 async function main() {
-  const apply = readOption("--apply") !== null;
+  const apply = readOption("--apply");
   const preflightReport = await preflight();
   await writeJson(manifestPath, preflightReport);
   if (!apply) {
@@ -150,7 +149,7 @@ async function main() {
     return;
   }
   const decisions = await applyAutomatedReview();
-  console.log(JSON.stringify({ mode: "applied", policyVersion, records: decisions, manifest: manifestPath }, null, 2));
+  console.log(JSON.stringify({ mode: "applied", policyVersion, decisions, manifest: manifestPath }, null, 2));
 }
 
 main().catch((error: unknown) => {

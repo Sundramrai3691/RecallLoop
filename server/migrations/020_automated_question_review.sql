@@ -88,10 +88,6 @@ DROP TRIGGER IF EXISTS trg_validate_canonical_question_publication ON canonical_
 CREATE TRIGGER trg_validate_canonical_question_publication BEFORE UPDATE OF publication_status,review_status ON canonical_question_revisions
 FOR EACH ROW EXECUTE FUNCTION validate_canonical_question_publication();
 
-UPDATE canonical_question_revisions r
-SET review_status='automated_reviewed', publication_status='published'
-FROM canonical_question_items i
-WHERE i.id=r.question_item_id
-  AND r.revision=i.current_revision
-  AND r.review_status IN ('awaiting_subject_matter_review','pending')
-  AND NOT EXISTS (SELECT 1 FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id AND ar.decision='approved');
+-- Do not auto-publish or auto-approve revisions during migration. The real
+-- automated review workflow is applied explicitly via the review script after
+-- the exact current revision has been validated against the authored catalog.

@@ -33,13 +33,17 @@ async function main(){
       GROUP BY d.name,t.name,c.id,c.name,kp.id,kp.statement,i.id,i.slug,r.id ORDER BY d.name,t.name,c.name,i.slug`),
     postgres.query<any>(`SELECT r.canonical_concept_id concept_id,r.question_type,count(DISTINCT r.id)::int count FROM (
         SELECT i.canonical_concept_id,r.id,r.question_type,r.assessment_level,r.difficulty FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
-        WHERE r.revision=i.current_revision AND r.publication_status='published' AND r.review_status='subject_matter_reviewed' AND r.quality_status='valid'
-          AND EXISTS(SELECT 1 FROM canonical_question_reviews a JOIN canonical_question_reviewers g ON g.reviewer_user_id=a.reviewer_user_id
-            WHERE a.question_revision_id=r.id AND a.decision='approved' AND a.content_hash=r.content_hash AND a.reviewed_at>=g.granted_at
-              AND (g.revoked_at IS NULL OR a.reviewed_at<g.revoked_at)
-              AND NOT EXISTS(SELECT 1 FROM canonical_question_reviews later WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(a.reviewed_at,a.id)))
-      ) r GROUP BY r.canonical_concept_id,r.question_type`),
-    postgres.query<any>(`SELECT d.name domain,count(DISTINCT q.id)::int learner_created_questions FROM knowledge_domains d JOIN canonical_skills s ON s.domain_id=d.id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN personal_concepts pc ON pc.canonical_concept_id=c.id JOIN questions q ON q.concept_id=pc.id AND q.canonical_question_revision_id IS NULL GROUP BY d.name`),
+          WHERE r.revision=i.current_revision AND r.publication_status='published' AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
+            AND (
+              EXISTS(SELECT 1 FROM canonical_question_reviews a JOIN canonical_question_reviewers g ON g.reviewer_user_id=a.reviewer_user_id
+                WHERE a.question_revision_id=r.id AND a.decision='approved' AND a.content_hash=r.content_hash AND a.reviewed_at>=g.granted_at
+                  AND (g.revoked_at IS NULL OR a.reviewed_at<g.revoked_at)
+                  AND NOT EXISTS(SELECT 1 FROM canonical_question_reviews later WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(a.reviewed_at,a.id)))
+              OR EXISTS(SELECT 1 FROM canonical_question_automated_reviews a
+                WHERE a.question_revision_id=r.id AND a.decision='approved' AND a.content_hash=r.content_hash
+                  AND NOT EXISTS(SELECT 1 FROM canonical_question_automated_reviews later WHERE later.question_revision_id=r.id AND later.decision='approved' AND (later.reviewed_at,later.id)>(a.reviewed_at,a.id)))
+            )
+        ) r GROUP BY r.canonical_concept_id,r.question_type`),    postgres.query<any>(`SELECT d.name domain,count(DISTINCT q.id)::int learner_created_questions FROM knowledge_domains d JOIN canonical_skills s ON s.domain_id=d.id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN personal_concepts pc ON pc.canonical_concept_id=c.id JOIN questions q ON q.concept_id=pc.id AND q.canonical_question_revision_id IS NULL GROUP BY d.name`),
     listKnowledgeCheckCoverage(),
   ]);
   const authored=[...canonicalHttpPilotQuestions,...canonicalCoreSdeQuestions];
