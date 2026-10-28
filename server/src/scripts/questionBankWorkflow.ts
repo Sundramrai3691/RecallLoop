@@ -88,7 +88,11 @@ async function currentRows(scope: "http" | "all" | string = "http") {
       r.review_status,r.quality_status,r.publication_status,
       coalesce(jsonb_agg(jsonb_build_object('id',kp.id,'statement',kp.statement)) FILTER (WHERE kp.id IS NOT NULL),'[]'::jsonb) AS mapped_points,
       (SELECT count(*)::int FROM canonical_question_reviews cr WHERE cr.question_revision_id=r.id) AS review_count,
-      (SELECT cr.decision FROM canonical_question_reviews cr WHERE cr.question_revision_id=r.id ORDER BY cr.reviewed_at DESC,cr.id DESC LIMIT 1) AS latest_review_decision
+      (SELECT cr.decision FROM canonical_question_reviews cr WHERE cr.question_revision_id=r.id ORDER BY cr.reviewed_at DESC,cr.id DESC LIMIT 1) AS latest_review_decision,
+      (SELECT count(*)::int FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id) AS automated_review_count,
+      (SELECT ar.decision FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id ORDER BY ar.reviewed_at DESC,ar.id DESC LIMIT 1) AS latest_automated_review_decision,
+      (SELECT ar.content_hash FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id ORDER BY ar.reviewed_at DESC,ar.id DESC LIMIT 1) AS latest_automated_review_content_hash,
+      (SELECT ar.policy_version FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id ORDER BY ar.reviewed_at DESC,ar.id DESC LIMIT 1) AS latest_automated_review_policy_version
     FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
     JOIN canonical_concepts cc ON cc.id=i.canonical_concept_id JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills s ON s.id=t.skill_id JOIN knowledge_domains d ON d.id=s.domain_id
     LEFT JOIN canonical_question_revision_points rp ON rp.question_revision_id=r.id
@@ -277,12 +281,14 @@ async function activationReport() {
     details.push({ revisionId: row.revision_id, slug, revision: Number(row.revision), contentHash: row.content_hash,
       engineeringValidation: { status: quality.automatedValidation, issues: quality.automatedValidationIssues },
       questionType: row.question_type, canonicalConceptId: row.canonical_concept_id, canonicalPoints: row.mapped_points,
-      review: { status: row.review_status, latestDecision: row.latest_review_decision, recordCount: Number(row.review_count) },
+      review: { status: row.review_status,
+        subjectMatter: { latestDecision: row.latest_review_decision, recordCount: Number(row.review_count) },
+        automated: { latestDecision: row.latest_automated_review_decision, recordCount: Number(row.automated_review_count),
+          contentHashMatches: row.latest_automated_review_content_hash === row.content_hash,
+          policyVersion: row.latest_automated_review_policy_version } },
       publication: row.publication_status, assessmentEligible: eligible,
       missingRequirements: [quality.automatedValidation !== "passed" ? "engineering validation must pass" : null,
-        row.review_status !== "subject_matter_reviewed" || row.latest_review_decision !== "approved" ? "current exact-revision subject-matter approval is required" : null,
-        row.publication_status !== "published" ? "revision must be published by the review workflow" : null,
-        !eligible ? "revision is excluded by the live assessment selector" : null].filter(Boolean) });
+        !eligible ? "current revision does not meet exact-revision review, publication, hash, or assessment-selector eligibility requirements" : null].filter(Boolean) });
   }
   const verificationRow = rows.find((candidate: any) => candidate.slug === "http-cache-explanation-cache-paths");
   if (!verificationRow) throw new Error("http-cache-explanation-cache-paths: current distinct verification candidate is absent from the database.");
@@ -294,12 +300,14 @@ async function activationReport() {
   const verificationCandidate = { revisionId: verificationRow.revision_id, slug: verificationRow.slug, revision: Number(verificationRow.revision), contentHash: verificationRow.content_hash,
     engineeringValidation: { status: verificationQuality?.automatedValidation ?? "failed", issues: verificationQuality?.automatedValidationIssues ?? ["current question is absent from the engineering inventory"] },
     questionType: verificationRow.question_type, canonicalConceptId: verificationRow.canonical_concept_id, canonicalPoints: verificationRow.mapped_points,
-    review: { status: verificationRow.review_status, latestDecision: verificationRow.latest_review_decision, recordCount: Number(verificationRow.review_count) },
+    review: { status: verificationRow.review_status,
+      subjectMatter: { latestDecision: verificationRow.latest_review_decision, recordCount: Number(verificationRow.review_count) },
+      automated: { latestDecision: verificationRow.latest_automated_review_decision, recordCount: Number(verificationRow.automated_review_count),
+        contentHashMatches: verificationRow.latest_automated_review_content_hash === verificationRow.content_hash,
+        policyVersion: verificationRow.latest_automated_review_policy_version } },
     publication: verificationRow.publication_status, assessmentEligible: eligibleVerification,
     missingRequirements: [verificationQuality?.automatedValidation !== "passed" ? "engineering validation must pass" : null,
-      verificationRow.review_status !== "subject_matter_reviewed" || verificationRow.latest_review_decision !== "approved" ? "current exact-revision subject-matter approval is required" : null,
-      verificationRow.publication_status !== "published" ? "revision must be published by the review workflow" : null,
-      !eligibleVerification ? "revision is excluded by the live assessment selector" : null].filter(Boolean) };
+      !eligibleVerification ? "current revision does not meet exact-revision review, publication, hash, or assessment-selector eligibility requirements" : null].filter(Boolean) };
   const byType = Object.fromEntries(["mcq", "rapid_recall"].map((type) => [type, details.filter((item) => item.questionType === type && item.assessmentEligible).length]));
   const report = { reportVersion: 1, reportKind: "HTTP caching activation evidence; engineering validation is not human approval", generatedAt: new Date().toISOString(),
     command: "npm run question-bank:activation-report -w server", assessmentBlueprint: { mode: "rapid_fire", required: { mcq: 2, rapid_recall: 3 }, eligible: byType,

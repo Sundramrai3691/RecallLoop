@@ -1,10 +1,27 @@
 # RecallLoop Core Product Consolidation Audit
 
 **Status:** Consolidated Baseline Audit  
-**Date:** 2026-10-28  
+**Date:** 2026-10-29
 **Repository:** `C:\Users\HP\RecallAI`  
 **Git Branch:** `main`  
 **Evaluator:** Agentic Pair Programmer (Autonomous Verification)
+
+## 2026-10-29 Phase 1 Execution Results
+
+This dated execution supersedes the pre-activation database, integration, and E2E claims in the baseline snapshot below. The configured database target was read through the application's `.env` configuration without displaying credentials: PostgreSQL `127.0.0.1:5432/recallloop`, user `recallloop`. The existing untracked `docs/research/` user files were preserved.
+
+| Area | Actual result |
+|---|---|
+| Taxonomy and replay migration | `021_link_network_protocols_to_backend_role.sql` was already present, is additive and idempotent, and ran through `npm.cmd run db:migrate -w server`. A database query confirmed the `Backend Engineer` → `Network Protocols` relationship in `Computer Networks`. A replay defect in migration 017 was then found: it reset automated-approved revisions to draft. New additive migration `022_restore_current_automated_question_approvals.sql` restores only current exact-hash automated approvals with no human-review record; the migration runner applies it after 020/021. |
+| Revision reconciliation | Coverage reports 161 total revisions and 150 current revisions. The 138 revision IDs and content hashes in the preflight manifest were compared against the database and match the current records and their exact automated-review hashes; all 138 are published and automated-reviewed. The other 12 current HTTP revisions are retired. There are also 11 older pending revisions that are retired and not current. The 138/138 preflight approvals correspond exactly to the 138 active current revisions; they are not interchangeable with total/current revision counts. No human approval was added. |
+| Review apply | `npm.cmd run question-bank:automated-review -w server` preflight returned 138 approved, 0 changes requested, 0 rejected, 0 blocked. `npm.cmd run question-bank:automated-review -w server -- --apply` created 138 `approved` automated-review records under `copilot-automated-quality-v1` and set those exact current revisions to `automated_reviewed` / `published`. |
+| Coverage and activation report | `npm.cmd run question-bank:coverage` found Rapid Fire coverage in Computer Networks 3/3 concepts, DSA 2/2, Operating Systems 2/2, System Design 5/5, and DBMS 2/6. All five intended domains have eligible concepts; four DBMS concepts remain without a complete Rapid Fire blueprint. `npm.cmd run question-bank:activation-report -w server` confirmed 2 eligible MCQs, 3 eligible rapid-recall questions, and a distinct eligible short-explanation verification revision for HTTP caching. |
+| Activation report correction | The report previously displayed zero human-review records as if no review decision existed, even while the assessment selector accepted automated-approved revisions. It now reports human and automated evidence separately, checks the exact automated content hash, and reports selector-based eligibility accurately. Automated approval is not human approval. |
+| Automated validation | `npm.cmd test` passed 26 files / 124 tests; four opt-in provider smoke checks were skipped. `npm.cmd run test:integration -w server` passed all 17 PostgreSQL tests, including automated-approval preservation after migration replay, role linkage, live eligible assessment selection in all five Core SDE domains, submission integrity, latest-point readiness, remediation, and distinct verification. The script now uses Vitest `--configLoader runner` because the default bundled config loader attempted to read outside the workspace and was denied by the sandbox. `npm.cmd run build` passed with the existing 560.21 kB minified client-bundle advisory. |
+| Browser E2E | Not validated in this run. The first attempt hit the sandbox config-bundling restriction. The runner workaround allowed API/Vite startup, but Firefox WebDriver's session handshake remained stuck for over five minutes before learner registration or screenshots; the process was stopped. No browser-flow, Firefox, Edge, or responsive result is claimed for this run. No learner account was created by the interrupted run. |
+| Learner-state definitions | Source and [Learning Model](LEARNING_MODEL.md) define `personal_concepts.mastery` as a rolling recall signal (60% latest weighted coverage and 40% prior score); `getGoalReadiness` reports the latest submitted outcome per canonical point and keeps unassessed points separate. LearnerPage labels and explains the rolling score, so these are documented, distinct projections rather than conflicting values with the same meaning. No historical evidence was rewritten. |
+
+Commands used `npm.cmd` because the PowerShell `npm.ps1` shim is disabled by the host execution policy. `npm.cmd run config:check -w server` passed and reported the configured LLM, embedding, and grounded-remediation providers without displaying credentials.
 
 ---
 

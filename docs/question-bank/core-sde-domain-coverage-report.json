@@ -1,6 +1,6 @@
 {
   "reportVersion": 2,
-  "generatedAt": "2026-10-27T20:33:02.779Z",
+  "generatedAt": "2026-10-28T18:15:44.118Z",
   "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
   "catalog": {
     "domains": 6,

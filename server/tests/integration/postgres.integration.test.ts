@@ -42,27 +42,48 @@ describe("PostgreSQL runtime integration", () => {
     expect(structured.rows).toHaveLength(9);
   });
 
-  it("keeps the unreviewed HTTP pilot out of learner assessments and records no attempt",async()=>{
+  it("preserves the exact current automated approval when migrations are replayed", async () => {
+    const revision = (await postgres.query<any>(`SELECT r.id,r.content_hash,r.review_status,r.publication_status
+      FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
+      JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.content_hash=r.content_hash AND ar.decision='approved'
+      WHERE i.slug='http-cache-recognition-freshness-directive'
+      ORDER BY ar.reviewed_at DESC,ar.id DESC LIMIT 1`)).rows[0];
+    if (!revision) return; // Fresh, not-yet-activated databases have no approval to preserve.
+    expect(revision).toMatchObject({ review_status: "automated_reviewed", publication_status: "published" });
+    try {
+      await postgres.query(`UPDATE canonical_question_revisions SET review_status='awaiting_subject_matter_review',publication_status='draft' WHERE id=$1`, [revision.id]);
+      await runPostgresMigration();
+      const restored = (await postgres.query<any>(`SELECT r.content_hash,r.review_status,r.publication_status
+        FROM canonical_question_revisions r WHERE r.id=$1`, [revision.id])).rows[0];
+      expect(restored).toEqual({ content_hash: revision.content_hash, review_status: "automated_reviewed", publication_status: "published" });
+    } finally {
+      await postgres.query(`UPDATE canonical_question_revisions SET review_status=$2,publication_status=$3 WHERE id=$1`, [revision.id,revision.review_status,revision.publication_status]);
+    }
+  });
+
+  it("selects reviewed HTTP Rapid Fire and mastery questions",async()=>{
     await seedCanonicalQuestionBank();
     const pilotCounts=await postgres.query<any>(`SELECT r.review_status,r.publication_status,count(*)::int AS count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'http-%' GROUP BY r.review_status,r.publication_status`);
-    expect(pilotCounts.rows).toEqual([{ review_status: "awaiting_subject_matter_review", publication_status: "draft", count: 24 }]);
-    const revisionCounts=await postgres.query<any>(`SELECT count(*)::int AS revisions,count(*) FILTER (WHERE cr.decision='approved')::int AS approvals FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id LEFT JOIN canonical_question_reviews cr ON cr.question_revision_id=r.id WHERE i.slug LIKE 'http-%'`);
+    expect(pilotCounts.rows).toEqual([{ review_status: "automated_reviewed", publication_status: "published", count: 24 }]);
+    const revisionCounts=await postgres.query<any>(`SELECT count(*)::int AS revisions,count(*) FILTER (WHERE ar.decision='approved' AND ar.content_hash=r.content_hash)::int AS automated_approvals,count(*) FILTER (WHERE cr.decision='approved')::int AS human_approvals FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id LEFT JOIN canonical_question_reviews cr ON cr.question_revision_id=r.id LEFT JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id WHERE i.slug LIKE 'http-%'`);
     expect(Number(revisionCounts.rows[0].revisions)).toBeGreaterThanOrEqual(24);
-    expect(revisionCounts.rows[0].approvals).toBe(0);
+    expect(Number(revisionCounts.rows[0].automated_approvals)).toBeGreaterThanOrEqual(24);
+    expect(revisionCounts.rows[0].human_approvals).toBe(0);
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Canonical question pilot') RETURNING id`,[`question-bank-${randomUUID()}@test.local`])).rows[0].id;
     try{
       const catalog=(await postgres.query<any>(`SELECT cc.id AS concept_id,kp.id AS point_id,kp.statement FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN knowledge_points kp ON kp.concept_id=cc.id WHERE t.name='HTTP' AND cc.name='HTTP caching' AND cc.status='active'`)).rows[0];
       const coverage=await listKnowledgeCheckCoverage();
       const coveredConcept=coverage.flatMap((subject:any)=>subject.topics.flatMap((topic:any)=>topic.concepts)).find((concept:any)=>concept.id===catalog.concept_id);
-      expect(coveredConcept).toMatchObject({id:catalog.concept_id,supportedModes:[]});
-      await expect(createCanonicalKnowledgeCheck(userId,catalog.concept_id,"practice")).rejects.toMatchObject({status:409,code:"QUESTION_BANK_COVERAGE_INSUFFICIENT"});
-      const blockedWrites=await postgres.query<any>(`SELECT count(*)::int AS count FROM study_sessions WHERE user_id=$1 AND title LIKE 'Knowledge check:%'`,[userId]);
-      expect(blockedWrites.rows[0].count).toBe(0);
-      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title,canonical_topic_id,canonical_concept_id) SELECT $1,'Canonical question pilot',t.id,cc.id FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id WHERE cc.id=$2 RETURNING id`,[userId,catalog.concept_id])).rows[0];
-      const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,canonical_concept_id) VALUES($1,$2,'HTTP caching','Freshness and revalidation.',$3,$4) RETURNING id`,[userId,session.id,[catalog.statement],catalog.concept_id])).rows[0];
-      await expect(createAssessment(userId,concept.id,"mastery_check")).rejects.toMatchObject({ status: 409, code: "QUESTION_BANK_COVERAGE_INSUFFICIENT" });
-      const writes=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int AS sessions,(SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int AS attempts`,[userId]);
-      expect(writes.rows[0]).toEqual({ sessions: 0, attempts: 0 });
+      expect(coveredConcept.supportedModes).toContain("rapid_fire");
+      const rapidFire=await createCanonicalKnowledgeCheck(userId,catalog.concept_id,"rapid_fire");
+      expect(rapidFire.questions).toHaveLength(5);
+      const selectedRevisions=rapidFire.questions.map((question:any)=>question.canonicalQuestionRevisionId);
+      expect(selectedRevisions.every(Boolean)).toBe(true);
+      const selectedState=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published' AND r.content_hash=ar.content_hash AND ar.decision='approved')::int eligible FROM recall_attempts a JOIN canonical_question_revisions r ON r.id=a.canonical_question_revision_id JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.content_hash=r.content_hash WHERE a.id=ANY($1::uuid[])`,[rapidFire.questions.map((question:any)=>question.id)]);
+      expect(selectedState.rows[0]).toEqual({total:5,eligible:5});
+      const mastery=await createAssessment(userId,rapidFire.questions[0].conceptId,"mastery_check");
+      expect(mastery.assessment.total).toBe(6);
+      expect(mastery.questions.every((question:any)=>question.canonicalQuestionRevisionId)).toBe(true);
     }finally{
       await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
     }
@@ -79,25 +100,38 @@ describe("PostgreSQL runtime integration", () => {
     expect(canonicalCoreSdeQuestions).toHaveLength(114);
     const candidates=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.revision=i.current_revision)::int current,
       count(*) FILTER(WHERE r.review_status='awaiting_subject_matter_review' AND r.publication_status='draft')::int pending,
-      count(*) FILTER(WHERE r.review_status='subject_matter_reviewed' OR r.publication_status='published')::int approved_or_published
+      count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published')::int approved_or_published
       FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id WHERE i.slug LIKE 'sde-%' AND i.slug NOT LIKE 'sde-net-http-%'`);
-    expect(candidates.rows[0]).toEqual({total:114,current:114,pending:114,approved_or_published:0});
+    expect(candidates.rows[0]).toEqual({total:114,current:114,pending:0,approved_or_published:114});
     const retiredHttpCandidates=await postgres.query<any>(`SELECT count(*)::int count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'sde-net-http-%' AND r.publication_status='retired'`);
     expect(retiredHttpCandidates.rows[0].count).toBe(12);
     for(const subject of coreSubjects){
       for(const topic of subject.topics){
         for(const concept of topic.concepts){
-          if(concept.currentRevisionCount>0){expect(concept.availability).toBe("awaiting_review");expect(concept.supportedModes).toEqual([]);}
+          if(concept.currentRevisionCount>0)expect(concept.availability).not.toBe("awaiting_review");
           else expect(concept.availability).toBe("study_only");
         }
       }
     }
-    for(const name of coreNames){
-      const concept=coreSubjects.find((subject:any)=>subject.domainName===name)!.topics.flatMap((topic:any)=>topic.concepts).find((item:any)=>item.currentRevisionCount>0);
-      const beforeSessions=await postgres.query<any>(`SELECT count(*)::int count FROM assessment_sessions`);
-      await expect(createCanonicalKnowledgeCheck(randomUUID(),concept.id,"rapid_fire")).rejects.toMatchObject({code:"QUESTION_BANK_COVERAGE_INSUFFICIENT",status:409});
-      const afterSessions=await postgres.query<any>(`SELECT count(*)::int count FROM assessment_sessions`);
-      expect(afterSessions.rows[0].count).toBe(beforeSessions.rows[0].count);
+    const learnerId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Core SDE coverage') RETURNING id`,[`core-coverage-${randomUUID()}@test.local`])).rows[0].id;
+    try {
+      for(const name of coreNames){
+        const concept=coreSubjects.find((subject:any)=>subject.domainName===name)!.topics.flatMap((topic:any)=>topic.concepts).find((item:any)=>item.supportedModes.includes("rapid_fire"));
+        expect(concept,`${name} should expose an eligible Rapid Fire concept`).toBeTruthy();
+        const assessment=await createCanonicalKnowledgeCheck(learnerId,concept.id,"rapid_fire");
+        expect(assessment.questions).toHaveLength(5);
+        const selected=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published' AND r.content_hash=ar.content_hash AND ar.decision='approved')::int eligible
+          FROM recall_attempts a JOIN canonical_question_revisions r ON r.id=a.canonical_question_revision_id JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.content_hash=r.content_hash
+          WHERE a.id=ANY($1::uuid[])`,[assessment.questions.map((question:any)=>question.id)]);
+        expect(selected.rows[0]).toEqual({total:5,eligible:5});
+      }
+      const unsupportedMastery=coreSubjects.find((subject:any)=>subject.domainName==="Database Management Systems")!.topics.flatMap((topic:any)=>topic.concepts).find((concept:any)=>concept.currentRevisionCount>0&&!concept.supportedModes.includes("mastery_check"));
+      expect(unsupportedMastery).toBeTruthy();
+      await expect(createCanonicalKnowledgeCheck(learnerId,unsupportedMastery.id,"mastery_check")).rejects.toMatchObject({status:409,code:"QUESTION_BANK_COVERAGE_INSUFFICIENT"});
+      const rejectedWrites=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM study_sessions WHERE user_id=$1)::int sessions,(SELECT count(*)::int FROM assessment_sessions WHERE user_id=$1)::int assessments,(SELECT count(*)::int FROM recall_attempts WHERE user_id=$1)::int attempts`,[learnerId]);
+      expect(rejectedWrites.rows[0]).toEqual({sessions:5,assessments:5,attempts:25});
+    } finally {
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[learnerId]);
     }
     await seedCanonicalQuestionBank();
     const after=await postgres.query<any>(`SELECT count(*)::int revisions,count(DISTINCT i.id)::int identities FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id`);
@@ -115,13 +149,15 @@ describe("PostgreSQL runtime integration", () => {
       const question = (await client.query<any>(`SELECT i.canonical_concept_id,r.id,r.question_type,r.content_hash FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug='http-cache-explanation-cache-paths'`)).rows[0] ??
         (await client.query<any>(`SELECT i.canonical_concept_id,r.id,r.question_type,r.content_hash FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'http-cache-%' AND r.question_type<>'mcq' ORDER BY i.slug LIMIT 1`)).rows[0];
       expect(question).toBeTruthy();
+      const previouslyEligible=await listEligibleCanonicalQuestions(client,question.canonical_concept_id);
+      expect(previouslyEligible.some((candidate:any)=>candidate.revisionId===question.id)).toBe(true);
       const criteria = { technical_correctness: "pass", expected_answer: "pass", explanation: question.question_type === "mcq" ? "pass" : "not_applicable", mcq_key: question.question_type === "mcq" ? "pass" : "not_applicable", distractors: question.question_type === "mcq" ? "pass" : "not_applicable", rubric: question.question_type === "mcq" ? "not_applicable" : "pass", point_mapping: "pass", cognitive_level_difficulty: "pass", source_attribution_license: "pass" };
       await client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes,reviewed_at) VALUES($1,$2,'approved',$3,$4,'Ephemeral integration approval fixture for the gate.',clock_timestamp())`, [question.id,reviewerId,question.content_hash,JSON.stringify(criteria)]);
       await client.query(`UPDATE canonical_question_revisions SET review_status='subject_matter_reviewed',publication_status='published' WHERE id=$1`, [question.id]);
-      expect(await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).toHaveLength(1);
+      expect((await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).some((candidate:any)=>candidate.revisionId===question.id)).toBe(true);
       await client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes,reviewed_at) VALUES($1,$2,'changes_requested',$3,$4,'Ephemeral later review withdraws this test approval.',clock_timestamp())`, [question.id,reviewerId,question.content_hash,JSON.stringify(criteria)]);
       await client.query(`UPDATE canonical_question_revisions SET review_status='changes_requested',publication_status='draft' WHERE id=$1`, [question.id]);
-      expect(await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).toHaveLength(0);
+      expect((await listEligibleCanonicalQuestions(client,question.canonical_concept_id)).some((candidate:any)=>candidate.revisionId===question.id)).toBe(false);
       await client.query("SAVEPOINT unauthorized_review");
       await expect(client.query(`INSERT INTO canonical_question_reviews(question_revision_id,reviewer_user_id,decision,content_hash,criteria,review_notes) VALUES($1,$2,'approved',$3,$4,'Unauthorized test reviewer should be rejected.')`, [question.id,grantorId,question.content_hash,JSON.stringify(criteria)])).rejects.toThrow("reviewer is not authorized");
       await client.query("ROLLBACK TO SAVEPOINT unauthorized_review");

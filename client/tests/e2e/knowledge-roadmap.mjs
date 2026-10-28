@@ -121,7 +121,7 @@ try {
 
   const clientProcess = startNodeProcess("Vite client", [
     path.join(root, "node_modules/vite/bin/vite.js"),
-    "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort",
+    "--configLoader", "runner", "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort",
   ], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
   await waitForUrl(clientUrl, clientProcess);
 

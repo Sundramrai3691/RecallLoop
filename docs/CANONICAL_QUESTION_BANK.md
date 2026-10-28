@@ -14,6 +14,8 @@ Migration `016` adds nullable exact-revision foreign keys to the existing learne
 
 Migration `020` adds a separate append-only automated-review record keyed to the exact current revision, content hash, policy version, method, decision, structured findings, source-verification state, run ID, and timestamp. Automated approval is not recorded as human approval. A current revision may be published through either a valid exact-revision human approval or a valid automated approval; human review is an optional additional mechanism, not the normal prerequisite for assessment use.
 
+Migration `022_restore_current_automated_question_approvals.sql` preserves that automated publication state across the migration runner's replay of historical migration `017`. It restores only the current revision when the latest automated decision is approved for the exact content hash and there is no human-review event for that revision. It does not change revision content or historical attempts.
+
 The seed resolves each pilot mapping by exact normalized canonical concept name and point statement, requires exactly one active pair, and inserts idempotently. Same slug/revision with changed content hash fails and requires a new revision. No canonical knowledge rows are created or duplicated.
 
 ## Taxonomy and measured pilot distribution
