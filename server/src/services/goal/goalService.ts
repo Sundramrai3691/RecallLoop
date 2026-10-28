@@ -72,7 +72,18 @@ function utcDayStart(date = new Date()) {
   return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
 }
 async function dueRecallTasks(userId: string, dayStart: Date) {
-  const result = await query<any>(`SELECT r.concept_id AS "conceptId", r.id AS "recallAttemptId", c.name, rs.due_at AS "scheduledFor",rs.due_at < $2 AS overdue FROM review_states rs JOIN personal_concepts c ON c.id=rs.concept_id AND c.user_id=rs.user_id JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id AND r.submitted_at IS NULL WHERE rs.user_id=$1 AND rs.due_at <= now() ORDER BY rs.due_at`, [userId, dayStart]);
+  const result = await query<any>(`WITH ranked_attempts AS (
+    SELECT r.concept_id AS "conceptId", r.id AS "recallAttemptId", c.name, rs.due_at AS "scheduledFor", rs.due_at < $2 AS overdue,
+           row_number() OVER (PARTITION BY c.id ORDER BY r.created_at ASC, r.id ASC) AS rn
+    FROM review_states rs
+    JOIN personal_concepts c ON c.id=rs.concept_id AND c.user_id=rs.user_id
+    JOIN recall_attempts r ON r.concept_id=c.id AND r.user_id=c.user_id AND r.submitted_at IS NULL
+    WHERE rs.user_id=$1 AND rs.due_at <= now()
+  )
+  SELECT "conceptId", "recallAttemptId", name, "scheduledFor", overdue
+  FROM ranked_attempts
+  WHERE rn = 1
+  ORDER BY "scheduledFor"`, [userId, dayStart]);
   return result.rows.map((row) => ({ title: `Recall · ${row.name}`, description: "Retrieve this concept from memory, then check what needs work.", taskType: "recall", category: "must_do", requiredness: "must", sequenceOrder: row.overdue ? 10 : 20, priority: row.overdue ? 100 : 95, estimatedMinutes: 10, scheduledFor: row.overdue ? new Date() : row.scheduledFor, source: "scheduler", conceptId: row.conceptId, recallAttemptId: row.recallAttemptId, reason: row.overdue ? "Overdue recall." : "Due for review today." }));
 }
 async function weakConceptTasks(userId: string) {

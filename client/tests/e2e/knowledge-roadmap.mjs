@@ -842,6 +842,7 @@ try {
   }
   await driver.findElement(By.css("form button[type='submit']")).click();
   await driver.wait(until.urlContains(`/recall/${pendingRecallAttemptId}/result?returnTo=`), 15000);
+  await driver.wait(until.elementLocated(By.xpath("//a[normalize-space()='Done for now']")), 15000);
   await driver.findElement(By.xpath("//a[normalize-space()='Done for now']")).click();
   await driver.wait(until.urlContains("/plan"), 10000);
   const learningTask = generatedPlan.body.tasks.find((task) => task.taskType === "learn");

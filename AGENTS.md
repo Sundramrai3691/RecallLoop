@@ -1,589 +1,363 @@
 # RecallLoop Agent Instructions
 
-## 1. Repository boundaries
-
-- This is the RecallLoop npm workspace: `client` is React/Vite and
-  `server` is Express/TypeScript with PostgreSQL. Keep API contracts,
-  ownership checks, and database migrations consistent across both packages.
-- Treat `server/migrations` as the deployed schema history. Use additive
-  migrations for schema changes. Do not silently edit historical migrations
-  or infer the live database schema from TypeScript types.
-- Derive the authenticated owner from the request's verified user identity.
-  Never trust a client-supplied `user_id`.
-- Keep domain decisions in services, SQL in repositories or established
-  service queries, request parsing in controllers, and shared contracts in
-  existing types. Follow the current architecture unless a documented
-  decision justifies an exception.
-- Treat all LLM and external-provider output as untrusted. Validate
-  structured output before using it in domain decisions or persisting it.
-- Preserve deterministic mock behavior for local development and automated
-  tests. Never silently substitute mock results when a configured live
-  provider fails.
-- Never add credentials, real learner data, authentication tokens, or
-  generated secrets to tracked files.
-- Preserve existing user modifications. Do not reset, stash, discard,
-  overwrite, or commit user work unless explicitly instructed.
-- Inspect the actual repository, Git state, database schema, relevant code,
-  and tests before making changes. Historical reports are evidence to
-  reconcile, not proof that the current workspace is unchanged.
-
-## 2. Core product principles
-
-RecallLoop helps learners identify what they cannot reliably explain or
-apply, fix the precise weakness, and verify improvement.
-
-Preserve these four primary learner experiences:
-
-1. Test a Topic:
-   Select canonical knowledge, complete a supported assessment, and
-   understand the results.
-
-2. Learn from My Material:
-   Study supported material, ask grounded follow-up questions, and practise.
-
-3. Review & Improve:
-   Access due reviews, identified weaknesses, and targeted practice.
-
-4. My Readiness:
-   Inspect goal-relevant skills and the learner evidence supporting
-   their current state.
-
-These experiences must reuse the existing canonical knowledge model,
-question bank, assessment engine, retrieval, learner model, remediation,
-and scheduler wherever possible.
-
-Do not build parallel assessment engines, duplicate learner models,
-or unrelated features merely to make a task appear larger.
-
-Prefer a complete, tested user workflow over isolated features, repeated
-audits, or cosmetic changes that do not address a demonstrated problem.
-
-Do not repeatedly investigate or reimplement a capability already
-confirmed to work. Identify the actual remaining gap, implement it,
-and validate the affected behavior.
-
-Make reasonable engineering decisions independently. Do not ask the
-product owner to approve routine implementation details, individual
-questions, test cases, or reversible engineering decisions.
-
-## 3. Automated-first engineering policy
-
-**All normal development, question review, validation, and release-readiness
-checks must use automated workflows wherever the repository supports them.
-Manual approval must never be a mandatory dependency for ordinary
-development or question-bank activation.**
-
-Agents must implement and execute the relevant automated checks instead
-of stopping after producing a plan, audit, report, or review packet.
-
-### 3.1 Required implementation behavior
-
-When a requested capability already exists:
-- Verify the current implementation and its relevant tests.
-- Identify the actual remaining gap.
-- Avoid rebuilding the capability.
-- Move to the next substantive incomplete requirement.
-
-When implementation is missing:
-- Implement the missing behavior.
-- Add or update automated regression tests.
-- Execute the relevant tests.
-- Fix failures caused by the changes.
-- Update documentation.
-- Report actual results.
-
-Do not repeatedly rerun unchanged suites without a specific reason.
-
-Do not stop at statements such as "human review is required" when an
-automated implementation can safely complete the requested work under
-the project's policy.
-
-### 3.2 Automated testing requirements
-
-Use the existing Vitest, PostgreSQL integration, Firefox/Selenium, and
-Playwright infrastructure as appropriate.
-
-Automate:
-- Unit and service tests.
-- API and database integration tests.
-- Ownership and authorization tests.
-- Transaction and persistence-failure tests.
-- Question-quality validation.
-- Question-bank review and eligibility checks.
-- Assessment submission and report tests.
-- Browser journeys and critical UI interactions.
-- Responsive viewport and overflow checks.
-- Build, type-check, syntax-check, and diff validation where available.
+These instructions define how coding agents should build, consolidate, validate, and maintain RecallLoop. They apply to implementation work in this repository unless a task explicitly overrides them.
 
-Do not require manual clicking, manual reviewer sign-off, or manual
-question-by-question verification to declare a code task complete
-when equivalent automated checks can be implemented.
+## 1. Product north star
 
-Where a tool supports browser automation and screenshot capture, use it
-to verify actual rendered behavior. Do not claim that a browser flow,
-viewport, or visual check passed unless the relevant automated test ran.
+**RecallLoop helps a learner identify what they cannot reliably explain or apply, fix the precise weakness, and verify improvement.**
 
-Live-provider calls are not required for ordinary tests. Use deterministic
-fixtures and mocks for provider-dependent behavior. Test live-provider
-behavior separately only when explicitly necessary and safely configured.
+The product is a knowledge-to-assessment-to-improvement engine, not merely a quiz app, notes summarizer, flashcard tool, analytics dashboard, or collection of AI features.
 
-### 3.3 Honest reporting
+The core loop is:
 
-Distinguish:
-- Implemented.
-- Automated-reviewed.
-- Tested.
-- Browser-validated.
-- Measured.
-- Human-reviewed, if applicable.
-- Assessment-eligible.
-- Deployed.
-- Production-ready.
+1. Establish the knowledge that matters for the learner's goal.
+2. Understand what a selected topic or supplied source actually covers.
+3. Map content to precise, assessable knowledge points.
+4. Select or generate suitable assessment tasks.
+5. Evaluate answers against defensible criteria.
+6. Diagnose the exact gap and explain the evidence.
+7. Provide targeted remediation.
+8. Verify improvement using a meaningfully distinct task.
+9. Persist the evidence and use it to guide future practice and readiness.
 
-Passing automated tests does not establish perfect technical correctness,
-real-world model accuracy, educational effectiveness, or durable mastery.
+A feature is not complete merely because a component, API route, schema, prompt, or script exists. The relevant user journey must work, data must be trustworthy, failures must be handled, and automated verification must cover the important behavior.
 
-Report what the checks establish and what remains uncertain.
+## 2. Product priorities
 
-## 4. Canonical question bank and automated review policy
+Use this order when deciding what to build or fix. An active P0 correctness, data-loss, security, or integrity defect always takes precedence over the normal roadmap.
 
-### 4.1 Automated review is the normal approval path
+### P0: Trustworthy knowledge and evidence
 
-RecallLoop uses automated quality review as the standard path for
-making canonical questions assessment-eligible.
+- Canonical knowledge points that describe the actual competency to be demonstrated.
+- Source-grounded extraction and canonical mapping.
+- Correct question selection, answer keys, rubrics, grading, and provenance.
+- Honest distinction between source coverage, curriculum coverage, demonstrated competence, partial understanding, and unassessed knowledge.
+- Safe persistence of attempts and learner-state updates.
 
-**Human subject-matter approval is optional and must not be required
-for every question before normal assessment use.**
+### P1: Closed learning loop
 
-Do not stop question-bank implementation or activation merely because
-there is no human reviewer account, reviewer grant, reviewer token,
-or manually completed review packet.
+- Topic- and material-based assessment.
+- Evidence-backed diagnosis and useful reports.
+- Targeted remediation and distinct verification.
+- Consistent learner state, next actions, and due review.
+- Reliable browser-tested primary journeys.
 
-The automated review path must be implemented in the actual database,
-services, APIs, scripts, and assessment-selection logic. Updating only
-documentation or frontend labels is insufficient.
+### P2: Breadth and learning effectiveness
 
-Human review may remain available as an additional review mechanism,
-but it must not be a prerequisite for ordinary question-bank operation.
+- Expand high-quality coverage across DSA, Operating Systems, DBMS, Computer Networks, and System Design, followed by other explicitly supported SDE goals.
+- Improve material formats, retrieval, question diversity, readiness views, and adaptive review.
+- Improve accessibility, performance, and observability where evidence shows a need.
 
-### 4.2 Automated decisions must be represented honestly
+### P3: Extensions
 
-Automated question review must be distinguishable from human review.
+- Interview follow-up chains, Engineering Fluency, repository-grounded project defence, practical debugging, secure code execution, and advanced agentic workflows.
+- Implement these when the shared knowledge, evaluation, and evidence engine can support them safely; do not create parallel subsystems.
 
-Never:
-- Create fake human reviewers.
-- Fabricate reviewer grants or tokens.
-- Insert automated decisions as human approval events.
-- Invent human identities, signatures, timestamps, or review notes.
-- Claim independent expert approval when only automated checks ran.
+Do not expand scope merely to increase feature count. Preserve the full roadmap, but deliver it in dependency-aware milestones.
 
-Automated approval is a legitimate decision under the product's automated
-quality policy. It is not a claim that a human expert approved the question.
+## 3. Four primary learner experiences
 
-### 4.3 Automated review records
+Keep these entry points clear, independent to enter, and connected to the same domain services and evidence model:
 
-Use the existing review and revision schema where possible.
+1. **Test a Topic:** select a domain, topic, or concept; choose an available assessment mode; answer; receive a useful report.
+2. **Learn from My Material:** submit a supported input; choose first learning, diagnose existing knowledge, or revision intent; study source-grounded content; practise; retain valid evidence.
+3. **Review & Improve:** see due reviews, recorded weaknesses, incomplete work, and focused practice with direct return paths.
+4. **My Readiness:** see goal-relevant strengths, weaknesses, partial or uncertain understanding, unassessed areas, and actionable next steps based on persisted evidence.
 
-Each automated decision must be traceable to:
-- Canonical question identity.
-- Exact immutable revision ID and content hash.
-- Automated reviewer type or method.
-- Review policy and validator version.
-- Review-run identifier.
-- Decision and structured findings.
-- Source-grounding and provenance status.
-- Timestamp.
+A new learner must not need to understand the entire curriculum or configure a complex plan before testing one topic. A user selecting a topic should be able to start with a supported assessment without traversing unrelated setup screens.
 
-Add an additive migration only if the current schema cannot store these
-decisions safely.
+Reuse the canonical knowledge model, question bank, assessment engine, retrieval, remediation, learner model, and scheduler. Do not build a second implementation of the same domain logic for a new page.
 
-Repeated processing of unchanged content under the same policy should
-be deterministic and idempotent.
+## 4. Canonical knowledge model and curriculum quality
 
-A changed revision or materially changed policy must trigger
-reevaluation. A decision for an earlier revision must never authorize
-modified content automatically.
+The curated curriculum describes what is important to know for a selected goal or role. A learner's material describes what that particular source covers. They are connected but are not interchangeable.
 
-Preserve existing human review records and historical assessment attempts.
+### 4.1 A useful knowledge point
 
-### 4.4 Automated decisions
+Where applicable, a canonical knowledge point should define:
 
-Use the existing status model where possible, with semantics equivalent
-to the following:
+- Stable identity, domain, topic, and relationships to related points.
+- Importance tier, such as **Must Know**, **Frequently Tested**, or **Advanced / Context-Dependent**. Explain the basis for the tier; do not invent company-specific weights.
+- Observable competency: what the learner should be able to explain, reason about, predict, implement, debug, or compare.
+- Expected depth and prerequisites.
+- Typical misconceptions and plausible incorrect reasoning.
+- Practical engineering relevance and applicable interview contexts.
+- Suitable assessment objectives, formats, difficulty, and evaluation criteria.
+- Provenance and revision history when grounded in external references.
 
-- APPROVED:
-  All required automated quality checks pass. The revision may become
-  eligible under the automated publication policy.
+A broad label such as “Dynamic Programming” or “HTTP” is a topic, not a sufficiently precise assessment objective. Break topics into independently assessable concepts and skills without creating meaningless micro-concepts merely to increase counts.
 
-- REVISE:
-  A specific, safely correctable issue exists. Create a new immutable
-  revision, preserve the original, and reevaluate the replacement.
+### 4.2 Required coverage distinctions
 
-- REJECTED:
-  The question is materially incorrect, redundant, unsuitable, or
-  irreparably ambiguous.
+Never conflate these states:
 
-- BLOCKED:
-  Essential evidence, a defensible answer, a valid mapping, or a
-  required evaluation contract is missing.
+- **Covered by source:** evidence for the concept is present in the specified material.
+- **Missing from source:** expected curriculum coverage was not found or is insufficient in that material.
+- **Demonstrated:** submitted learner evidence supports the expected competency.
+- **Partial / uncertain:** evidence shows an incomplete response or does not justify a confident conclusion.
+- **Not assessed:** sufficient evidence does not exist.
 
-A reviewer token or manual approval must not be a prerequisite for
-automated decisions.
+A concept missing from a PDF does not prove the learner does not know it. A concept mentioned in notes does not prove the learner has learned it. Unassessed knowledge is unknown, not zero mastery and not a demonstrated weakness.
 
-Do not approve every question merely because it exists or passes a
-superficial structural check. Equally, do not leave a question awaiting
-human review when the automated quality policy is sufficient to decide it.
+### 4.3 Curriculum scope
 
-Every evaluated current question must receive an actual decision and
-actionable findings.
+Prioritize a defensible core SDE curriculum across:
 
-### 4.5 Question-quality checks
+- Data Structures and Algorithms.
+- Operating Systems.
+- Database Management Systems and SQL.
+- Computer Networks and HTTP.
+- System Design and distributed systems.
 
-Review current question content substantively, not just its metadata.
+Expand beyond these only through an explicit product decision or when needed to fulfill an existing supported goal. Coverage counts must represent distinct, meaningful competencies and eligible assessments, not merely rows or superficially rewritten questions.
 
-#### Structural validity
+## 5. External sources and source provenance
 
-Check:
-- Required question content and supported question type.
-- Valid canonical knowledge-point mapping.
-- Expected answer or evaluation contract.
-- Required rubric dimensions and outcome criteria.
-- Supported cognitive-level and difficulty values.
-- Stable identity and immutable revision consistency.
-- Required provenance fields.
+Use external references to ground technical knowledge, not to substitute for repository evidence about application behavior.
 
-#### MCQs
+### 5.1 Source hierarchy
 
-Check:
-- The answer key identifies exactly one defensible correct option,
-  unless the existing grading contract explicitly permits otherwise.
-- Options are valid and not duplicated or equivalent.
-- The explanation agrees with the answer key.
-- Distractors are plausible but defensibly wrong under the stated
-  assumptions.
-- Distractor rationales identify meaningful misconceptions.
-- The question does not depend on unstated constraints that change
-  the correct answer.
+Prefer, in order where relevant:
 
-MCQ grading must remain deterministic and independent of an LLM.
+1. Primary standards and specifications (for example, IETF RFCs for protocol behavior, language or database specifications where applicable).
+2. Official technical documentation (for example, PostgreSQL, Python, Linux, browser-platform, or cloud-provider documentation for behavior specific to that product).
+3. Established textbooks and university course materials for foundational explanations and conceptual structure.
+4. Reputable secondary explanations when primary sources are too dense, with claims checked against primary sources when feasible.
+5. Informal tutorials, forums, and blogs as discovery aids rather than sole authorities for high-impact factual claims.
 
-#### Free-response and scenario questions
+Use current source versions. Confirm whether a standard has been obsoleted or superseded when version status matters. Distinguish general principles from implementation-specific behavior.
 
-Check:
-- The expected answer is technically defensible.
-- The assessment objective is clear.
-- Required reasoning is identified.
-- Full, partial, and insufficient answers can be distinguished.
-- Rubric dimensions and scoring rules are internally consistent.
-- Common misconceptions are handled where appropriate.
+### 5.2 Source registry and citation discipline
 
-#### Technical correctness
+When maintaining a reusable curriculum, record source title, canonical URL or identifier, relevant section, version or publication date when available, verification state, and last-checked date. Record whether the content was actually inspected; a stored URL alone is not verification.
 
-Check:
-- The question assesses its mapped canonical knowledge point.
-- The scenario contains sufficient information.
-- The answer and explanation do not contradict one another.
-- Cognitive level and difficulty match the actual reasoning required.
-- Similar questions are not counted as distinct coverage without a
-  meaningful difference in skill, context, or reasoning.
-- Verification questions use a different context, representation,
-  or constraint where possible.
+Map individual knowledge claims to relevant source sections where practical. Preserve provenance without copying entire copyrighted books, courses, question banks, or articles into the application. Create original explanations and assessment questions based on technical principles and allowable source use.
 
-#### Provenance
+Never invent citations, source access, quotations, licensing permissions, or verification outcomes. If external access is unavailable, finish local checks, record the limitation, and only block a decision when missing evidence makes the claim or question indefensible.
 
-Use real source references and verify source content where available.
+Do not perform web research for routine code changes that can be resolved by the repository, tests, schema, and existing documentation. Use fresh research when validating current standards, changing technical curriculum, handling version-sensitive behavior, or making a claim where current evidence materially matters.
 
-Distinguish a recorded reference from one whose content was actually
-inspected. Do not invent citations, quotations, authors, or licensing
-permissions.
+## 6. Source-to-knowledge extraction
 
-Create original questions from technical principles rather than
-reproducing proprietary interview collections.
+For any supported user material:
 
-A missing or unverifiable source must be recorded accurately. Follow the
-established provenance policy; do not label an unchecked source verified.
+1. Validate input type, size, ownership, and processing constraints.
+2. Extract text using the existing supported parser or pipeline.
+3. Preserve document/session identity and useful source locations or chunk references.
+4. Identify candidate knowledge points with evidence from the extracted content.
+5. Map candidates to canonical IDs only when the mapping is defensible.
+6. Keep uncertain mappings unresolved rather than forcing a match.
+7. Compare supported source coverage against the selected curriculum.
+8. Clearly label material coverage gaps separately from learner-knowledge gaps.
+9. Generate questions grounded in the material when that is the selected intent; identify curriculum-extension questions separately.
+10. Handle empty extraction, malformed documents, unsupported formats, retrieval failures, and conflicting evidence explicitly.
 
-### 4.6 Automated source checking and uncertainty
+Do not claim support for URLs, PDFs, videos, OCR, or other formats unless the current code genuinely implements and tests the path. Never add an unrelated scraper or a parallel ingestion stack to make a feature appear broader. Reuse the current ingestion, chunking, embedding, and retrieval architecture where it fits.
 
-Prefer deterministic checks for structural validity, mapping,
-answer-key correctness, revision integrity, and grading contracts.
-
-Use the configured automated review mechanism for substantive semantic
-checks where it is available. Validate its structured output.
-
-Do not require a live remote LLM call for ordinary unit or integration
-tests.
-
-If external source verification or a live provider is unavailable:
-- Complete all checks that can be performed locally.
-- Record the limitation explicitly.
-- Do not invent source verification or evaluation results.
-- Block only questions for which the missing evidence makes assessment
-  unsafe or the answer indefensible.
-- Continue reviewing all other applicable questions.
-
-Do not use missing external access as an excuse to avoid processing the
-entire question bank.
-
-### 4.7 Publication and eligibility
-
-The backend must accept passing automated-review decisions as a
-legitimate path to assessment eligibility.
-
-A question is eligible only when:
-- Its current immutable revision has a valid automated review decision
-  under the current applicable policy, or a valid existing human review.
-- All mandatory structural and grading checks pass.
-- Required canonical mappings and provenance are valid.
-- No unresolved critical correctness issue exists.
-- Its publication state permits assessment use.
-- Its assessment type and requested scope satisfy existing coverage rules.
-
-Draft, rejected, blocked, retired, stale, or invalid revisions remain
-ineligible.
-
-Assessment coverage APIs must count only current revisions that are
-genuinely eligible for the requested assessment mode and scope.
-
-Keep candidate counts separate from eligible assessment counts.
-Never invent questions or lower coverage thresholds to make a topic
-appear available.
-
-If coverage is insufficient, report it explicitly and provide a
-supported alternative.
-
-## 5. Bulk question-review workflow
-
-The automated question-review workflow must process applicable current
-canonical revisions in bulk without requiring the product owner to
-inspect or approve each question individually.
-
-Reuse the existing scripts, validators, schema, and review conventions.
-
-Provide a reproducible command supporting:
-
-1. Read-only inventory and preflight.
-2. Bulk review of current, non-retired revisions.
-3. Structured decisions and findings.
-4. Creation of immutable replacement revisions for safe corrections.
-5. Reevaluation of corrected revisions.
-6. Persistence of automated-review decisions.
-7. Publication and eligibility checks.
-8. A machine-readable report and concise summary.
-
-Inspect existing npm scripts before introducing command names.
-
-Verify the configured database target before any write. Never perform
-bulk changes against an unknown or production database.
-
-The owner has authorized automated review under this policy. Once the
-local database and intended scope are verified, routine and reversible
-operations within that scope do not require repeated confirmation.
-
-Do not stop after producing a report, migration, or command. Execute
-the authorized workflow when the intended local database is verified.
-
-Preserve original revisions, review history, and historical attempts.
-Process only records within the declared scope.
-
-## 6. Assessment and learner-evidence integrity
-
-- Keep question selection, assessment creation, grading, reporting,
-  remediation, and verification on the existing domain path.
-- Preserve immutable revision references on assessment attempts.
-- Do not reveal correct answers or grading explanations before the
-  appropriate submission state.
-- Enforce ownership using verified authentication.
-- Duplicate submissions must not create duplicate learner evidence.
-- Failed or invalid evaluation must not create misleading successful
-  learner evidence.
-- Persist assessment completion and corresponding learner-state updates
-  consistently using existing transactions and locking conventions.
-- Ordinary tutoring messages and unsubmitted answers must not become
-  assessment evidence.
-- Material-specific generated questions must not bypass review by being
-  silently inserted into the canonical bank.
-- Map session-scoped concepts to canonical knowledge only when that
-  mapping is defensible.
-- Do not infer durable mastery, confidence, or overall readiness from
-  one correct answer.
-- Unassessed knowledge remains unknown, not zero proficiency or
-  demonstrated weakness.
-- Preserve existing latest-submitted-evidence semantics unless a
-  documented domain decision changes them.
-
-Question-eligibility changes must be tested through actual assessment
-creation and evidence persistence, not only frontend labels.
-
-## 7. Engineering workflow
+## 7. Assessment and question-quality contract
+
+Question generation is not complete until question quality, grading behavior, eligibility, and learner-facing feedback are verified.
+
+### 7.1 Every question should define
+
+- Canonical knowledge point or an explicitly scoped session-specific point.
+- Assessment objective and intended competency.
+- Appropriate format and defensible difficulty.
+- Correct answer, rubric, or executable evaluation contract.
+- Expected reasoning and partial-credit criteria where applicable.
+- Common misconceptions or meaningful distractor rationales where appropriate.
+- Source grounding and provenance when source-specific claims are made.
+- Immutable revision identity and quality-review decision.
+
+### 7.2 Match format to the competency
+
+Use formats according to what they test, rather than generating every format for every concept:
+
+- Single-choice MCQ: recognition and conceptual discrimination.
+- Multiple-select: distinguishing multiple valid conditions or properties.
+- Short or detailed written answer: recall, explanation, reasoning, and trade-offs.
+- Code trace or prediction: execution reasoning, edge cases, and complexity.
+- Coding task: implementation and correctness, preferably checked with executable tests.
+- SQL task: query reasoning and validated results against appropriate data.
+- Scenario or system-design task: applied reasoning, constraints, and trade-offs with explicit rubrics.
+
+MCQs require verified answer keys and plausible but defensibly incorrect distractors. Free responses require explicit rubrics and consistent partial credit. Code or SQL tasks should use safe execution/test mechanisms where implemented; do not claim executable verification if only an LLM reviewed the response.
+
+### 7.3 Automated quality review
+
+Automated review is the normal approval path under the project's policy. Do not require owner approval or manual question-by-question review for ordinary development. Do not fabricate human reviewers or human approval events.
+
+Use deterministic checks wherever possible for schema validity, canonical mapping, answer contracts, hashes, duplicates, revision consistency, grading, and eligibility. Use configured semantic evaluation for content quality, validate its structured output, and retain actionable findings.
+
+Valid review decisions should distinguish at least:
+
+- **APPROVED:** required checks pass and the revision can be considered for eligibility.
+- **REVISE:** a specific correctable defect needs a new immutable revision and reevaluation.
+- **REJECTED:** materially incorrect, redundant, unsuitable, or irreparably ambiguous content.
+- **BLOCKED:** essential evidence, mapping, answer criteria, or evaluation contract is missing.
+
+Use the existing schema and status model where possible. Do not add duplicate review systems. Do not approve a question just because it exists or has valid JSON; structural validity is not technical correctness.
+
+Each decision must be traceable to the question and immutable revision, content hash, review method/type, validator/policy version, run ID, decision, structured findings, source status, and timestamp where supported by the current schema. Reprocessing unchanged content under the same policy should be deterministic and idempotent. Changed content must be reevaluated.
+
+Automated approval is not a claim of independent expert approval or proven educational effectiveness.
+
+### 7.4 Publication and eligibility
+
+A question is eligible only when the current revision passes the applicable review policy, required structure and grading contracts are valid, canonical mapping is defensible, no critical correctness issue remains, publication state allows use, and requested assessment scope/mode supports it.
+
+Draft, stale, retired, rejected, blocked, hash-mismatched, or invalid revisions remain ineligible. Keep candidate counts, approved counts, published counts, and assessment-eligible counts separate. Do not invent questions, silently lower coverage thresholds, or change UI labels to conceal unavailable coverage.
+
+Bulk review and activation must use the real configured local database only after its target and scope are verified. Never run bulk writes against an unknown or production database. Preserve original revisions, review history, and historical attempts. Execute the approved local workflow instead of stopping after writing a plan or report.
+
+## 8. Assessment, diagnosis, remediation, and verification
+
+These capabilities form one product loop and should use the existing shared domain path.
+
+- Keep assessment creation, immutable question selection, submission, grading, reporting, remediation, verification, and learner-state updates connected through existing services and repositories.
+- Do not reveal answers or grading explanations before the appropriate submission state.
+- Persist which question revision was actually attempted.
+- A duplicate or concurrent submission must not create duplicate assessment or learner evidence.
+- Failed evaluation must not create false successful evidence.
+- Ordinary tutoring messages, generated-but-unanswered questions, or lesson completion must not count as demonstrated competence.
+- Diagnostic reports must show what the learner demonstrated, what was missing or incorrect, the relevant knowledge point, supporting evidence, uncertainty, and a next action.
+- Remediation must target the diagnosed weakness rather than return generic advice.
+- Verification should assess the same underlying competency using a meaningfully distinct question, representation, scenario, or constraint where possible. Do not present a trivial rewording or the same answer as proof of improvement.
+- Record the relationship between the original weak attempt, remediation, verification task, and outcome.
+- Treat improvement on a verification attempt as evidence of improvement, not automatically durable mastery. Use later recall or application evidence where the product supports it.
+- If no valid distinct verification question is available, state that limitation and do not fabricate success.
+
+Keep attempt scores separate from persistent competence estimates and readiness summaries. Define each metric's meaning, evidence window, update rule, and uncertainty. Avoid parallel or contradictory mastery calculations. When two learner-state representations exist, trace their reads/writes and either establish one canonical source of truth or document precisely defined derived projections.
+
+Use transactions and concurrency controls so assessment completion and associated evidence/state changes stay consistent. Preserve existing valid historical evidence; never silently rewrite it to make a new formula appear consistent.
+
+## 9. Learner model, review, and readiness
+
+- Derive learner-state changes only from valid, persisted assessment evidence.
+- Do not infer mastery or high confidence from a single correct response.
+- Unassessed concepts remain unknown; they are not overdue failures or zero-proficiency scores.
+- Recommendations should be deterministic and explainable where practical, with stable next steps for the same evidence and preferences.
+- Review scheduling must use explicit, tested time/date semantics and correct persistence behavior.
+- Due-review completion must lead back to a valid assessment or review outcome and retain evidence correctly.
+- My Readiness must reflect the learner's target goal and actual curriculum/assessment coverage. It should expose strengths, weaknesses, partial/uncertain areas, and unassessed skills instead of inventing a single reassuring score.
+- Never invent company-specific interview weights, benchmark results, or readiness thresholds. Make assumptions explicit and configurable when product requirements justify them.
+
+## 10. Architecture, security, and data integrity
+
+- Preserve the npm workspace architecture: React/Vite client and Express/TypeScript server with PostgreSQL, unless an approved architecture decision changes it.
+- Keep business decisions in domain services, SQL in established repositories/service queries, request parsing in controllers, and shared contracts in existing types.
+- Reuse existing services and routes; avoid parallel implementations of assessment, learner state, retrieval, scheduling, or review.
+- Treat `server/migrations` as schema history. Use additive migrations; do not silently alter historical migrations or infer deployed schema from TypeScript alone.
+- Make migrations repeatable/idempotent according to repository conventions and test rerun behavior where appropriate.
+- Derive ownership from the authenticated, verified identity. Never trust client-supplied `user_id` for authorization.
+- Validate request inputs and all LLM/external-provider outputs before they affect domain decisions or persistence.
+- Apply the established authentication, authorization, rate-limit, file-handling, logging, and secret-management conventions.
+- Preserve deterministic mock behavior for ordinary tests. Never silently return mock results when a configured live provider fails.
+- Never log credentials, authentication tokens, or sensitive learner content unnecessarily. Never add secrets or generated credentials to tracked files.
+- Preserve data and user modifications. Do not reset the application database, delete user data, discard changes, or rewrite learner history as a test shortcut.
+- Use isolated disposable databases for destructive testing and clean up only test-owned records.
+
+## 11. Engineering workflow: inspect, implement, prove
 
 For each substantial task:
 
-1. Read applicable `AGENTS.md` instructions and the relevant entry
-   in `docs/README.md`.
-2. Inspect Git status, relevant implementations, migrations, tests,
-   and documentation.
-3. Identify completed capabilities and concrete remaining gaps.
-4. Implement the smallest coherent change that delivers the requested
-   outcome.
-5. Add or update automated tests for changed behavior.
-6. Execute the relevant test and browser workflows.
-7. Run broader checks when justified by the scope.
-8. Update documentation in the same change.
+1. Read this file, the relevant entry in `docs/README.md`, and the specific product/architecture documents.
+2. Inspect `git status`, relevant diffs, actual package scripts, implementation, migrations, configured environment, and tests.
+3. Reconcile prior handoff/report claims with current code and database state. Historical reports are leads, not truth about today's workspace.
+4. State the concrete defect or acceptance gap internally and work directly on it. Do not repeat an audit when a specific implementation task is already known.
+5. Implement the smallest coherent change that completes the behavior, including necessary API, UI, persistence, error states, and documentation.
+6. Add or update automated regression tests for successful paths, important failure paths, permissions, and data integrity.
+7. Run focused tests first, then the broader affected suites and browser flow when warranted.
+8. Fix failures caused by the change; do not hide defects by weakening assertions, skipping tests, or changing tests to match broken behavior.
+9. Review the final diff, run `git diff --check`, verify user changes remain intact, and update project documentation.
+10. Report actual results and the next highest-value incomplete task, not speculative work.
 
-Do not repeat the same investigation or test suite without a new reason.
+Do not stop at a plan, audit, report, schema field, UI shell, or isolated unit test when the task requests implementation and safe execution is possible. Do not repeatedly run unchanged suites without a concrete reason. Do not ask the owner to approve routine engineering decisions, click through every screen manually, or review every question individually when automation can do it.
 
-When a requested capability already exists, verify it and move to the
-next incomplete requirement. Do not rebuild it.
+Ask for clarification only when an unresolved choice materially affects product behavior, destructive data changes, security, or correctness. Otherwise make a reasonable, reversible decision consistent with the existing architecture and document it when durable.
 
-When implementation is requested, do not stop at generic suggestions,
-an audit, a review packet, or a future plan.
+## 12. Testing and acceptance
 
-Do not ask the product owner to perform routine tests, approve ordinary
-questions one by one, or complete manual checklists that can reasonably
-be automated.
+Use the test infrastructure already present: Vitest, PostgreSQL integration tests, and the existing Firefox/Selenium and Playwright browser harnesses. Inspect `package.json` before using or adding commands.
 
-Ask for clarification only when a missing decision materially affects
-correctness, data loss, security, or the requested product behavior.
+As applicable, automate:
 
-### Database safety
+- Unit/service and contract tests.
+- Question-quality, duplicate, provenance, revision-hash, and review-idempotency checks.
+- Assessment eligibility and canonical coverage checks.
+- API validation, ownership/authorization, and error behavior.
+- Concurrent and duplicate submissions, transaction failure, persistence, and retry behavior.
+- Source extraction, chunking, mapping, retrieval, citation/source-grounding behavior, and empty/failure cases.
+- Diagnosis, remediation, distinct verification, and learner-state consistency.
+- Review scheduling and readiness projections.
+- Browser journeys and key interactions, responsive viewport overflow, loading/empty/error/success states, and reload persistence.
+- Type-check, production build, migration checks, and `git diff --check`.
 
-- Treat `server/migrations` as deployed schema history.
-- Use additive migrations only.
-- Verify the database target before writes.
-- Never drop or reset the configured application database as a test shortcut.
-- Use isolated disposable databases for destructive testing.
-- Clean up only records created by tests.
-- Never silently rewrite historical learner evidence or question revisions.
+Tests that mock the whole behavior do not prove the real integration works. Keep deterministic fixtures for ordinary tests and test live services only when necessary and safely configured. Use isolated test state/accounts for browser workflows.
 
-## 8. Automated verification requirements
+For a core-loop change, acceptance should cover the relevant path end to end:
 
-Use the existing Vitest, PostgreSQL integration, and Firefox/Playwright
-infrastructure.
+**select topic/source → map knowledge → create eligible assessment → submit and evaluate → explain a real gap → remediate → distinct verification → persist evidence → update review/readiness state → reload and confirm persistence.**
 
-Run focused tests first and broader suites only when warranted.
+Not every small task requires the full suite, but any claim that the entire learner journey works must be backed by the applicable integration and browser results.
 
-For substantial question-bank or assessment changes, run the applicable
-combination of:
-- Question-quality unit tests.
-- Automated-review and revision-integrity tests.
-- Review-decision idempotency tests.
-- Assessment eligibility and selection integration tests.
-- Ownership, transaction, and evidence-persistence tests.
-- Relevant end-to-end browser journeys.
-- Server and client builds.
-- `git diff --check`.
+Treat these states as distinct in reports: implemented, automated-reviewed, tested, browser-validated, measured, human-reviewed (if applicable), assessment-eligible, deployed, and production-ready.
 
-Automate browser journeys and responsive checks wherever the current
-infrastructure permits. Do not require manual browser testing as the
-normal acceptance gate when automated browser tests can verify the flow.
+Passing tests do not prove perfect question correctness, model accuracy, educational effectiveness, or durable mastery. State what was verified and what remains uncertain.
 
-Do not make live provider calls in ordinary tests.
+## 13. Documentation and decisions
 
-Test-only review fixtures may simulate eligible states only in isolated
-test environments. Never insert test-only decisions into the configured
-application database.
+Before changing behavior, read the relevant entry in `docs/README.md`. After a material change, update the relevant existing document in the same task:
 
-Do not repeatedly rerun unchanged suites without a concrete reason.
+- API, call-chain, or transaction behavior: `docs/FLOW.md`.
+- Persistence, constraints, ownership, or migrations: `docs/DATA_MODEL.md`.
+- Durable cross-cutting design choice: `docs/DECISIONS.md` and an ADR when appropriate.
+- Question review or eligibility: `docs/QUESTION_BANK_REVIEW.md` and `docs/CANONICAL_QUESTION_BANK.md`.
+- Feature status and verification: `docs/PROJECT_STATUS.md`.
+- Learner journeys: `docs/UX_JOURNEY.md`.
+- Design-system changes: `docs/FRONTEND_DESIGN.md`.
+- Work-session history: append a dated entry to `docs/SESSION_LOG.md`; do not rewrite historical entries.
 
-## 9. Documentation contract
+Update contradictory documentation when a policy changes. Prefer updating the relevant source-of-truth document and linking historical reports rather than creating multiple competing status reports. Record actual commands, results, limitations, and known defects. Never invent dates, approvals, measurements, owners, or deployment status.
 
-Before changing behavior, read the relevant entry in `docs/README.md`
-and inspect the implementation and migrations.
+## 14. UI and roadmap boundaries
 
-After behavior, API, schema, product-scope, or architectural changes,
-update the relevant documentation in the same change:
+- Preserve the current Aurora Ink design system unless evidence demonstrates a concrete usability problem.
+- Prioritize understandable actions, clear navigation, accessible assessment interactions, useful empty/error states, and responsive behavior over decorative changes.
+- Keep the four primary learner experiences easy to find.
+- Avoid adding a new dashboard, chatbot, agent, scheduler, or question-generation subsystem if the existing architecture can deliver the outcome.
+- Avoid broad refactors during a focused completion milestone unless a real architectural defect blocks safe delivery.
+- Implement roadmap extensions only when explicitly requested or necessary for a current acceptance criterion.
 
-- API, call-chain, or transaction change: `docs/FLOW.md`.
-- Persistence, constraints, ownership, or migration change:
-  `docs/DATA_MODEL.md`.
-- Durable cross-cutting design choice: `docs/DECISIONS.md` and an ADR
-  when useful.
-- Question-bank review or eligibility change:
-  `docs/QUESTION_BANK_REVIEW.md` and `docs/CANONICAL_QUESTION_BANK.md`.
-- Feature delivery or verification status: `docs/PROJECT_STATUS.md`.
-- Work session: append a dated entry to `docs/SESSION_LOG.md`;
-  do not rewrite previous entries.
-- User-facing design system: `docs/FRONTEND_DESIGN.md`.
-- Learner journey changes: `docs/UX_JOURNEY.md`.
+## 15. Local commands and final report
 
-Preserve useful domain documents and link to them rather than replacing
-them with summaries.
+Common commands include the following, but verify current scripts in `package.json` before use:
 
-Update contradictory policy documentation when the automated-review
-policy changes. Do not leave outdated human-only rules that cause agents
-to repeat the same blocker indefinitely.
+- `npm run config:check -w server`
+- `npm run db:migrate -w server`
+- `npm run db:seed -w server` when seed data is actually needed
+- `npm test`
+- `npm run test:integration -w server`
+- `npm run build`
+- `npm run question-bank:coverage`
+- Existing automated question-review/activation commands discovered in the repository
+- `npm run test:e2e`
+- `git diff --check`
 
-Document observed behavior, actual decisions, commands executed, and
-verified outcomes. Never invent approvals, test results, owners, dates,
-deployment state, or learner outcomes.
+Do not run seed or activation commands blindly. Confirm the configured target and intended scope first. Do not use a hard-coded database fallback when the configured environment is unavailable.
 
-## 10. Local commands
+For substantial tasks, report:
 
-- `npm run dev` starts the API and Vite client; API startup requires
-  PostgreSQL at `DATABASE_URL`.
-- `npm run db:migrate -w server` applies the repository's migrations.
-- `npm run db:seed -w server` seeds curated knowledge.
-- `npm run build` builds both workspaces.
-- `npm test` runs server unit tests.
-- `npm run test:integration -w server` requires PostgreSQL.
-
-Inspect `package.json` for the actual question-bank validation, automated
-review, activation, and end-to-end test commands. Do not invent command
-names.
-
-In final reports, list commands actually run and distinguish missing
-local services from code failures.
-
-## 11. Product roadmap boundaries
-
-Preserve the existing roadmap and prioritize quality over superficial
-feature count.
-
-Do not expand the canonical bank merely to increase its size. Prefer
-useful, defensible questions mapped to real canonical knowledge.
-
-Keep the four primary experiences discoverable:
-- Test a Topic.
-- Learn from My Material.
-- Review & Improve.
-- My Readiness.
-
-Preserve the current Aurora Ink design system. Improve information
-architecture and interaction behavior when required; do not repeatedly
-redesign colors and animations when the actual problem is an unclear
-workflow.
-
-Do not implement adaptive interview chains, repository execution, or
-other future roadmap features unless explicitly tasked or required to
-complete the current feature.
-
-## 12. Required final report
-
-For every substantial task, report:
-
-1. Actual starting Git and relevant database state.
-2. The concrete implementation delivered.
+1. Starting Git state and relevant database/environment state, without exposing secrets.
+2. The concrete behavior delivered and why it closes a real gap.
 3. Exact files and migrations changed.
-4. Automated-review decisions and eligibility changes, where relevant.
-5. Exact test commands and real outcomes.
-6. Known defects, blocked questions, and unsupported paths.
-7. Documentation updated.
-8. The next highest-value task based on demonstrated gaps.
+4. Review/eligibility decisions and inventory counts when relevant.
+5. Exact test/build commands run and their actual outcomes.
+6. Browser paths actually exercised and what they proved.
+7. Known defects, limits, failed/skipped tests, and unverified claims.
+8. Documentation updated.
+9. The single highest-value next milestone based on demonstrated gaps.
 
-Distinguish:
-- Implemented.
-- Automated-reviewed.
-- Tested.
-- Browser-validated.
-- Measured.
-- Human-reviewed, if applicable.
-- Assessment-eligible.
-- Deployed.
-- Production-ready.
+Do not use arbitrary completion percentages as a substitute for acceptance evidence. If percentages are requested, define the scoring method, show the evidence behind it, distinguish estimate from measurement, and never call a broken end-to-end core flow complete because most components exist.
 
-Do not claim that automated testing proves perfect question correctness,
-model accuracy, educational effectiveness, or durable mastery.
-
-Preserve existing user modifications. Do not commit unless explicitly
-instructed.
+Preserve user modifications. Do not stash, reset, discard, commit, or push unless explicitly instructed.
