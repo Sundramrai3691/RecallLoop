@@ -23,6 +23,9 @@ This index separates current implementation references from domain explanations,
 - [Canonical question bank](CANONICAL_QUESTION_BANK.md): revisioned curated items, review gates, provenance, selection, and quality checks.
 - [Question bank review workflow](QUESTION_BANK_REVIEW.md): reviewer authorization, exact-revision review packets, current inventory, and human benchmark annotation.
 - [Grounded remediation](GROUNDED_REMEDIATION.md): source ingestion, retrieval, remediation, and verification.
+- [Consolidated SDE curriculum](research/CONSOLIDATED_SDE_CURRICULUM.md): source-aware foundation scope, catalog gaps, bounded assessment pilot, and uncertainty register.
+- [Curriculum crosswalk](research/curriculum_crosswalk.json): read-only current canonical IDs and eight-point pilot snapshot.
+- [Research source registry](research/source_registry.json): deduplicated sources with inspection/version status and claim scope.
 
 ## Audits and migration history
 

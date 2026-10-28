@@ -1,0 +1,2158 @@
+{
+  "schemaVersion": 1,
+  "artifact": "RecallLoop Core SDE curriculum crosswalk",
+  "asOf": "2026-10-29",
+  "databaseSnapshot": {
+    "identityVerifiedThroughApplicationConfig": true,
+    "database": "recallloop",
+    "host": "127.0.0.1",
+    "mutationsPerformed": false,
+    "catalogConcepts": 34,
+    "catalogKnowledgePoints": 26,
+    "relationshipCounts": {
+      "concept_prerequisites": 0,
+      "concept_sources": 0,
+      "knowledge_sources": 540,
+      "distinct_knowledge_source_urls": 4
+    },
+    "note": "Read-only snapshot queried through server/src/db/postgres.ts using configured DATABASE_URL; no credentials stored."
+  },
+  "sourceRegistry": "source_registry.json",
+  "crosswalk": [
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "3019dacc-9182-4f0c-b31b-bff489520907",
+        "name": "Caching"
+      },
+      "concept": {
+        "id": "90753a3e-f059-4b1d-adf2-eacdbd0fc97f",
+        "name": "Cache-aside pattern"
+      },
+      "knowledgePoint": {
+        "id": "02fcaa53-390d-4fbd-9502-395709299def",
+        "statement": "Can explain cache hit, miss, load, and populate steps."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "184916a8-f3a6-4dc3-affd-24b191fa6357",
+        "name": "Eviction"
+      },
+      "concept": {
+        "id": "10407aba-bd86-45e3-9622-b4bc185a502a",
+        "name": "LRU and LFU eviction"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "8cf2aba7-cb16-48f6-9881-9eb4d373c16d",
+        "name": "Rate Limiting"
+      },
+      "concept": {
+        "id": "175fb8e9-e8ac-4c1a-b22d-6b738bb001d9",
+        "name": "Distributed rate limiting"
+      },
+      "knowledgePoint": {
+        "id": "02c15ae4-4b1e-49d7-ac32-5bfa6005574d",
+        "statement": "Can explain coordination across service instances."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "8cf2aba7-cb16-48f6-9881-9eb4d373c16d",
+        "name": "Rate Limiting"
+      },
+      "concept": {
+        "id": "f623e929-cae2-4010-be86-be8bb7a5d705",
+        "name": "Token bucket rate limiting"
+      },
+      "knowledgePoint": {
+        "id": "016cdf17-c613-466e-8e71-b7e4c0c11044",
+        "statement": "Can compare burst capacity and sustained rate."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "02d574d7-dc0a-4364-b849-83273e6632f2",
+        "name": "Concurrency"
+      },
+      "topic": {
+        "id": "ff55f876-4795-4f92-b57c-b1a964f41d4d",
+        "name": "Concurrency"
+      },
+      "concept": {
+        "id": "d388c9bb-10ff-4663-a0e2-3d716e968894",
+        "name": "Work coordination"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "ebfd2a49-2edd-4c0f-8140-b6b015179048",
+        "name": "HTTP and APIs"
+      },
+      "topic": {
+        "id": "2a971def-40df-4bf5-a4a1-7c2ae2d7df2f",
+        "name": "Authentication"
+      },
+      "concept": {
+        "id": "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
+        "name": "Token authentication"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "ebfd2a49-2edd-4c0f-8140-b6b015179048",
+        "name": "HTTP and APIs"
+      },
+      "topic": {
+        "id": "e6226706-c0f8-432e-89d2-b077d35fe980",
+        "name": "Authorization"
+      },
+      "concept": {
+        "id": "f6b832ed-4321-4caf-a338-885bd89a8d9a",
+        "name": "Resource ownership"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "ebfd2a49-2edd-4c0f-8140-b6b015179048",
+        "name": "HTTP and APIs"
+      },
+      "topic": {
+        "id": "10ef0a27-d703-429d-b83b-641881fb04e0",
+        "name": "REST"
+      },
+      "concept": {
+        "id": "76bdf077-6dc9-4239-91d9-aa07eb8a4a23",
+        "name": "Resource-oriented API design"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
+        "name": "Message Queues"
+      },
+      "concept": {
+        "id": "088badd0-c87a-413c-a698-d41f9aaf1cd2",
+        "name": "Consumer acknowledgements"
+      },
+      "knowledgePoint": {
+        "id": "048ea4ad-0c06-487c-86d1-58c974152ef9",
+        "statement": "Can explain acknowledgement timing and redelivery."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
+        "name": "Message Queues"
+      },
+      "concept": {
+        "id": "b3237c90-4478-40cd-8855-f0b3253c42d9",
+        "name": "Dead letter handling"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "1838347d-ce2f-43ce-862b-a74e337f6fa2",
+        "name": "Pub/Sub"
+      },
+      "concept": {
+        "id": "c4964bfd-8f82-40b9-9837-2f6d06cca243",
+        "name": "Event fanout"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
+        "name": "Retries and Idempotency"
+      },
+      "concept": {
+        "id": "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
+        "name": "Idempotent operations"
+      },
+      "knowledgePoint": {
+        "id": "038856d1-b2ba-4a8c-bd00-42a3e233e2a7",
+        "statement": "Can design a safe repeated operation."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
+        "name": "Retries and Idempotency"
+      },
+      "concept": {
+        "id": "eec45bbe-da6e-4c5c-b84a-74272032137a",
+        "name": "Retry backoff"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
+        "name": "Operations"
+      },
+      "topic": {
+        "id": "bf9c75f7-02d6-4e11-bbd2-f4479a55c634",
+        "name": "Docker"
+      },
+      "concept": {
+        "id": "8bd2fcca-3204-4c50-9911-0525e26b12ab",
+        "name": "Container fundamentals"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
+        "name": "Operations"
+      },
+      "topic": {
+        "id": "8e9126d0-ce40-4ca5-89d0-98b335ff2bca",
+        "name": "Load Balancing"
+      },
+      "concept": {
+        "id": "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
+        "name": "Health-aware routing"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
+        "name": "Operations"
+      },
+      "topic": {
+        "id": "06f1e6b3-4073-4862-a105-97a4206e1ec2",
+        "name": "Observability"
+      },
+      "concept": {
+        "id": "b994e420-d68d-4114-97e8-76ecc0319da2",
+        "name": "Service telemetry"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Computer Networks",
+      "skill": {
+        "id": "83e81bef-b0b6-476b-8142-5c30b687ec1a",
+        "name": "Network Protocols"
+      },
+      "topic": {
+        "id": "56762e33-de3a-4fed-aa59-8516371f193d",
+        "name": "HTTP"
+      },
+      "concept": {
+        "id": "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+        "name": "HTTP caching"
+      },
+      "knowledgePoint": {
+        "id": "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+        "statement": "Can distinguish freshness from validation."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Computer Networks",
+      "skill": {
+        "id": "83e81bef-b0b6-476b-8142-5c30b687ec1a",
+        "name": "Network Protocols"
+      },
+      "topic": {
+        "id": "56762e33-de3a-4fed-aa59-8516371f193d",
+        "name": "HTTP"
+      },
+      "concept": {
+        "id": "85789bff-da2f-419a-9025-02daef956331",
+        "name": "HTTP request lifecycle"
+      },
+      "knowledgePoint": {
+        "id": "0153a10b-199b-496a-b9bd-9948a6b3432c",
+        "statement": "Can explain method, status, headers, and body roles."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Computer Networks",
+      "skill": {
+        "id": "83e81bef-b0b6-476b-8142-5c30b687ec1a",
+        "name": "Network Protocols"
+      },
+      "topic": {
+        "id": "604ab306-a12f-495e-b1c3-b4c39e1088ca",
+        "name": "TCP Reliability"
+      },
+      "concept": {
+        "id": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
+        "name": "TCP reliable byte streams"
+      },
+      "knowledgePoint": {
+        "id": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "statement": "Can explain how sequence numbers and retransmission recover missing bytes while preserving ordered delivery."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Computer Networks",
+      "skill": {
+        "id": "83e81bef-b0b6-476b-8142-5c30b687ec1a",
+        "name": "Network Protocols"
+      },
+      "topic": {
+        "id": "604ab306-a12f-495e-b1c3-b4c39e1088ca",
+        "name": "TCP Reliability"
+      },
+      "concept": {
+        "id": "93471db7-cbdd-404b-ac76-7f12c3ffc7d4",
+        "name": "TCP reliable byte streams"
+      },
+      "knowledgePoint": {
+        "id": "0353e4bb-9708-4975-8f99-797169371161",
+        "statement": "Can explain that TCP exposes a byte stream and does not preserve application write or message boundaries."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
+        "name": "Indexes"
+      },
+      "concept": {
+        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
+        "name": "Index selection"
+      },
+      "knowledgePoint": {
+        "id": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "statement": "Can explain how a composite B-tree index column order affects equality and range predicates."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
+        "name": "Indexes"
+      },
+      "concept": {
+        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
+        "name": "Index selection"
+      },
+      "knowledgePoint": {
+        "id": "820a6a53-19a5-4ad2-b403-330ea1ea1563",
+        "statement": "Can weigh index selectivity and read benefit against write, storage, and maintenance cost."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+        "name": "Data partitioning"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "f2f44101-3c97-4be9-9883-c010a982b124",
+        "name": "Read replication"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+        "name": "Join and aggregation queries"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+        "name": "Relational data modeling"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
+        "name": "Transactions"
+      },
+      "concept": {
+        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+        "name": "Isolation and atomicity"
+      },
+      "knowledgePoint": {
+        "id": "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
+        "statement": "Can describe atomic commit and isolation tradeoffs."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
+        "name": "Transactions"
+      },
+      "concept": {
+        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+        "name": "Isolation and atomicity"
+      },
+      "knowledgePoint": {
+        "id": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "statement": "Can predict a non-repeatable read or serialization anomaly from a transaction schedule and isolation level."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Data Structures and Algorithms",
+      "skill": {
+        "id": "faf7aae4-a0e2-4d8e-93f1-d486e38d8339",
+        "name": "Data Structures and Algorithms"
+      },
+      "topic": {
+        "id": "17625537-7806-4430-8c10-d27018fc76b7",
+        "name": "Arrays and Hashing"
+      },
+      "concept": {
+        "id": "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
+        "name": "Array and hash lookup trade-offs"
+      },
+      "knowledgePoint": {
+        "id": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "statement": "Can choose between array scanning and hash lookup from operation mix and expected complexity."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Data Structures and Algorithms",
+      "skill": {
+        "id": "faf7aae4-a0e2-4d8e-93f1-d486e38d8339",
+        "name": "Data Structures and Algorithms"
+      },
+      "topic": {
+        "id": "17625537-7806-4430-8c10-d27018fc76b7",
+        "name": "Arrays and Hashing"
+      },
+      "concept": {
+        "id": "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
+        "name": "Array and hash lookup trade-offs"
+      },
+      "knowledgePoint": {
+        "id": "49508cd2-9e1b-4b8a-ab74-e809b2d11cfa",
+        "statement": "Can explain collision handling, key equality, and expected-versus-worst-case hash lookup."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Data Structures and Algorithms",
+      "skill": {
+        "id": "faf7aae4-a0e2-4d8e-93f1-d486e38d8339",
+        "name": "Data Structures and Algorithms"
+      },
+      "topic": {
+        "id": "693726c0-8f88-4291-80af-948bff4fd3dd",
+        "name": "Trees and Graphs"
+      },
+      "concept": {
+        "id": "2453287e-c330-4071-9836-e1b9848abcc2",
+        "name": "Tree and graph traversal decisions"
+      },
+      "knowledgePoint": {
+        "id": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "statement": "Can choose BFS or DFS to satisfy shortest unweighted path, reachability, or traversal requirements."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Data Structures and Algorithms",
+      "skill": {
+        "id": "faf7aae4-a0e2-4d8e-93f1-d486e38d8339",
+        "name": "Data Structures and Algorithms"
+      },
+      "topic": {
+        "id": "693726c0-8f88-4291-80af-948bff4fd3dd",
+        "name": "Trees and Graphs"
+      },
+      "concept": {
+        "id": "2453287e-c330-4071-9836-e1b9848abcc2",
+        "name": "Tree and graph traversal decisions"
+      },
+      "knowledgePoint": {
+        "id": "70e4f409-a21b-4538-8cca-283338c5be63",
+        "statement": "Can explain when a visited set is required and bound traversal work by vertices and edges."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Operating Systems",
+      "skill": {
+        "id": "90015c4a-a29e-4e4c-b5ab-2a8d9609fe74",
+        "name": "Operating Systems"
+      },
+      "topic": {
+        "id": "6ef4a451-c37e-4ed8-b00b-deea08fa4d14",
+        "name": "Processes and Scheduling"
+      },
+      "concept": {
+        "id": "d958799a-b864-43a1-bec7-aac5f638c8b7",
+        "name": "Processes, threads, and scheduling"
+      },
+      "knowledgePoint": {
+        "id": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "statement": "Can distinguish process isolation from threads sharing an address space and resources."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Operating Systems",
+      "skill": {
+        "id": "90015c4a-a29e-4e4c-b5ab-2a8d9609fe74",
+        "name": "Operating Systems"
+      },
+      "topic": {
+        "id": "6ef4a451-c37e-4ed8-b00b-deea08fa4d14",
+        "name": "Processes and Scheduling"
+      },
+      "concept": {
+        "id": "d958799a-b864-43a1-bec7-aac5f638c8b7",
+        "name": "Processes, threads, and scheduling"
+      },
+      "knowledgePoint": {
+        "id": "84e9d627-468b-4759-8004-5eab1145e1b5",
+        "statement": "Can explain how preemption and scheduling policy affect latency, fairness, and throughput."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Operating Systems",
+      "skill": {
+        "id": "90015c4a-a29e-4e4c-b5ab-2a8d9609fe74",
+        "name": "Operating Systems"
+      },
+      "topic": {
+        "id": "b37490ce-4724-4430-8df7-6803976577a1",
+        "name": "Synchronization"
+      },
+      "concept": {
+        "id": "9c70fa17-885d-422a-aa95-d2e1701a9b9b",
+        "name": "Synchronization and deadlocks"
+      },
+      "knowledgePoint": {
+        "id": "de995cf0-7aad-47aa-b6f0-4257620807d4",
+        "statement": "Can diagnose deadlock using the four necessary conditions and propose a condition-breaking remedy."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Operating Systems",
+      "skill": {
+        "id": "90015c4a-a29e-4e4c-b5ab-2a8d9609fe74",
+        "name": "Operating Systems"
+      },
+      "topic": {
+        "id": "b37490ce-4724-4430-8df7-6803976577a1",
+        "name": "Synchronization"
+      },
+      "concept": {
+        "id": "9c70fa17-885d-422a-aa95-d2e1701a9b9b",
+        "name": "Synchronization and deadlocks"
+      },
+      "knowledgePoint": {
+        "id": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "statement": "Can identify a data race and state the synchronization needed to protect an invariant."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "930c36a0-787d-4834-a35a-087b370c30f4",
+        "name": "Architecture"
+      },
+      "topic": {
+        "id": "fad7fa11-ae44-46c6-ba32-da787b7ded98",
+        "name": "System Design Fundamentals"
+      },
+      "concept": {
+        "id": "a1ed3b23-9aff-4493-9b2f-3dbf9da628fa",
+        "name": "Component boundary tradeoffs"
+      },
+      "knowledgePoint": {
+        "id": "030aa17d-78fe-442b-9fd9-f835a1416019",
+        "statement": "Can justify a boundary using scale and failure reasoning."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "9a157f43-7745-4062-8c06-350d88d22701",
+        "name": "Reliability"
+      },
+      "topic": {
+        "id": "6d39e440-d94d-4c16-9fd2-997f2a6e5e65",
+        "name": "Consistency and Durability"
+      },
+      "concept": {
+        "id": "1bd816b8-5f1b-4ad5-be85-ca6a93450202",
+        "name": "Consistency models"
+      },
+      "knowledgePoint": {
+        "id": "acb868d7-c07d-4849-9ef9-be8c2b139464",
+        "statement": "Can distinguish strong read-after-write behavior from eventual convergence for replicated data."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "9a157f43-7745-4062-8c06-350d88d22701",
+        "name": "Reliability"
+      },
+      "topic": {
+        "id": "1248bccc-ddf5-4a41-88ac-7467d648bb0a",
+        "name": "Failure Recovery"
+      },
+      "concept": {
+        "id": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
+        "name": "Graceful degradation"
+      },
+      "knowledgePoint": {
+        "id": "d80798b0-4f29-49f1-9f6d-7aead2e9dd89",
+        "statement": "Can choose a bounded fallback when a dependency fails and state which user-visible guarantee changes."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "1d34795a-acdb-44a1-9a45-bae7d273cd20",
+        "name": "Scalability"
+      },
+      "topic": {
+        "id": "a21c4082-77c5-4e76-aec6-6de4eaab7593",
+        "name": "Capacity Planning"
+      },
+      "concept": {
+        "id": "539f01ae-8c51-4c52-967a-84188355d620",
+        "name": "Back-of-the-envelope capacity"
+      },
+      "knowledgePoint": {
+        "id": "c9464d7f-7de9-4281-b4ed-d4db06203684",
+        "statement": "Can estimate request rate and storage from explicit workload assumptions and unit conversions."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "1d34795a-acdb-44a1-9a45-bae7d273cd20",
+        "name": "Scalability"
+      },
+      "topic": {
+        "id": "6da3d7d4-2bc9-4bf5-b3d5-cecf8c5fa784",
+        "name": "Distributed Systems"
+      },
+      "concept": {
+        "id": "da378ab5-d4a3-48bc-b3de-be396ec9cac9",
+        "name": "Failure and partition tradeoffs"
+      },
+      "knowledgePoint": {
+        "id": "d79dd3bd-1197-40ae-afdd-e85d0fde3f3b",
+        "statement": "Can explain which consistency and availability behavior a client observes during a network partition."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    }
+  ],
+  "assessmentSnapshot": {
+    "eligibleDistinctKnowledgePointsByCoreSdeDomain": [
+      {
+        "domain": "Computer Networks",
+        "eligible_points": 4
+      },
+      {
+        "domain": "Database Management Systems",
+        "eligible_points": 4
+      },
+      {
+        "domain": "Data Structures and Algorithms",
+        "eligible_points": 4
+      },
+      {
+        "domain": "Operating Systems",
+        "eligible_points": 4
+      }
+    ]
+  },
+  "pilot": {
+    "scope": "Eight existing points across DSA, OS, DBMS and TCP. This is an artifact/question-bank pilot, not complete SDE coverage.",
+    "points": [
+      {
+        "id": "dsa-array-hash-choice",
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "objective": "Choose a linear scan or hash lookup from operation mix, input assumptions, and expected complexity.",
+        "tier": "Must Know",
+        "tierRationale": "Foundational algorithm/data-structure selection; not an employer-frequency weight.",
+        "misconception": "Treats expected constant lookup as guaranteed worst-case behavior or ignores construction and memory costs.",
+        "sourceIds": [
+          "EDU-MIT-6006-S20"
+        ],
+        "sourceStatus": "MIT OCW syllabus/calendar excerpt supports hashing and complexity; exact lecture claims and answer keys still need curator review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "MIT OCW syllabus/calendar excerpt supports hashing and complexity; exact lecture claims and answer keys still need curator review.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "State operation mix and input assumptions",
+          "Compare scan vs hash expected and worst-case cost",
+          "Mention construction and/or space trade-off"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "14cf1025-f100-4088-b82e-035d5a7bf8bf",
+          "a9368efc-8c0c-4b05-83df-68d2513dc724",
+          "31beafca-8098-4773-8a7e-4a1a24d43ce0",
+          "8e56335c-14cf-4914-a801-5a7072649d79",
+          "837a6323-d63c-4e43-9b30-fc8916dbbb72",
+          "6c859a32-8da7-4a13-bec5-b811094e68a0"
+        ],
+        "revisionContentHashes": [
+          "03126a372f64e4d10a23617cb20f71b4b1f52bf0decfd3a907edb61b10db7091",
+          "fb3f7c504f8013c99c72a6401ed8105d3507e3f0a4c081e06e3cb82c5bc33f55",
+          "0f986392e2daf6c5d9acc39e387bfe5686be0dd3c9a91af3720fb3537a4b3186",
+          "ae2ee9cdc1ed32ce385030e3663d0ec232a2f00a96161a77d5c23f34b6ff0d4f",
+          "9c724b4d19deb58711ae634708d24e8314c4a6568a30a1cae29c5b1f7d5b70de",
+          "aa19b50ac97685a120135cab1d8d5a7978e7ea18e270634e4e05f764f8f475bd"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "dsa-bfs-dfs-choice",
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "objective": "Select BFS for shortest unweighted paths and distinguish it from DFS reachability/traversal use.",
+        "tier": "Must Know",
+        "tierRationale": "Core graph-search reasoning with observable algorithm choice.",
+        "misconception": "Assumes DFS also guarantees a shortest path in an unweighted graph.",
+        "sourceIds": [
+          "EDU-MIT-6006-S20"
+        ],
+        "sourceStatus": "MIT OCW syllabus/calendar excerpt lists BFS/DFS and shortest paths; exact lecture claims and answer keys still need curator review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "MIT OCW syllabus/calendar excerpt lists BFS/DFS and shortest paths; exact lecture claims and answer keys still need curator review.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "Identify the requested property (shortest unweighted path vs traversal/reachability)",
+          "Choose BFS or DFS correctly",
+          "State relevant complexity or visited-state condition"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "25efcc1f-2352-430a-baa8-dc5068bfaec0",
+          "b06c8950-e2ad-4054-93a8-1f0721a30545",
+          "08d1eb7d-6603-4f7f-a060-58ebdbc13ed3",
+          "964222b8-9af5-451c-905d-aa36279b5605",
+          "b22da22c-76cc-4afe-bba2-c94cc3be9842",
+          "9ab493ef-d76c-4e55-99a5-9a7b1d6979da"
+        ],
+        "revisionContentHashes": [
+          "252a206da6711a5918c8c190f37cb0a3198adacfe137eff1e22e8fb1f944c605",
+          "f70247daae34ed738430fb00d872dcb18221a1f93c40ee2f7a6b6897867a7d07",
+          "cbd320370bcc67470d2951c7eb5887cda6f02ab6df2336decdb193b029a6859e",
+          "e19059b40ef86d51a5448c2181e340ecbde6c8a260cadd8db7b9afab1e4f519e",
+          "e71cee807ffad0eaf51316ed3217c6269e65e9c3b6e0a444ca63535286f487f7",
+          "06b98ea5a2a9353703361fb16e504154407a21e2f19ccf594ed8929dbe743175"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "os-process-thread-isolation",
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "objective": "Explain the address-space isolation distinction between processes and threads in the specified OS model.",
+        "tier": "Must Know",
+        "tierRationale": "Foundational concurrency and isolation model.",
+        "misconception": "Claims each thread has an independent process address space or that all process resources are isolated identically.",
+        "sourceIds": [
+          "EDU-OSTEP",
+          "EDU-XV6-2017"
+        ],
+        "sourceStatus": "Pedagogical source candidates are registered but exact chapters/pages were not independently checked; source review required before source-grounded publication.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "Pedagogical source candidates are registered but exact chapters/pages were not independently checked; source review required before source-grounded publication.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "State process address-space isolation distinction in the named model",
+          "State that threads in one process share an address space",
+          "Avoid blanket claims about all process resources"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "6ae29178-9bb3-424a-b162-d88d96b7ad25",
+          "90a2b3e7-08a0-4ba1-9360-a4e04a77e9b4",
+          "c3531657-5561-4b3c-ac72-729b33264641",
+          "59f8204b-b58d-4911-93f9-1f53ed61df62",
+          "24c3634c-72d3-41fb-a716-c3ecca5876a4",
+          "4e1a6087-778f-4542-b757-a15c27a92673"
+        ],
+        "revisionContentHashes": [
+          "33e08734ca008587a5d3bfbabe78630ce4a4ae969acf0bd83fba621be90a1490",
+          "a1d91e2e81bfaaca9b6bb4a67e03cc60fec5b94e3ff6c09ca21b8fae83229e6a",
+          "6daac71ce80c3a3d071040f151034e8a205a474eb07d2926387d7bcf03a9ae43",
+          "2af6969827f1cac90df04f64f0bed09165d2df667a946a4f438ffac51000adaa",
+          "c5e7de4d92594711b851ca0eb2e7f642954cd59f44f10a71856fbbc570fdfca5",
+          "55113fddefa67a76995fae1ddc49faacd45b8121bd8c20eb133273833b794c12"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "os-race-invariant",
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "objective": "Identify a data race on a shared invariant and state a suitable synchronization strategy and its trade-off.",
+        "tier": "Must Know",
+        "tierRationale": "Essential correctness reasoning for shared mutable state.",
+        "misconception": "Treats atomicity of one operation as protection for a multi-step invariant.",
+        "sourceIds": [
+          "EDU-OSTEP",
+          "EDU-XV6-2017"
+        ],
+        "sourceStatus": "Pedagogical source candidates are registered but exact chapters/pages were not independently checked; source review required before source-grounded publication.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "Pedagogical source candidates are registered but exact chapters/pages were not independently checked; source review required before source-grounded publication.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "Identify shared state and interleaving risk",
+          "Name the invariant that may be violated",
+          "Choose synchronization that covers the invariant"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "264b6b9d-b38e-482b-b3bb-ff6b9f96f7e9",
+          "cfa2c8d7-867e-4268-b79d-f015bb6982cf",
+          "45446a6f-deb0-48cc-8bfb-e3908d10b48b",
+          "d5ec5261-9c84-46c7-bf1d-0e00a4258b74",
+          "ab553bdd-8a75-4567-81d2-31e3078b9355",
+          "3e225d34-f6c6-4b84-af2c-ffd6c3181597"
+        ],
+        "revisionContentHashes": [
+          "8ccfe797577f508e1ccd368bffe6a063acada6866659683fc740eee585a25a8a",
+          "27779e820d65756fae421b677cbe0228cecd3387ad197fa7c03a952d1cf2f788",
+          "b951b1105391ebcbd24845af5736ef1c1aa1797b3f035d04dc6113b362f0329c",
+          "bae070d6fff83a04ed9d57793398c9d90a040a1c99e8fb88f868cf777c8c1e4c",
+          "2dffa5b84f4407e2180b49dc9f16c3957e35102f6d640ec53cac99d92c07856f",
+          "9cf1ef70f51d1bbe9babb0f6dff507dc004c323b78788e3b00bf484bade542e1"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "db-transaction-anomaly",
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "objective": "Predict a non-repeatable read or serialization anomaly from a schedule and stated isolation level.",
+        "tier": "Must Know",
+        "tierRationale": "Core transaction reasoning; specify the DBMS when behavior is implementation-dependent.",
+        "misconception": "Assumes the SQL isolation-level name alone guarantees identical behavior across every DBMS.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "PostgreSQL 18 official transaction-isolation documentation excerpt checked; item schedule examples and existing revision citations are version-pinned separately.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "PostgreSQL 18 official transaction-isolation documentation excerpt checked; item schedule examples and existing revision citations are version-pinned separately.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "Read the provided transaction schedule",
+          "Name the anomaly or absence of anomaly",
+          "Tie result to the explicitly named isolation implementation"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "9ddcb71b-f70c-4915-b3e4-1096a4063540",
+          "b45f9ae6-fbcf-4675-8bd0-c7076bb35e66",
+          "47cea441-3928-4001-907c-1eed7d4b068c",
+          "8be4de3f-4cd9-4a34-a30e-45a2cf25e0e5",
+          "a303ff3d-ec52-4edc-a7b3-da5fd0c8afe1",
+          "403005bd-1f1b-4598-b122-7eda382ad5ab"
+        ],
+        "revisionContentHashes": [
+          "ca472ca016b00fca83a585c933178bc57356d767b0ccf710c12651076f59f1d8",
+          "6856e1e61503c10c545058ad0dc3ba512bfc9305ac1254a25a97a6ce04840583",
+          "b538b600b20b0def41a786079e2fae19dbe9b23bec0064eff0ac5718f1368aba",
+          "49e96e19a6bfef0f7ac4670e0c3c04405bc1669dee1fa13dcc605adec9030dea",
+          "97422bab60a1d46f683131f84e1b03ce71166deea2aba26ecb3f8f55cc4dda1c",
+          "afd6affd11ddf1a071461ef040309effd29125f0b519a41daf3eb61e3b53e0d9"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "db-composite-index-order",
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "objective": "Explain how a composite B-tree key order interacts with equality and range predicates for a specified query.",
+        "tier": "Frequently Tested",
+        "tierRationale": "Practical query/index reasoning; assessment must name the DBMS and index type.",
+        "misconception": "Claims a composite index is equally useful for any permutation of predicates or columns.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "PostgreSQL 18 official multicolumn-index documentation excerpt checked; avoid generalizing PostgreSQL planner details to all engines.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "PostgreSQL 18 official multicolumn-index documentation excerpt checked; avoid generalizing PostgreSQL planner details to all engines.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "State B-tree index column order",
+          "Relate leftmost/equality/range predicates to the named query",
+          "Mention relevant trade-off or planner/version scope"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "98f33d7a-69f7-410e-98d3-5a76be32f5e3",
+          "8e21cc39-ee2f-4d13-b42f-100317a7b61b",
+          "5d07e113-f345-4eaf-9e50-400527a3cbcf",
+          "bd118756-1f28-4eba-a3d7-1f478fa629f7",
+          "480e8cc2-0721-43d1-8521-f14e2f5501d3",
+          "53c9f138-7820-493a-a8b2-74d90a137e07"
+        ],
+        "revisionContentHashes": [
+          "478438f50c9ed741b0b734056ca01f03335eb886441b4d1261a2ffa5f2c2bce2",
+          "bcb0391d8e8382c397264441df8be1ad76f45125bbdeeecd590f4f45d12cdfea",
+          "9559595ed9ed4d381ce7ad6fc44e626b68b255b43fb0a18d4341e5b192ddfdde",
+          "bcafa806028c838100c92b7c77ca11696a37d460c0ef47da28ba254512ce21bf",
+          "06adb6f690cc4a82a50cf345f0ce6eed5d3dbe281e6b3ab379d5523a1f3fcaf9",
+          "471bf1f656571b899e0bc49333ffc9264de050a44d5fe972f9338c8b967f4f4c"
+        ],
+        "revisionSourceFinding": "The existing question revisions cite PostgreSQL 16 mvcc.html; that source page does not directly support the composite-index objective. Exact PostgreSQL 16 index-source correction remains open; the PostgreSQL 18 official index documentation supports the proposed objective but does not repair immutable revision provenance.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass.",
+        "status": "source_citation_correction_required",
+        "candidateSourceIds": [
+          "DOC-POSTGRESQL-16-INDEXES"
+        ]
+      },
+      {
+        "id": "net-tcp-retransmission",
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "objective": "Explain how TCP sequence numbers, acknowledgments, and retransmission support ordered byte delivery under loss.",
+        "tier": "Must Know",
+        "tierRationale": "Core transport protocol behavior grounded in the current TCP specification.",
+        "misconception": "Confuses TCP delivery guarantees with application message boundaries or exactly-once processing.",
+        "sourceIds": [
+          "STD-TCP-9293"
+        ],
+        "sourceStatus": "RFC 9293 sequence-number and event-processing sections checked by excerpt; item-specific scenarios and keys still need curator review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "RFC 9293 sequence-number and event-processing sections checked by excerpt; item-specific scenarios and keys still need curator review.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "Describe sequence/acknowledgment relation",
+          "Explain loss recovery/retransmission and ordered stream",
+          "Avoid exactly-once application guarantee"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "370852c9-2956-448f-bd00-12f151742955",
+          "c613e6ef-70bd-412e-9e07-d7318f07a26e",
+          "437c3eaf-678b-43f5-8974-cafb445f4a4e",
+          "ded59a98-a3b6-4976-ba72-d39ecf2036f8",
+          "6254f6d8-92c4-422d-847a-261efab10f77",
+          "d2e5703e-ec93-47d8-9672-4e9b8849fb77"
+        ],
+        "revisionContentHashes": [
+          "107860ff5f28ac70e5053daf5ff66f8ff5aaaa4ea32887832bf6c5dea1b09fce",
+          "bc8a8a0c552f13ba1fd3a2cb528ca8a6e734bb6c0c1dd53df1d9f3f46deccfd4",
+          "2996f3914c0182792cc03111d60eb25ff8cf458f17f89f99a0998471f4bcd974",
+          "ab2eae17b7ffd6b90e99080a5baf4dc5370a604fd899278933a35a4187f434b0",
+          "24e726ebd788e1e0dae8c687c8a2553d32dc72795342feb52c5897fd0162e7a1",
+          "2dc5455ccb5c737d25e26ff8beaed89f1c8784e09c629d991d37a28fb881ae4a"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      },
+      {
+        "id": "net-tcp-stream-boundary",
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "objective": "Explain that TCP presents an ordered byte stream and does not preserve application write boundaries.",
+        "tier": "Must Know",
+        "tierRationale": "Directly specified transport interface property; foundational application framing implication.",
+        "misconception": "Assumes one send/write maps to one receive/read or packet.",
+        "sourceIds": [
+          "STD-TCP-9293"
+        ],
+        "sourceStatus": "RFC 9293 interface and service description checked by excerpt; application framing examples remain to be curated.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "verification": "Automated review/published eligibility only; not independent human validation.",
+        "sourceVerificationNote": "RFC 9293 interface and service description checked by excerpt; application framing examples remain to be curated.",
+        "targetRoles": [
+          "general entry-level software developer"
+        ],
+        "expectedDepth": "Explain and apply to a small stated scenario; no implementation-specific claim beyond the named model/version.",
+        "expectedAnswerCriteria": [
+          "State ordered byte-stream interface",
+          "Reject write/read or packet/message boundary equivalence",
+          "Give an application framing implication"
+        ],
+        "partialCredit": "Award partial credit for the core distinction or correct diagnosis without a complete justification; do not award full credit for an unqualified slogan. Apply the item revision rubric when it is stricter.",
+        "remediationIntent": "Use the diagnosed missing criterion to select a source excerpt and one focused worked example; retain unknown status for concepts without submitted evidence.",
+        "distinctVerificationCriteria": "Use a different question revision and change representation, schedule, graph/query, or loss scenario while assessing the same competency; do not count a paraphrase or regenerated explanation alone as improvement.",
+        "persistedPrerequisiteIds": [],
+        "suggestedPrerequisites": "No prerequisite graph is persisted. Review the pedagogical dependencies in CONSOLIDATED_SDE_CURRICULUM.md before recording any edge.",
+        "interviewRelevance": [
+          {
+            "sourceId": "EMP-AMAZON-SDE-TOPICS",
+            "claim": "Official employer page names the broad topic family; role/level may vary; no frequency or weight inferred."
+          }
+        ],
+        "confidence": "medium_for_topic_mapping_only",
+        "revisionHistory": "Existing canonical point; this Phase 2 snapshot adds no catalog or learner-data revision.",
+        "revisionIds": [
+          "1e04cfc5-38c2-43d4-b629-67a954fe275e",
+          "f5cb13ca-4eba-4800-9a72-f2c38ac77672",
+          "4f61d24e-1120-4a38-932f-7fb7a5518553",
+          "1647ad11-7297-4006-a1df-aadce88546a9",
+          "0543c44b-1fef-4893-85ee-57064bbd3f4b",
+          "b4f061ca-7c69-4302-9862-ab685ad427f4"
+        ],
+        "revisionContentHashes": [
+          "d3aa7fae7c61e68f9734d64d89f2c4e255d19934ead8f89fa874ff21f9b14a66",
+          "8c0a3a7c288c5c746ddb7585a54e44fc9d16e51c7520012a1cd97e39b139b2fb",
+          "2770b5921df9cda24b85b04bc40d9a6be77448d0ee23fa2194e28cd374051f22",
+          "c474da3f12cacccab4583e32b93993342bf4f074e6e96bde1bfc46a2ecaa4a11",
+          "2790de538c6079d422dd6e43e4c76a895992f422ec5eb41791435877b829c2f4",
+          "6d9259ecfa227ca339c391426ed4fb7e1011d30e375992d3e3c86da8fb20580a"
+        ],
+        "revisionSourceFinding": "Current authored hash, mapping, publication, quality, and automated approval conditions were rechecked for this snapshot.",
+        "semanticQuestionAlignment": "Canonical knowledge-point foreign-key mapping is verified; human/curator review of whether every prompt, answer, and rubric precisely tests this objective remains open.",
+        "answerRubricStatus": "Automated structural checks and review state verified; technical answer and scoring correctness were not independently re-evaluated in this Phase 2 pass."
+      }
+    ],
+    "limitations": [
+      "OS source material was not independently checked at exact chapter/page level; those points are provisional.",
+      "No concept_sources or prerequisite edges exist in this snapshot. Proposed source mapping and prerequisite order are not persisted catalog relations.",
+      "Automated review decisions and published status do not establish independent expert validation, perfect correctness, educational efficacy or durable mastery."
+    ],
+    "questionRevisions": [
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-mcq-1",
+        "revisionId": "1e04cfc5-38c2-43d4-b629-67a954fe275e",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "d3aa7fae7c61e68f9734d64d89f2c4e255d19934ead8f89fa874ff21f9b14a66",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-mcq-2",
+        "revisionId": "f5cb13ca-4eba-4800-9a72-f2c38ac77672",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "8c0a3a7c288c5c746ddb7585a54e44fc9d16e51c7520012a1cd97e39b139b2fb",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-recall-1",
+        "revisionId": "4f61d24e-1120-4a38-932f-7fb7a5518553",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "2770b5921df9cda24b85b04bc40d9a6be77448d0ee23fa2194e28cd374051f22",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-recall-2",
+        "revisionId": "1647ad11-7297-4006-a1df-aadce88546a9",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "c474da3f12cacccab4583e32b93993342bf4f074e6e96bde1bfc46a2ecaa4a11",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-recall-3",
+        "revisionId": "0543c44b-1fef-4893-85ee-57064bbd3f4b",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "2790de538c6079d422dd6e43e4c76a895992f422ec5eb41791435877b829c2f4",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "0353e4bb-9708-4975-8f99-797169371161",
+        "slug": "sde-net-tcp-byte-stream-boundaries-verification",
+        "revisionId": "b4f061ca-7c69-4302-9862-ab685ad427f4",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "6d9259ecfa227ca339c391426ed4fb7e1011d30e375992d3e3c86da8fb20580a",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-mcq-1",
+        "revisionId": "370852c9-2956-448f-bd00-12f151742955",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "107860ff5f28ac70e5053daf5ff66f8ff5aaaa4ea32887832bf6c5dea1b09fce",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-mcq-2",
+        "revisionId": "c613e6ef-70bd-412e-9e07-d7318f07a26e",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "bc8a8a0c552f13ba1fd3a2cb528ca8a6e734bb6c0c1dd53df1d9f3f46deccfd4",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-recall-1",
+        "revisionId": "437c3eaf-678b-43f5-8974-cafb445f4a4e",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "2996f3914c0182792cc03111d60eb25ff8cf458f17f89f99a0998471f4bcd974",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-recall-2",
+        "revisionId": "ded59a98-a3b6-4976-ba72-d39ecf2036f8",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "ab2eae17b7ffd6b90e99080a5baf4dc5370a604fd899278933a35a4187f434b0",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-recall-3",
+        "revisionId": "6254f6d8-92c4-422d-847a-261efab10f77",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "24e726ebd788e1e0dae8c687c8a2553d32dc72795342feb52c5897fd0162e7a1",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "slug": "sde-net-tcp-sequence-retransmit-verification",
+        "revisionId": "d2e5703e-ec93-47d8-9672-4e9b8849fb77",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "2dc5455ccb5c737d25e26ff8beaed89f1c8784e09c629d991d37a28fb881ae4a",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.rfc-editor.org/rfc/rfc9293.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-mcq-1",
+        "revisionId": "98f33d7a-69f7-410e-98d3-5a76be32f5e3",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "478438f50c9ed741b0b734056ca01f03335eb886441b4d1261a2ffa5f2c2bce2",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-mcq-2",
+        "revisionId": "8e21cc39-ee2f-4d13-b42f-100317a7b61b",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "bcb0391d8e8382c397264441df8be1ad76f45125bbdeeecd590f4f45d12cdfea",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-recall-1",
+        "revisionId": "5d07e113-f345-4eaf-9e50-400527a3cbcf",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "9559595ed9ed4d381ce7ad6fc44e626b68b255b43fb0a18d4341e5b192ddfdde",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-recall-2",
+        "revisionId": "bd118756-1f28-4eba-a3d7-1f478fa629f7",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "bcafa806028c838100c92b7c77ca11696a37d460c0ef47da28ba254512ce21bf",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-recall-3",
+        "revisionId": "480e8cc2-0721-43d1-8521-f14e2f5501d3",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "06adb6f690cc4a82a50cf345f0ce6eed5d3dbe281e6b3ab379d5523a1f3fcaf9",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "slug": "sde-db-composite-index-order-verification",
+        "revisionId": "53c9f138-7820-493a-a8b2-74d90a137e07",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "471bf1f656571b899e0bc49333ffc9264de050a44d5fe972f9338c8b967f4f4c",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-mcq-1",
+        "revisionId": "14cf1025-f100-4088-b82e-035d5a7bf8bf",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "03126a372f64e4d10a23617cb20f71b4b1f52bf0decfd3a907edb61b10db7091",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-mcq-2",
+        "revisionId": "a9368efc-8c0c-4b05-83df-68d2513dc724",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "fb3f7c504f8013c99c72a6401ed8105d3507e3f0a4c081e06e3cb82c5bc33f55",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-recall-1",
+        "revisionId": "31beafca-8098-4773-8a7e-4a1a24d43ce0",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "0f986392e2daf6c5d9acc39e387bfe5686be0dd3c9a91af3720fb3537a4b3186",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-recall-2",
+        "revisionId": "8e56335c-14cf-4914-a801-5a7072649d79",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "ae2ee9cdc1ed32ce385030e3663d0ec232a2f00a96161a77d5c23f34b6ff0d4f",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-recall-3",
+        "revisionId": "837a6323-d63c-4e43-9b30-fc8916dbbb72",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "9c724b4d19deb58711ae634708d24e8314c4a6568a30a1cae29c5b1f7d5b70de",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "slug": "sde-dsa-array-hash-operation-mix-verification",
+        "revisionId": "6c859a32-8da7-4a13-bec5-b811094e68a0",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "aa19b50ac97685a120135cab1d8d5a7978e7ea18e270634e4e05f764f8f475bd",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-mcq-1",
+        "revisionId": "25efcc1f-2352-430a-baa8-dc5068bfaec0",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "252a206da6711a5918c8c190f37cb0a3198adacfe137eff1e22e8fb1f944c605",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-mcq-2",
+        "revisionId": "b06c8950-e2ad-4054-93a8-1f0721a30545",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "f70247daae34ed738430fb00d872dcb18221a1f93c40ee2f7a6b6897867a7d07",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-recall-1",
+        "revisionId": "08d1eb7d-6603-4f7f-a060-58ebdbc13ed3",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "cbd320370bcc67470d2951c7eb5887cda6f02ab6df2336decdb193b029a6859e",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-recall-2",
+        "revisionId": "964222b8-9af5-451c-905d-aa36279b5605",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "e19059b40ef86d51a5448c2181e340ecbde6c8a260cadd8db7b9afab1e4f519e",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-recall-3",
+        "revisionId": "b22da22c-76cc-4afe-bba2-c94cc3be9842",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "e71cee807ffad0eaf51316ed3217c6269e65e9c3b6e0a444ca63535286f487f7",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "slug": "sde-dsa-bfs-dfs-purpose-verification",
+        "revisionId": "9ab493ef-d76c-4e55-99a5-9a7b1d6979da",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "06b98ea5a2a9353703361fb16e504154407a21e2f19ccf594ed8929dbe743175",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-mcq-1",
+        "revisionId": "9ddcb71b-f70c-4915-b3e4-1096a4063540",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "ca472ca016b00fca83a585c933178bc57356d767b0ccf710c12651076f59f1d8",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-mcq-2",
+        "revisionId": "b45f9ae6-fbcf-4675-8bd0-c7076bb35e66",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "6856e1e61503c10c545058ad0dc3ba512bfc9305ac1254a25a97a6ce04840583",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-recall-1",
+        "revisionId": "47cea441-3928-4001-907c-1eed7d4b068c",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "b538b600b20b0def41a786079e2fae19dbe9b23bec0064eff0ac5718f1368aba",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-recall-2",
+        "revisionId": "8be4de3f-4cd9-4a34-a30e-45a2cf25e0e5",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "49e96e19a6bfef0f7ac4670e0c3c04405bc1669dee1fa13dcc605adec9030dea",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-recall-3",
+        "revisionId": "a303ff3d-ec52-4edc-a7b3-da5fd0c8afe1",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "97422bab60a1d46f683131f84e1b03ce71166deea2aba26ecb3f8f55cc4dda1c",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "slug": "sde-db-isolation-anomaly-schedule-verification",
+        "revisionId": "403005bd-1f1b-4598-b122-7eda382ad5ab",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "afd6affd11ddf1a071461ef040309effd29125f0b519a41daf3eb61e3b53e0d9",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://www.postgresql.org/docs/16/mvcc.html"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-mcq-1",
+        "revisionId": "264b6b9d-b38e-482b-b3bb-ff6b9f96f7e9",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "8ccfe797577f508e1ccd368bffe6a063acada6866659683fc740eee585a25a8a",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-mcq-2",
+        "revisionId": "cfa2c8d7-867e-4268-b79d-f015bb6982cf",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "27779e820d65756fae421b677cbe0228cecd3387ad197fa7c03a952d1cf2f788",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-recall-1",
+        "revisionId": "45446a6f-deb0-48cc-8bfb-e3908d10b48b",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "b951b1105391ebcbd24845af5736ef1c1aa1797b3f035d04dc6113b362f0329c",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-recall-2",
+        "revisionId": "d5ec5261-9c84-46c7-bf1d-0e00a4258b74",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "bae070d6fff83a04ed9d57793398c9d90a040a1c99e8fb88f868cf777c8c1e4c",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-recall-3",
+        "revisionId": "ab553bdd-8a75-4567-81d2-31e3078b9355",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "2dffa5b84f4407e2180b49dc9f16c3957e35102f6d640ec53cac99d92c07856f",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "b4b89b6c-bfcf-4d08-a7f9-4b355666f191",
+        "slug": "sde-os-race-protect-invariant-verification",
+        "revisionId": "3e225d34-f6c6-4b84-af2c-ffd6c3181597",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "9cf1ef70f51d1bbe9babb0f6dff507dc004c323b78788e3b00bf484bade542e1",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-mcq-1",
+        "revisionId": "6ae29178-9bb3-424a-b162-d88d96b7ad25",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "33e08734ca008587a5d3bfbabe78630ce4a4ae969acf0bd83fba621be90a1490",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-mcq-2",
+        "revisionId": "90a2b3e7-08a0-4ba1-9360-a4e04a77e9b4",
+        "revision": 1,
+        "questionType": "mcq",
+        "contentHash": "a1d91e2e81bfaaca9b6bb4a67e03cc60fec5b94e3ff6c09ca21b8fae83229e6a",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-recall-1",
+        "revisionId": "c3531657-5561-4b3c-ac72-729b33264641",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "6daac71ce80c3a3d071040f151034e8a205a474eb07d2926387d7bcf03a9ae43",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-recall-2",
+        "revisionId": "59f8204b-b58d-4911-93f9-1f53ed61df62",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "2af6969827f1cac90df04f64f0bed09165d2df667a946a4f438ffac51000adaa",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-recall-3",
+        "revisionId": "24c3634c-72d3-41fb-a716-c3ecca5876a4",
+        "revision": 1,
+        "questionType": "rapid_recall",
+        "contentHash": "c5e7de4d92594711b851ca0eb2e7f642954cd59f44f10a71856fbbc570fdfca5",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      },
+      {
+        "canonicalKnowledgePointId": "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "slug": "sde-os-process-thread-isolation-verification",
+        "revisionId": "4e1a6087-778f-4542-b757-a15c27a92673",
+        "revision": 1,
+        "questionType": "short_explanation",
+        "contentHash": "55113fddefa67a76995fae1ddc49faacd45b8121bd8c20eb133273833b794c12",
+        "publicationStatus": "published",
+        "reviewStatus": "automated_reviewed",
+        "qualityStatus": "valid",
+        "exactAutomatedApproval": true,
+        "authoredHashMatches": true,
+        "sourceUrl": "https://pdos.csail.mit.edu/6.828/2017/xv6/book-rev9.pdf"
+      }
+    ]
+  },
+  "curriculumAreas": [
+    {
+      "id": "programming_fundamentals",
+      "label": "Programming fundamentals",
+      "priority": "Must Know",
+      "existingConceptIds": [],
+      "existingKnowledgePointIds": [],
+      "disposition": "new_canonical_area_after_source_and_objective_review"
+    },
+    {
+      "id": "dsa_algorithmic_reasoning",
+      "label": "DSA and algorithmic reasoning",
+      "priority": "Must Know",
+      "existingConceptIds": [
+        "94a7f4ee-fbc0-42ac-b1ac-cdcd19003f9b",
+        "2453287e-c330-4071-9836-e1b9848abcc2"
+      ],
+      "existingKnowledgePointIds": [
+        "3b2be54e-e9ae-4477-9e43-bbf9dce91262",
+        "49508cd2-9e1b-4b8a-ab74-e809b2d11cfa",
+        "6a12ea8b-6b75-40bd-98da-8583491c27f1",
+        "70e4f409-a21b-4538-8cca-283338c5be63"
+      ],
+      "disposition": "reuse_catalog; map sources and extend missing algorithms only when justified"
+    },
+    {
+      "id": "oop_small_scale_design",
+      "label": "OOP and small-scale design",
+      "priority": "Must Know",
+      "existingConceptIds": [],
+      "existingKnowledgePointIds": [],
+      "disposition": "new_canonical_area; do not merge with distributed system design"
+    },
+    {
+      "id": "operating_systems",
+      "label": "Operating systems fundamentals",
+      "priority": "Must Know",
+      "existingConceptIds": [
+        "d958799a-b864-43a1-bec7-aac5f638c8b7",
+        "9c70fa17-885d-422a-aa95-d2e1701a9b9b"
+      ],
+      "existingKnowledgePointIds": [
+        "fdbd9a40-0f2d-49b4-84fc-965a11a7ca30",
+        "84e9d627-468b-4759-8004-5eab1145e1b5",
+        "de995cf0-7aad-47aa-b6f0-4257620807d4",
+        "b4b89b6c-bfcf-4d08-a7f9-4b355666f191"
+      ],
+      "disposition": "reuse_catalog; source sections and OS model scope need review"
+    },
+    {
+      "id": "dbms_sql",
+      "label": "DBMS and SQL",
+      "priority": "Must Know",
+      "existingConceptIds": [
+        "c3845193-fb08-4e92-847e-380e21cd480b",
+        "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+        "f2f44101-3c97-4be9-9883-c010a982b124",
+        "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+        "d1e429cf-5fc8-415b-a94c-f03077781a46",
+        "27e998a0-dec9-45a3-8a1e-1c77c40f7573"
+      ],
+      "existingKnowledgePointIds": [
+        "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "820a6a53-19a5-4ad2-b403-330ea1ea1563",
+        "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
+        "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca"
+      ],
+      "disposition": "reuse_catalog; add point contracts for SQL and relational modeling gaps"
+    },
+    {
+      "id": "networks_http",
+      "label": "Networks and HTTP/web",
+      "priority": "Must Know",
+      "existingConceptIds": [
+        "0c09288a-86c8-48e2-9ec9-b855bb9d4fc1",
+        "85789bff-da2f-419a-9025-02daef956331",
+        "93471db7-cbdd-404b-ac76-7f12c3ffc7d4"
+      ],
+      "existingKnowledgePointIds": [
+        "02d49dd3-d0a1-4502-8f0b-3b890471a0b9",
+        "0153a10b-199b-496a-b9bd-9948a6b3432c",
+        "22c13a3a-b90b-4e44-bebc-d732ee6594b9",
+        "0353e4bb-9708-4975-8f99-797169371161"
+      ],
+      "disposition": "reuse_catalog; IP, UDP, DNS, TLS, and framing coverage gaps"
+    },
+    {
+      "id": "testing_debugging",
+      "label": "Testing, debugging, and code quality",
+      "priority": "Must Know",
+      "existingConceptIds": [],
+      "existingKnowledgePointIds": [],
+      "disposition": "new_canonical_area_after_source_and_objective_review"
+    },
+    {
+      "id": "git_linux_workflow",
+      "label": "Git/Linux and developer workflow",
+      "priority": "Frequently Tested",
+      "existingConceptIds": [],
+      "existingKnowledgePointIds": [],
+      "disposition": "new_canonical_area_after_source_and_objective_review"
+    },
+    {
+      "id": "application_security",
+      "label": "Essential application security",
+      "priority": "Must Know",
+      "existingConceptIds": [],
+      "existingKnowledgePointIds": [],
+      "disposition": "new_canonical_area_after_source_and_objective_review"
+    },
+    {
+      "id": "api_backend",
+      "label": "Basic API/backend concepts",
+      "priority": "Frequently Tested",
+      "existingConceptIds": [
+        "90753a3e-f059-4b1d-adf2-eacdbd0fc97f",
+        "10407aba-bd86-45e3-9622-b4bc185a502a",
+        "175fb8e9-e8ac-4c1a-b22d-6b738bb001d9",
+        "f623e929-cae2-4010-be86-be8bb7a5d705",
+        "d388c9bb-10ff-4663-a0e2-3d716e968894",
+        "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
+        "f6b832ed-4321-4caf-a338-885bd89a8d9a",
+        "76bdf077-6dc9-4239-91d9-aa07eb8a4a23",
+        "088badd0-c87a-413c-a698-d41f9aaf1cd2",
+        "b3237c90-4478-40cd-8855-f0b3253c42d9",
+        "c4964bfd-8f82-40b9-9837-2f6d06cca243",
+        "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
+        "eec45bbe-da6e-4c5c-b84a-74272032137a",
+        "8bd2fcca-3204-4c50-9911-0525e26b12ab",
+        "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
+        "b994e420-d68d-4114-97e8-76ecc0319da2"
+      ],
+      "existingKnowledgePointIds": [
+        "02fcaa53-390d-4fbd-9502-395709299def",
+        "02c15ae4-4b1e-49d7-ac32-5bfa6005574d",
+        "016cdf17-c613-466e-8e71-b7e4c0c11044",
+        "048ea4ad-0c06-487c-86d1-58c974152ef9",
+        "038856d1-b2ba-4a8c-bd00-42a3e233e2a7"
+      ],
+      "disposition": "reuse_backend_taxonomy; add point contracts for HTTP/API concepts and map sources"
+    },
+    {
+      "id": "system_design_role_dependent",
+      "label": "Advanced system design",
+      "priority": "Advanced / Context-Dependent",
+      "existingConceptIds": [
+        "a1ed3b23-9aff-4493-9b2f-3dbf9da628fa",
+        "1bd816b8-5f1b-4ad5-be85-ca6a93450202",
+        "03a64f54-f319-4044-9594-df1bc4a9b8d7",
+        "539f01ae-8c51-4c52-967a-84188355d620",
+        "da378ab5-d4a3-48bc-b3de-be396ec9cac9"
+      ],
+      "existingKnowledgePointIds": [
+        "030aa17d-78fe-442b-9fd9-f835a1416019",
+        "acb868d7-c07d-4849-9ef9-be8c2b139464",
+        "d80798b0-4f29-49f1-9f6d-7aead2e9dd89",
+        "c9464d7f-7de9-4281-b4ed-d4db06203684",
+        "d79dd3bd-1197-40ae-afdd-e85d0fde3f3b"
+      ],
+      "disposition": "reuse_for_relevant_goals; do not gate general entry-level foundation"
+    }
+  ]
+}
