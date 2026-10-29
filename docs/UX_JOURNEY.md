@@ -160,7 +160,7 @@ Automated checks cover named buttons, links, labeled form controls, live errors,
 
 ## Known product limits
 
-- File content is not uploaded or extracted from a URL. The learner must paste the text; the optional URL is provenance.
+- Focused Resources accepts pasted material and TXT/Markdown file text, and can fetch public HTML articles through the backend. It does not yet parse PDF/DOCX or fetch video transcripts. Firefox on the current host blocks navigation even to local static HTML; the focused Edge core-loop run is tracked in Project Status.
 - Curated canonical assessment creation remains gated by revision-level human approval and coverage. A weak canonical point can therefore show a practice gate and route to available resources.
 - “Keep for later today” stores `in_progress`; it does not schedule a new date. Prior-day in-progress tasks can be marked missed by the existing daily-plan lifecycle.
 - The current dashboard API does not expose an independent verification-available state. Verification is started from the remediation or result page.
@@ -179,4 +179,8 @@ The knowledge-check selector now lists catalog domains as subjects, topics, conc
 The concept radio cards set an explicit intrinsic width for their radio input so global full-width input styling cannot expand it across the card and hide the concept text. The unavailable state distinguishes an empty canonical bank, questions awaiting independent review, and insufficient approved blueprint coverage. A missing question bank is explained inline, with the Learn action kept available; it is not a transient error popup.
 
 On goal detail, the baseline explanation now occupies its own readable line and its primary action and skill-roadmap link share a dedicated, wrapping action row. The skip-baseline checkbox stays compact under the shared input styles. Goal form labels, controls, and supporting text use larger minimum type sizes for legibility.
+
+## 2026-10-29 resource and core-loop browser update
+
+The Focused Resources form now supports pasted text, UTF-8 TXT/Markdown upload, and public HTML article URLs. It shows extracted article preview after server processing and labels PDF parsing and video transcript retrieval unavailable. A loopback URL browser check confirms blocked destinations create no source record. `npm.cmd run test:e2e:core` uses Edge/Playwright and the configured local PostgreSQL database to exercise registration, source ingestion, DBMS Index selection, deliberate weak answers, grounded remediation, distinct verification, persisted readiness with unassessed points, reload, dashboard overflow at 390/1440 px, and keyboard opening of the source disclosure. The existing Firefox Selenium suite remains blocked at the first navigation on this host; Firefox 103.0.2 stalls on the same local static page that works in Edge.
 

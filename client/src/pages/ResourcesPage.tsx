@@ -5,26 +5,109 @@ import { api } from "../api/client";
 import { EmptyState, PageHeader } from "../components/Ui";
 import { ApiError, type ResourceRecommendation } from "../types";
 
+type MaterialType = "text" | "markdown" | "web_article" | "video";
 function prettyType(type: string | undefined) { return type ? type.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase()) : "Learning resource"; }
 
 export function ResourcesPage() {
-  const [params] = useSearchParams(); const conceptId = params.get("conceptId") ?? undefined;
+  const [params] = useSearchParams();
+  const conceptId = params.get("conceptId") ?? undefined;
   const rawReturnTo = params.get("returnTo") ?? "";
   const returnTo = ["/plan/today", "/review", "/knowledge-check"].includes(rawReturnTo) ? rawReturnTo : "";
-  const [available, setAvailable] = useState(60); const [resources, setResources] = useState<ResourceRecommendation[]>([]); const [pack, setPack] = useState<Awaited<ReturnType<typeof api.learningPack>>["pack"] | null>(null);
-  const [sources, setSources] = useState<Awaited<ReturnType<typeof api.listGroundingSources>>["sources"]>([]); const [title,setTitle]=useState(""); const [text,setText]=useState(""); const [reference,setReference]=useState(""); const [provenance,setProvenance]=useState(""); const [sourceType,setSourceType]=useState<"text"|"markdown">("text"); const [notice,setNotice]=useState<string|null>(null); const [error,setError]=useState<string|null>(null); const [loading,setLoading]=useState(true);
-  async function load() { setLoading(true); try { const [resourceResult, packResult] = await Promise.all([api.recommendedResources(conceptId,available), conceptId ? api.learningPack(conceptId,available) : Promise.resolve(null)]); setResources(resourceResult.resources); setPack(packResult?.pack??null); setError(null); } catch (err) { setError(err instanceof ApiError && err.status===401 ? "Sign in to see your focused resources." : "We couldn’t load resources right now. Please try again."); } finally { setLoading(false); } }
-  useEffect(()=>{void load();},[conceptId]);
-  useEffect(()=>{void api.listGroundingSources().then((result)=>setSources(result.sources)).catch(()=>setSources([]));},[]);
-  async function addSource(event:FormEvent) { event.preventDefault(); setNotice(null); setError(null); try { const result=await api.ingestGroundingSource({title,text,sourceType,reference,provenance:provenance.trim()?{attribution:provenance.trim(),submittedBy:"learner"}:{submittedBy:"learner"}}); setNotice(result.source.duplicate?"This source was refreshed and is ready for focused review.":"Your source is ready for focused review."); setTitle("");setText("");setReference("");setProvenance(""); void api.listGroundingSources().then((data)=>setSources(data.sources)).catch(()=>undefined); } catch { setError("We couldn’t process that source. Check the details and try again."); } }
+  const [available, setAvailable] = useState(60);
+  const [resources, setResources] = useState<ResourceRecommendation[]>([]);
+  const [pack, setPack] = useState<Awaited<ReturnType<typeof api.learningPack>>["pack"] | null>(null);
+  const [sources, setSources] = useState<Awaited<ReturnType<typeof api.listGroundingSources>>["sources"]>([]);
+  const [title, setTitle] = useState("");
+  const [text, setText] = useState("");
+  const [reference, setReference] = useState("");
+  const [provenance, setProvenance] = useState("");
+  const [sourceType, setSourceType] = useState<MaterialType>("text");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const [resourceResult, packResult] = await Promise.all([api.recommendedResources(conceptId, available), conceptId ? api.learningPack(conceptId, available) : Promise.resolve(null)]);
+      setResources(resourceResult.resources);
+      setPack(packResult?.pack ?? null);
+      setError(null);
+    } catch (err) {
+      setError(err instanceof ApiError && err.status === 401 ? "Sign in to see your focused resources." : "We couldn’t load resources right now. Please try again.");
+    } finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, [conceptId]);
+  useEffect(() => { void api.listGroundingSources().then((result) => setSources(result.sources)).catch(() => setSources([])); }, []);
+
+  async function addSource(event: FormEvent) {
+    event.preventDefault(); setNotice(null); setError(null); setPreview(null); setSaving(true);
+    try {
+      if (sourceType === "video") throw new Error("RecallLoop cannot import video transcripts yet. Paste an accessible transcript or excerpt instead.");
+      const result = await api.ingestGroundingSource({
+        title: title.trim() || undefined,
+        text: sourceType === "web_article" ? undefined : text,
+        sourceType,
+        reference: reference.trim() || undefined,
+        url: sourceType === "web_article" ? reference.trim() : undefined,
+        provenance: provenance.trim() ? { attribution: provenance.trim(), submittedBy: "learner" } : { submittedBy: "learner" },
+      });
+      setNotice(result.source.duplicate ? "This source is already in your library and is ready for focused review." : "The source was extracted and is ready for focused review.");
+      setPreview(result.source.content?.slice(0, 1600) ?? null);
+      setTitle(""); setText(""); setReference(""); setProvenance("");
+      const refreshed = await api.listGroundingSources(); setSources(refreshed.sources);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "We couldn’t process that source. Check the details and try again.");
+    } finally { setSaving(false); }
+  }
+  async function loadDocument(file: File | undefined) {
+    if (!file) return;
+    const extension = file.name.toLowerCase().split(".").pop();
+    if (extension === "pdf") { setError("PDF text extraction is not configured yet. Paste the text you’re allowed to use instead."); return; }
+    if (extension !== "txt" && extension !== "md") { setError("Upload a TXT or Markdown file, or paste your material."); return; }
+    if (file.size > 250_000) { setError("This file is too large. Choose a TXT or Markdown file under 250 KB."); return; }
+    try {
+      const contents = await file.text();
+      if (!contents.trim() || contents.includes("\u0000") || (contents.match(/\uFFFD/g)?.length ?? 0) > 4) throw new Error("The selected file is empty or is not valid UTF-8 text.");
+      setSourceType(extension === "md" ? "markdown" : "text");
+      setTitle((current) => current.trim() ? current : file.name.slice(0, 200));
+      setText(contents);
+      setError(null);
+    } catch (err) { setError(err instanceof Error ? err.message : "The selected text file could not be read."); }
+  }
+
+  const article = sourceType === "web_article";
+  const canSubmit = !saving && (article ? reference.trim().length > 0 : Boolean(title.trim() && text.trim()));
   return <div>
     {returnTo ? <Link className="back-link" to={returnTo}>{returnTo === "/plan/today" ? "Return to today’s plan" : returnTo === "/review" ? "Return to review and improve" : "Return to subject choices"}</Link> : null}
-    <PageHeader eyebrow="Explore" title={conceptId?"Focused resources":"Learning resources"} description={conceptId?"Material selected to help you revisit this concept.":"A reading list shaped around what you’re learning and what you have time for."}/>
-    <section className="resource-controls card"><div><label htmlFor="resource-time">Time available</label><select id="resource-time" value={available} onChange={(event)=>setAvailable(Number(event.target.value))}><option value={15}>15 minutes</option><option value={30}>30 minutes</option><option value={45}>45 minutes</option><option value={60}>1 hour</option><option value={90}>1.5 hours</option><option value={120}>2 hours</option></select></div><button className="btn btn-primary" type="button" disabled={loading} onClick={()=>void load()}>Refresh suggestions</button></section>
-    {error?<p className="error" role="alert">{error}</p>:null}{notice?<p className="notice" role="status">{notice}</p>:null}
-    {pack?<section className="learning-pack"><div className="section-heading"><div><p className="eyebrow">A focused path</p><h2>{pack.conceptName}</h2></div><span className="metadata">{pack.estimatedTotalMinutes} min · {pack.remainingMinutes} min left</span></div><div className="learning-pack-items">{pack.items.map((item,index)=><article className="pack-item card" key={`${item.kind}-${index}`}><span className="pack-number">{String(index+1).padStart(2,"0")}</span><div><span className="task-type"><BookOpen size={14}/>{prettyType(item.kind)} · {item.minutes} min</span><h3>{item.title}</h3><p className="muted">{item.reason}</p></div>{item.url?<a className="icon-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`Open ${item.title}`}><ArrowUpRight size={17}/></a>:null}</article>)}</div></section>:null}
-    <div className="section-heading"><h2>{conceptId?"Recommended for this concept":"Recommended for you"}</h2></div>
-    {loading?<div className="grid grid-2"><div className="card grid"><div className="skeleton"/><div className="skeleton"/></div><div className="card grid"><div className="skeleton"/><div className="skeleton"/></div></div>:resources.length?<div className="grid grid-2">{resources.map((resource)=><article className="card resource-card" key={resource.id}><div className="resource-card-top"><span className="status-chip"><FileText size={13}/>{prettyType(resource.resourceType)}</span><span className="metadata"><Clock3 size={13}/>~{resource.estimatedMinutes} min estimate</span></div><h2>{resource.title}</h2><p className="resource-provider">{resource.provider}</p><p className="muted">{resource.description}</p>{resource.conceptsCovered.length?<p className="resource-focus"><strong>Focus</strong><span>{resource.conceptsCovered.join(", ")}</span></p>:null}<p className="resource-why"><strong>Why this</strong><span>{resource.reason}</span></p><a className="btn btn-primary" href={resource.url} target="_blank" rel="noreferrer">Open resource <ArrowUpRight size={15}/></a></article>)}</div>:!error?<EmptyState title="No matching resources yet" to="/study/new" action="Study a topic" icon={<LibraryBig size={18}/>}>As you study and recall, resources can be matched to the concepts you want to revisit.</EmptyState>:null}
-    <details className="source-contribution card"><summary>Have material to study from?</summary><p className="muted">Add notes or excerpts you’re allowed to use. RecallLoop can use them to prepare focused remediation when a recall exposes a gap.</p><form className="grid" onSubmit={(event)=>void addSource(event)}><label>Title<input required maxLength={200} value={title} onChange={(event)=>setTitle(event.target.value)}/></label><label>Source link or file reference <span className="muted">(optional)</span><input maxLength={1000} value={reference} onChange={(event)=>setReference(event.target.value)}/></label><label>Attribution <span className="muted">(optional)</span><input maxLength={500} value={provenance} onChange={(event)=>setProvenance(event.target.value)}/></label><label>Format<select value={sourceType} onChange={(event)=>setSourceType(event.target.value as "text"|"markdown")}><option value="text">Plain text</option><option value="markdown">Markdown</option></select></label><label>Notes or excerpt<textarea required maxLength={250000} rows={7} value={text} onChange={(event)=>setText(event.target.value)}/></label><button className="btn btn-primary" type="submit" disabled={!title.trim()||!text.trim()}>Save learning material</button></form>{sources.length?<div className="source-library"><h3>Your materials</h3>{sources.slice(0,8).map((source)=><div className="source-row" key={source.id}><span><strong>{source.title}</strong><span className="metadata">{source.processingStatus==="ready"?"Ready to support focused review":"Being prepared"}</span></span><span className="status-chip">{source.processingStatus==="ready"?"Ready":"Processing"}</span></div>)}</div>:null}</details>
+    <PageHeader eyebrow="Explore" title={conceptId ? "Focused resources" : "Learning resources"} description={conceptId ? "Material selected to help you revisit this concept." : "A reading list shaped around what you’re learning and what you have time for."} />
+    <section className="resource-controls card"><div><label htmlFor="resource-time">Time available</label><select id="resource-time" value={available} onChange={(event) => setAvailable(Number(event.target.value))}><option value={15}>15 minutes</option><option value={30}>30 minutes</option><option value={45}>45 minutes</option><option value={60}>1 hour</option><option value={90}>1.5 hours</option><option value={120}>2 hours</option></select></div><button className="btn btn-primary" type="button" disabled={loading} onClick={() => void load()}>Refresh suggestions</button></section>
+    {error && !saving ? <p className="error" role="alert">{error}</p> : null}
+    {notice ? <p className="notice" role="status">{notice}</p> : null}
+    {pack ? <section className="learning-pack"><div className="section-heading"><div><p className="eyebrow">A focused path</p><h2>{pack.conceptName}</h2></div><span className="metadata">{pack.estimatedTotalMinutes} min · {pack.remainingMinutes} min left</span></div><div className="learning-pack-items">{pack.items.map((item, index) => <article className="pack-item card" key={`${item.kind}-${index}`}><span className="pack-number">{String(index + 1).padStart(2, "0")}</span><div><span className="task-type"><BookOpen size={14} />{prettyType(item.kind)} · {item.minutes} min</span><h3>{item.title}</h3><p className="muted">{item.reason}</p></div>{item.url ? <a className="icon-link" href={item.url} target="_blank" rel="noreferrer" aria-label={`Open ${item.title}`}><ArrowUpRight size={17} /></a> : null}</article>)}</div></section> : null}
+    <div className="section-heading"><h2>{conceptId ? "Recommended for this concept" : "Recommended for you"}</h2></div>
+    {loading ? <div className="grid grid-2"><div className="card grid"><div className="skeleton" /><div className="skeleton" /></div><div className="card grid"><div className="skeleton" /><div className="skeleton" /></div></div> : resources.length ? <div className="grid grid-2">{resources.map((resource) => <article className="card resource-card" key={resource.id}><div className="resource-card-top"><span className="status-chip"><FileText size={13} />{prettyType(resource.resourceType)}</span><span className="metadata"><Clock3 size={13} />~{resource.estimatedMinutes} min estimate</span></div><h2>{resource.title}</h2><p className="resource-provider">{resource.provider}</p><p className="muted">{resource.description}</p>{resource.conceptsCovered.length ? <p className="resource-focus"><strong>Focus</strong><span>{resource.conceptsCovered.join(", ")}</span></p> : null}<p className="resource-why"><strong>Why this</strong><span>{resource.reason}</span></p><a className="btn btn-primary" href={resource.url} target="_blank" rel="noreferrer">Open resource <ArrowUpRight size={15} /></a></article>)}</div> : !error ? <EmptyState title="No matching resources yet" to="/study/new" action="Study a topic" icon={<LibraryBig size={18} />}>As you study and recall, resources can be matched to the concepts you want to revisit.</EmptyState> : null}
+    <details className="source-contribution card"><summary>Have material to study from?</summary>
+      <p className="muted">Add notes or excerpts you’re allowed to use, or import a public article. Imported text supports focused remediation when a recall exposes a gap.</p>
+      <form className="grid" onSubmit={(event) => void addSource(event)}>
+        <label htmlFor="material-type">Material type<select id="material-type" name="materialType" value={sourceType} onChange={(event) => { setSourceType(event.target.value as MaterialType); setError(null); }}><option value="text">Pasted text</option><option value="markdown">Markdown</option><option value="web_article">Public web article</option><option value="video">Video link</option></select></label>
+        {article ? <label htmlFor="material-url">Public article URL<input id="material-url" name="url" type="url" inputMode="url" autoComplete="off" maxLength={1000} placeholder="https://example.com/article" required value={reference} onChange={(event) => setReference(event.target.value)} /></label> : <>
+          <label htmlFor="material-title">Title<input id="material-title" name="title" autoComplete="off" maxLength={200} required value={title} onChange={(event) => setTitle(event.target.value)} /></label>
+          <label htmlFor="material-reference">Source link or file reference <span className="muted">(optional)</span><input id="material-reference" name="reference" autoComplete="off" maxLength={1000} value={reference} onChange={(event) => setReference(event.target.value)} /></label>
+        </>}
+        <label htmlFor="material-attribution">Attribution <span className="muted">(optional)</span><input id="material-attribution" name="attribution" autoComplete="off" maxLength={500} value={provenance} onChange={(event) => setProvenance(event.target.value)} /></label>
+        {sourceType === "video" ? <p className="muted" role="status">Video transcripts are not available in this setup. You can paste an accessible transcript or excerpt as text.</p> : null}
+        {sourceType !== "web_article" && sourceType !== "video" ? <>
+          <label htmlFor="material-file">Upload a TXT or Markdown file <span className="muted">(optional; PDF extraction is unavailable)</span><input id="material-file" name="materialFile" type="file" accept=".txt,.md,.pdf,text/plain,text/markdown,application/pdf" onChange={(event) => void loadDocument(event.target.files?.[0])} /></label>
+          <label htmlFor="material-text">Notes or excerpt<textarea id="material-text" name="materialText" required maxLength={250000} rows={7} value={text} onChange={(event) => setText(event.target.value)} /></label>
+        </> : null}
+        {error && saving ? <p className="error" role="alert">{error}</p> : null}
+        <button className="btn btn-primary" type="submit" disabled={!canSubmit}>{saving ? "Extracting…" : article ? "Import article" : "Save learning material"}</button>
+      </form>
+      {preview ? <details className="source-preview"><summary>Preview extracted content</summary><p>{preview}{preview.length >= 1600 ? "…" : ""}</p></details> : null}
+      {sources.length ? <div className="source-library"><h3>Your materials</h3>{sources.slice(0, 8).map((source) => <div className="source-row" key={source.id}><span><strong>{source.title}</strong><span className="metadata">{source.processingStatus === "processed" ? "Ready to support focused review" : source.processingStatus === "failed" ? "Import failed" : "Being prepared"}</span></span><span className="status-chip">{source.processingStatus === "processed" ? "Ready" : source.processingStatus === "failed" ? "Failed" : "Processing"}</span></div>)}</div> : null}
+    </details>
   </div>;
 }

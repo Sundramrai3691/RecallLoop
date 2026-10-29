@@ -2,6 +2,22 @@
 
 Status is based on checked-in source and commands run as of 2026-10-29. This is not a claim about any deployed environment or production usage.
 
+## 2026-10-29 Firefox diagnosis, Edge core-loop pilot, and resource ingestion
+
+The application configuration explicitly targets loopback PostgreSQL `127.0.0.1:5432/recallloop` as role `recallloop`; no credentials are included here. Additive migration `024_grounding_web_article_sources.sql` was applied to that database. Integration and browser-created disposable users were deleted on cleanup; no persistent learner evidence was modified.
+
+| Area | Current result | Evidence |
+|---|---|---|
+| Firefox WebDriver | BLOCKED ON HOST | Firefox 103.0.2 with geckodriver 0.37.1 completes the WebDriver session handshake, then stalls on navigation to a local static HTML page after the local server logs the request. This isolates the failure below RecallLoop; no usable Firefox page/title/console result was produced. The legacy `npm.cmd run test:e2e` suite remains unverified because its Firefox journey cannot proceed. |
+| Edge Playwright core learner loop | BROWSER VALIDATED | `npm.cmd run test:e2e:core` passed through UI registration, TXT/Markdown source ingestion, loopback URL rejection without source creation, video transcript unavailable state, DBMS Index selection, five deliberately weak assessment answers, persisted diagnosis, grounded remediation, a distinct sixth immutable revision for verification, improved persisted outcome, readiness with both assessed and unassessed points, reload, responsive dashboard at 390/1440 px, and keyboard-opened source disclosure. The isolated user and related evidence were removed by the test. External Google Fonts were fulfilled with empty test CSS because network access is unavailable; API, client, database, and learner screens were real. |
+| Article ingestion | IMPLEMENTED / TESTED | Public HTML article support now validates standard-port HTTP(S), rejects local/private/reserved destinations, rechecks redirects, pins a checked public IPv4 address, enforces 8-second and 2 MB limits, extracts readable main/article content and heading provenance, and feeds the existing source hash/chunk/embed/retrieval path. Unit tests cover URL/redirect/content extraction and a PostgreSQL test verifies persisted article records through the same service using a controlled extractor fixture. A real external site fetch was not browser-tested because outbound access is denied. |
+| Text/document/video resource paths | PARTIAL | Pasted text plus UTF-8 TXT/Markdown upload use the existing grounding pipeline. PDF/OCR, DOCX, and video transcript retrieval are not implemented; the UI says so and offers paste/upload alternatives. No background queue exists in this architecture; extraction and embedding remain synchronous. |
+| Unit tests | TESTED | `npm.cmd exec -w server -- vitest run --configLoader runner`: 28 files passed; 133 passed, 4 opt-in provider tests skipped. |
+| PostgreSQL integration | TESTED | `npm.cmd run test:integration -w server`: 18/18 passed against the explicitly configured local database, including migration replay, article-source persistence/ownership, and the existing assessment/remediation/readiness regressions. |
+| Builds | TESTED | `npm.cmd run build -w server` passed. Client `tsc --noEmit` and `vite build --configLoader runner` passed; Vite warns the minified JS bundle is 563.29 kB (>500 kB). |
+
+The entries below are dated historical snapshots and are superseded where they conflict with the 2026-10-29 update above.
+
 ## 2026-10-29 Phase 1 execution update
 
 The configured local PostgreSQL target was read from `.env` without displaying credentials: `127.0.0.1:5432/recallloop` as user `recallloop`. Migration replay completed; the existing idempotent migration `021_link_network_protocols_to_backend_role.sql` now leaves exactly the `Backend Engineer` → `Network Protocols` / `Computer Networks` relationship expected by the integration test.

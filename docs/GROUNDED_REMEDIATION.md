@@ -4,8 +4,8 @@ Grounded remediation is a narrow, evidence-led loop built on RecallLoop's existi
 
 ## Data flow
 
-1. A learner pastes plain text or Markdown they are allowed to use into Focused Resources and records the source title and original URL/path. RecallLoop does not fetch that URL.
-2. Ingestion normalizes line endings, computes a SHA-256 content version, chunks deterministically, embeds the chunks, and persists the source and chunk metadata.
+1. A learner can paste text/Markdown, upload a UTF-8 TXT/Markdown file, or submit a public article URL in Focused Resources. A URL is fetched only by the backend article extractor after protocol, port, DNS, and redirect validation; the chosen public IPv4 address is pinned for the request. Local/private/reserved destinations, non-HTML responses, oversized pages, timeouts, and redirect loops fail without creating source rows. PDF extraction and video transcript retrieval are not configured.
+2. Article title and section headings are retained as provenance; extracted text and learner-provided text use the same normalization, SHA-256 content version, deterministic chunking, embedding, and source/chunk persistence path.
 3. A submitted recall with a missing or partial knowledge point can trigger focused remediation. The service reads the attempt, rubric results, mistakes, confidence, and recent results for that same point.
 4. It queries only the learner's processed sources, ranks chunks against concept + exact knowledge point + any recorded misconception, and rejects results below the relevance threshold.
 5. A grounded generator produces a validated structure. Local development uses a deterministic extractive generator; the optional LLM generator receives only the evidence and retrieved excerpts and is instructed to report unsupported details. Generated learner-facing text is rejected if it contains URL tokens; source references remain separately attributed.
@@ -55,20 +55,20 @@ The current PostgreSQL instance does not offer the `vector` extension (`pg_avail
 
 ## API and UI
 
-- `POST /api/grounding/sources` ingests `{ title, text, sourceType, reference?, provenance? }`.
+- `POST /api/grounding/sources` ingests `{ title?, text?, sourceType, reference?, url?, provenance? }`; `sourceType: "web_article"` fetches a validated HTML article, while `text` and `markdown` use supplied text. `sourceType: "web_article"` is stored under the same owner/hash idempotency rule.
 - `GET /api/grounding/sources` lists the current user's source metadata.
 - `POST /api/remediations/from-attempt/:attemptId` creates or returns the remediation for a submitted attempt.
 - `GET /api/remediations/:id` reads the lifecycle and cited excerpts.
 - `POST /api/remediations/:id/verify` creates or returns the targeted existing recall attempt.
 - Verification answers use the existing `POST /api/recalls/:id/submit` endpoint.
 
-Focused Resources includes a small source-text form. Recall Result offers the remediation action when its persisted recommendation is remediation. The remediation view shows the weak point, evidence reason, generated content, source excerpts/attribution, and targeted verification. After submission, the recall result links to the stored comparison.
+Focused Resources includes pasted text, Markdown, TXT/Markdown upload, public article URL, and explicit unsupported-state messaging for video transcripts and PDFs. It shows an extracted-content preview after successful processing. Recall Result offers the remediation action when its persisted recommendation is remediation. The remediation view shows the weak point, evidence reason, generated content, source excerpts/attribution, and targeted verification. After submission, the recall result links to the stored comparison.
 
 ## Tests and limits
 
-Unit tests cover stable chunking, deterministic embeddings, ranking/irrelevant rejection, structured validation, extractive grounding, fallback, and targeted question variants. PostgreSQL integration tests use the real configured DB and cover source idempotency/provenance, ownership, retrieval, remediation persistence, verification/evaluation/model update, no relevant source, invalid embeddings, and generation retry.
+Unit tests cover stable chunking, deterministic embeddings, ranking/irrelevant rejection, article URL validation/SSRF blocks, redirect revalidation, HTML main-content extraction, structured validation, extractive grounding, fallback, and targeted question variants. PostgreSQL integration tests use the real configured DB and cover pasted-source idempotency/provenance, fetched-article persistence through the existing source model, ownership, retrieval, remediation persistence, verification/evaluation/model update, no relevant source, invalid embeddings, and generation retry. The Edge browser pilot covers registration, pasted notes, Markdown upload, local-URL rejection, unavailable video transcript messaging, DBMS assessment, persisted diagnosis, grounded remediation, distinct revision verification, readiness, and reload persistence. Firefox WebDriver remains blocked on this host before any local navigation.
 
-Known limitations: only pasted text/Markdown is ingested; PDF parsing and URL fetching are intentionally absent. The deterministic mock embedder is not a substitute for production semantic embeddings. The current PostgreSQL deployment lacks pgvector, so ranking currently happens in application code over bounded per-user chunk rows. LLM output is constrained and validated but still requires human review for product quality. Evidence scores and the improved flag are transparent product heuristics, not a validated learning-science measure.
+Known limitations: URL fetching currently supports public HTML articles only; dynamic/authenticated pages and video transcripts are unsupported. TXT/Markdown files are read in the browser and are subject to the same 250,000-character text limit. PDF/OCR, DOCX upload, background jobs, and browser-tested article success remain unimplemented/unverified. The deterministic mock embedder is not a substitute for production semantic embeddings. The current PostgreSQL deployment lacks pgvector, so ranking currently happens in application code over bounded per-user chunk rows. LLM output is constrained and validated but still requires human review for product quality. Evidence scores and the improved flag are transparent product heuristics, not a validated learning-science measure.
 
 ## Manual learner scenarios
 

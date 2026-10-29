@@ -14,6 +14,7 @@
     "build": "npm run build -w server && npm run build -w client",
     "test": "npm run test -w server",
     "test:e2e": "node client/tests/e2e/knowledge-roadmap.mjs",
+    "test:e2e:core": "node client/tests/e2e/core-loop.playwright.mjs",
     "test:assessment-loop": "node scripts/run-isolated-assessment-loop.mjs",
     "question-bank:activate": "node scripts/activate-question-bank-review.mjs",
     "question-bank:coverage": "npm run question-bank:coverage -w server",

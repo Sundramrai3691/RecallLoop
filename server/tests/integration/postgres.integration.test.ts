@@ -716,4 +716,25 @@ describe("PostgreSQL runtime integration", () => {
       expect(retriedSource.processingStatus).toBe("processed");
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
+
+  it("persists fetched article content through the existing owner-scoped grounding pipeline",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Article Import Test') RETURNING id`,[`article-import-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const articleFetcher=vi.fn(async()=>({url:"https://docs.example.test/postgres/indexes",title:"PostgreSQL Indexes",text:"Indexes can improve lookup performance by avoiding a full table scan. They use extra storage and add write maintenance cost.\n\nA multicolumn index supports predicates on its leading columns.",sections:["Index types","Multicolumn indexes"]}));
+      const source=await ingestGroundingSource(userId,{sourceType:"web_article",url:"https://docs.example.test/postgres/indexes",provenance:{submittedBy:"learner"}},{articleFetcher});
+      expect(articleFetcher).toHaveBeenCalledWith("https://docs.example.test/postgres/indexes");
+      expect(source.sourceType).toBe("web_article");
+      expect(source.title).toBe("PostgreSQL Indexes");
+      expect(source.reference).toBe("https://docs.example.test/postgres/indexes");
+      expect(source.processingStatus).toBe("processed");
+      expect(source.content).toContain("leading columns");
+      const persisted=await postgres.query<any>(`SELECT source_type,reference,provenance,content_hash,processing_status FROM grounding_sources WHERE id=$1 AND user_id=$2`,[source.id,userId]);
+      expect(persisted.rows[0].source_type).toBe("web_article");
+      expect(persisted.rows[0].reference).toBe(source.reference);
+      expect(persisted.rows[0].provenance.extraction.sectionHeadings).toEqual(["Index types","Multicolumn indexes"]);
+      expect(persisted.rows[0].content_hash).toBe(source.contentHash);
+      expect(persisted.rows[0].processing_status).toBe("processed");
+      await expect(getGroundingSource(randomUUID(),source.id)).rejects.toThrow("Source not found");
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
 });

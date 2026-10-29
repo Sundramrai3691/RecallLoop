@@ -7,21 +7,33 @@ import { chunkText } from "./chunker.js";
 import { cosineSimilarity, createEmbeddingProvider, type EmbeddingProvider } from "./embeddingProvider.js";
 import { createGroundedRemediator, type GroundedRemediator, type GroundingSource } from "./remediationGenerator.js";
 import { significantTokens } from "../../lib/llm/json.js";
+import { fetchPublicArticle } from "./webArticleExtractor.js";
 
 const MAX_SOURCE_CHARS=250_000;
 const MIN_RELEVANCE=0.22;
 const scoreForStatus=(status:string)=>status==="correct"?1:status==="partial"?0.5:0;
 
-export async function ingestGroundingSource(userId:string,input:{title:string;text:string;sourceType?:string;reference?:string;provenance?:Record<string,unknown>;resourceId?:string},options:{embeddingProvider?:EmbeddingProvider}={}) {
-  if(typeof input.title!=="string"||!input.title.trim()||input.title.trim().length>200)throw new AppError("title is required and must be at most 200 characters",400,"VALIDATION_ERROR");
-  if(typeof input.text!=="string"||!input.text.trim()||input.text.length>MAX_SOURCE_CHARS)throw new AppError("text is required and must be at most 250,000 characters",400,"VALIDATION_ERROR");
+export async function ingestGroundingSource(userId:string,input:{title?:string;text?:string;sourceType?:string;reference?:string;url?:string;provenance?:Record<string,unknown>;resourceId?:string},options:{embeddingProvider?:EmbeddingProvider;articleFetcher?:typeof fetchPublicArticle}={}) {
   const sourceType=input.sourceType??"text";
-  if(sourceType!=="text"&&sourceType!=="markdown")throw new AppError("sourceType must be text or markdown",400,"VALIDATION_ERROR");
-  const reference=input.reference?.trim()??"";
+  if(sourceType!=="text"&&sourceType!=="markdown"&&sourceType!=="web_article")throw new AppError("sourceType must be text, markdown, or web_article",400,"VALIDATION_ERROR");
+  let content=input.text??"";
+  let title=input.title?.trim()??"";
+  let reference=input.reference?.trim()??"";
+  let provenance=input.provenance??{};
   if(reference.length>1000)throw new AppError("reference must be at most 1,000 characters",400,"VALIDATION_ERROR");
-  const text=input.text.replace(/\r\n?/g,"\n").trim();
+  if(sourceType==="web_article") {
+    if((input.url??reference).length>2000)throw new AppError("Article URLs must be at most 2,000 characters",400,"RESOURCE_URL_INVALID");
+    const fetched=await (options.articleFetcher??fetchPublicArticle)(input.url??reference);
+    content=fetched.text;
+    title=title||fetched.title;
+    reference=fetched.url;
+    provenance={...provenance,extraction:{method:"html-main-content-v1",sectionHeadings:fetched.sections}};
+  }
+  if(!title||title.length>200)throw new AppError("A title is required and must be at most 200 characters",400,"VALIDATION_ERROR");
+  if(typeof content!=="string"||!content.trim()||content.length>MAX_SOURCE_CHARS)throw new AppError("Readable source text is required and must be at most 250,000 characters",400,"VALIDATION_ERROR");
+  const text=content.replace(/\r\n?/g,"\n").trim();
   const contentHash=createHash("sha256").update(text).digest("hex");
-  const document=await beginSourceProcessing({userId,title:input.title.trim(),sourceType,reference,provenance:input.provenance??{},content:text,contentHash});
+  const document=await beginSourceProcessing({userId,title,sourceType,reference,provenance,content:text,contentHash});
   try {
     if(input.resourceId){const resource=await query(`SELECT 1 FROM resources WHERE id=$1`,[input.resourceId]);if(!resource.rowCount)throw notFound("Resource not found","RESOURCE_NOT_FOUND");await query(`UPDATE grounding_sources SET resource_id=$3 WHERE id=$1 AND user_id=$2`,[document.id,userId,input.resourceId]);}
     const chunks=chunkText(document.id,contentHash,text);
