@@ -32,8 +32,8 @@ jobs:
       EMBEDDING_API_KEY: ""
       REMEDIATION_PROVIDER: mock
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
           node-version: 24.18.0
           cache: npm
@@ -53,11 +53,30 @@ jobs:
       - name: Run the real Firefox learner journey
         shell: bash
         run: set -o pipefail; npm run test:e2e:firefox 2>&1 | tee firefox-e2e.log
+        env:
+          RECALLLOOP_E2E_TRACE: "1"
+          E2E_ARTIFACT_DIR: ${{ runner.temp }}/recallloop-e2e-artifacts
+      - name: Verify disposable learner cleanup
+        if: always()
+        run: |
+          node --input-type=module <<'NODE'
+          import { Pool } from 'pg';
+          const pool = new Pool({ connectionString: process.env.DATABASE_URL });
+          try {
+            const result = await pool.query("SELECT count(*)::int AS count FROM app_users WHERE email LIKE 'e2e-core-%@test.local'");
+            if (result.rows[0].count !== 0) throw new Error(`Found ${result.rows[0].count} leftover Firefox E2E learner account(s).`);
+            console.log('Disposable Firefox E2E learner cleanup verified.');
+          } finally {
+            await pool.end();
+          }
+          NODE
       - name: Preserve Firefox logs on failure
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: firefox-e2e-log
-          path: firefox-e2e.log
+          path: |
+            firefox-e2e.log
+            ${{ runner.temp }}/recallloop-e2e-artifacts
           if-no-files-found: ignore
           retention-days: 14

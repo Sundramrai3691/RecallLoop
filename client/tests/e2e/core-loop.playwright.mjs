@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { unlink, writeFile } from "node:fs/promises";
+import { mkdir, unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Pool } from "pg";
@@ -23,10 +23,22 @@ const password = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const processes = [];
 let browser;
+let browserContext;
+let page;
 let userId;
 let userInfoPreload;
+let browserJavaScriptErrors = [];
+let unexpectedFailedRequests = [];
+let expectedCanceledRequests = [];
+let traceStarted = false;
 const browserName = process.argv.includes("--browser=firefox") ? "firefox" : process.argv.includes("--browser=edge") ? "edge" : process.env.RECALLLOOP_E2E_BROWSER ?? "edge";
 assert(["edge", "firefox"].includes(browserName), `Unsupported E2E browser: ${browserName}`);
+const localAppOriginForClassification = "http://127.0.0.1:5173";
+assert.equal(isExpectedCanceledRequest("GET", `${localAppOriginForClassification}/api/knowledge/roles`, "NS_BINDING_ABORTED", localAppOriginForClassification), true);
+assert.equal(isExpectedCanceledRequest("POST", `${localAppOriginForClassification}/api/knowledge/roles`, "NS_BINDING_ABORTED", localAppOriginForClassification), false);
+assert.equal(isExpectedCanceledRequest("GET", `${localAppOriginForClassification}/api/knowledge/roles/extra`, "NS_BINDING_ABORTED", localAppOriginForClassification), false);
+assert.equal(isExpectedCanceledRequest("GET", `${localAppOriginForClassification}/api/knowledge/roles`, "ECONNRESET", localAppOriginForClassification), false);
+assert.equal(isExpectedCanceledRequest("GET", "https://example.test/api/knowledge/roles", "NS_BINDING_ABORTED", localAppOriginForClassification), false);
 if (browserName === "firefox" && !existsSync(firefox.executablePath())) {
   throw new Error(`Playwright Firefox is not installed at ${firefox.executablePath()}. Run "npx playwright install firefox" or use the Firefox CI workflow.`);
 }
@@ -37,6 +49,13 @@ function freePort() {
     server.once("error", reject);
     server.listen(0, "127.0.0.1", () => { const port = server.address().port; server.close((error) => error ? reject(error) : resolve(port)); });
   });
+}
+function isExpectedCanceledRequest(method, requestUrl, failureText, appOrigin) {
+  const parsedUrl = new URL(requestUrl);
+  return method === "GET"
+    && parsedUrl.pathname === "/api/knowledge/roles"
+    && failureText === "NS_BINDING_ABORTED"
+    && parsedUrl.origin === appOrigin;
 }
 function start(name, args, cwd, env) {
   const child = spawn(process.execPath, args, { cwd, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
@@ -125,16 +144,30 @@ try {
     ? await firefox.launch({ headless: true })
     : await chromium.launch({ channel: "msedge", headless: true });
   console.log(`Started ${browserName} ${browser.version()}.`);
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-  const browserErrors = [];
-  page.on("pageerror", (error) => browserErrors.push(error.message));
-  page.on("requestfailed", (request) => browserErrors.push(`${request.url()}: ${request.failure()?.errorText ?? "request failed"}`));
+  browserContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  page = await browserContext.newPage();
+  browserJavaScriptErrors = [];
+  unexpectedFailedRequests = [];
+  expectedCanceledRequests = [];
+  if (process.env.RECALLLOOP_E2E_TRACE === "1") {
+    await browserContext.tracing.start({ screenshots: true, snapshots: true, sources: true });
+    traceStarted = true;
+  }
+  page.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  page.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) {
+      expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+      return;
+    }
+    unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
   await page.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
   await page.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
 
   await page.goto(`${clientUrl}/register`, { waitUntil: "commit", timeout: 10_000 });
   try { await page.locator("#name").waitFor({ timeout: 10_000 }); }
-  catch { throw new Error(`Register screen did not render (url=${page.url()}, title=${await page.title()}, body=${JSON.stringify((await page.locator("body").innerText()).slice(0,600))}, browserErrors=${JSON.stringify(browserErrors)})`); }
+  catch { throw new Error(`Register screen did not render (url=${page.url()}, title=${await page.title()}, body=${JSON.stringify((await page.locator("body").innerText()).slice(0,600))}, browserJavaScriptErrors=${JSON.stringify(browserJavaScriptErrors)}, unexpectedFailedRequests=${JSON.stringify(unexpectedFailedRequests)}, expectedCanceledRequests=${JSON.stringify(expectedCanceledRequests)})`); }
   await page.locator("#name").fill("RecallLoop Core Pilot");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
@@ -144,6 +177,26 @@ try {
   assert(token, "The supported registration flow should establish a learner session");
   userId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0]?.id;
   assert(userId, "The registered test learner must persist in PostgreSQL");
+
+  // A protected API request from the address bar is expected to reject a
+  // missing token. Verify the real API boundary, then simulate that precise
+  // response at the browser boundary so Vite's proxy cannot make the test
+  // depend on a transient local network reset.
+  const unauthenticatedSessions = await fetch(`${apiUrl}/api/study-sessions`);
+  assert.equal(unauthenticatedSessions.status, 401, "Study sessions remain private without a bearer token");
+  await page.route("**/api/study-sessions", (route) => route.fulfill({ status: 401, contentType: "application/json", body: JSON.stringify({ error: "Authentication required", code: "UNAUTHORIZED" }) }));
+  await page.goto(`${clientUrl}/study/new`, { waitUntil: "domcontentloaded" });
+  await page.locator("#study-topic").fill("Authentication");
+  await page.locator("#material").fill("Authentication verifies the identity associated with a request. Authorization determines which actions that identity may perform.");
+  await page.getByRole("button", { name: "Create study session" }).click();
+  await page.getByRole("alert").filter({ hasText: "sign-in is missing or has expired" }).waitFor();
+  await page.getByRole("link", { name: "Open sign in in a new tab" }).waitFor();
+  assert.equal(await page.locator("#study-topic").inputValue(), "Authentication", "An unauthorized create preserves the topic draft");
+  assert((await page.locator("#material").inputValue()).includes("Authorization determines"), "An unauthorized create preserves the pasted material");
+  await page.unroute("**/api/study-sessions");
+  await page.getByRole("button", { name: "Create study session" }).click();
+  await page.waitForURL("**/study/*", { timeout: 10_000 });
+  await page.getByRole("heading", { name: "Authentication", exact: true }).waitFor();
 
   const goal = await authenticatedApi(token, `${apiUrl}/api/goals`, { method: "POST", body: JSON.stringify({ title: `Core DBMS pilot ${Date.now()}`, description: "Evidence-backed database learning check", goalType: "interview", weeklyTimeBudgetMinutes: 60 }) });
   const goalId = goal.goal?.id ?? goal.id;
@@ -338,14 +391,35 @@ try {
   const evidence = await pool.query(`SELECT count(*)::int AS attempts, count(*) FILTER (WHERE submitted_at IS NOT NULL)::int AS submitted, count(DISTINCT canonical_question_revision_id)::int AS revisions FROM recall_attempts WHERE user_id=$1 AND id=ANY($2::uuid[])`, [userId, [...originalAttemptIds, verificationId]]);
   assert(evidence.rows[0].attempts >= originalAttemptIds.length + 1 && evidence.rows[0].submitted >= originalAttemptIds.length + 1, "The full journey's attempts must remain persisted for the isolated learner");
   assert(evidence.rows[0].revisions >= 2, "Persisted assessment and verification evidence must reference distinct revisions");
-  assert.deepEqual(browserErrors, [], `Browser JavaScript errors: ${browserErrors.join("; ")}`);
+  assert.deepEqual(browserJavaScriptErrors, [], `Uncaught browser JavaScript exceptions: ${browserJavaScriptErrors.join("; ")}`);
+  assert.deepEqual(unexpectedFailedRequests, [], `Unexpected failed network requests: ${unexpectedFailedRequests.join("; ")}`);
+  if (expectedCanceledRequests.length) console.log(`Expected canceled requests (${expectedCanceledRequests.length}): ${expectedCanceledRequests.join("; ")}`);
+  if (traceStarted) {
+    await browserContext.tracing.stop();
+    traceStarted = false;
+  }
   console.log(`PASS ${browserName} Playwright core loop: register, text/Markdown/PDF/DOCX with page/section citations, DOCX invalid-file state, DBMS assessment, diagnosis, grounded remediation, distinct verification, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
 } catch (error) {
+  if (page) {
+    console.error(`Browser state at failure (${page.url()}):\n${(await page.locator("body").innerText().catch(() => "unavailable")).slice(-3000)}`);
+    console.error(`Uncaught browser JavaScript exceptions: ${JSON.stringify(browserJavaScriptErrors)}`);
+    console.error(`Unexpected failed network requests: ${JSON.stringify(unexpectedFailedRequests)}`);
+    console.error(`Known canceled requests: ${JSON.stringify(expectedCanceledRequests)}`);
+    const artifactsDirectory = process.env.E2E_ARTIFACT_DIR ?? path.join(root, "test-results");
+    await mkdir(artifactsDirectory, { recursive: true }).catch(() => {});
+    await page.screenshot({ path: path.join(artifactsDirectory, `${browserName}-failure.png`), fullPage: true }).catch((captureError) => console.error(`Could not capture failure screenshot: ${captureError.message}`));
+    if (traceStarted) {
+      await browserContext.tracing.stop({ path: path.join(artifactsDirectory, `${browserName}-trace.zip`) }).catch((traceError) => console.error(`Could not save Playwright trace: ${traceError.message}`));
+      traceStarted = false;
+    }
+  }
   for (const entry of processes) console.error(`${entry.name} output: ${entry.output}`);
   throw error;
 } finally {
+  if (traceStarted) await browserContext?.tracing.stop().catch(() => {});
   await browser?.close().catch(() => {});
   if (userId) await pool.query("DELETE FROM app_users WHERE id=$1", [userId]).catch((error) => console.error("Could not clean up isolated pilot learner:", error.message));
+  else await pool.query("DELETE FROM app_users WHERE email=$1", [email]).catch((error) => console.error("Could not clean up partially registered pilot learner:", error.message));
   await Promise.all(processes.map(stop));
   if (userInfoPreload) await unlink(userInfoPreload).catch(() => {});
   await pool.end();

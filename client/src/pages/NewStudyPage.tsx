@@ -29,6 +29,7 @@ export function NewStudyPage() {
   const [focused, setFocused] = useState(false);
   const [active, setActive] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [authError, setAuthError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retryBlocked, setRetryBlocked] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,13 +56,19 @@ export function NewStudyPage() {
     }
     if (!rawMaterial.trim() || /^https?:\/\/\S+$/i.test(rawMaterial.trim())) { setError("Add notes or source text. RecallLoop saves links as provenance but does not fetch webpage or video contents."); return; }
     submitLock.current = true;
-    setBusy(true); setError(null);
+    setBusy(true); setError(null); setAuthError(false);
     try {
       const result = await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined });
       const query = new URLSearchParams(); query.set("intent", learningIntent); if (returnTo) query.set("returnTo", returnTo);
       navigate(`/study/${result.session.id}?${query.toString()}`);
     } catch (err) {
-      if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
+      if (err instanceof ApiError && err.status === 401) {
+        // Authentication middleware rejects the request before session creation,
+        // so this response is definitive rather than an ambiguous write outcome.
+        setRetryBlocked(false);
+        setAuthError(true);
+        setError("Your sign-in is missing or has expired. Sign in, then return here and retry; your topic and notes are still on this page.");
+      } else if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
         setRetryBlocked(false);
         const delay = err.retryAfterSeconds !== undefined ? ` Retry after ${err.retryAfterSeconds} seconds.` : " Please retry in a moment.";
         setError(`The AI service is temporarily rate-limited. No study session was created. Your topic, source link, and notes are preserved.${delay}`);
@@ -92,7 +99,7 @@ export function NewStudyPage() {
     <PageHeader eyebrow="Learn something new" title="What would you like to learn?" description="Choose a topic, then paste notes or an excerpt. RecallLoop extracts concepts from the text you provide and saves the source link separately." />
     <ol className="study-next-steps" aria-label="What happens next"><li><strong>1. Add text</strong><span>Paste notes or an excerpt.</span></li><li><strong>2. Review concepts</strong><span>Check the session’s extracted concepts.</span></li><li><strong>3. Recall</strong><span>Answer a question when you’re ready.</span></li></ol>
     <form className="card study-form" onSubmit={(event) => void onSubmit(event)}>
-      {error ? <p className="error" role="alert">{error}</p> : null}
+      {error ? <p className="error" role="alert">{error}{authError ? <> <a href="/login" target="_blank" rel="noreferrer">Open sign in in a new tab</a>.</> : null}</p> : null}
       <label htmlFor="study-topic">What are you studying?</label>
       <div className="suggestion-wrap"><input ref={inputRef} id="study-topic" name="topic" required autoComplete="off" role="combobox" aria-autocomplete="list" aria-expanded={focused && suggestions.length > 0} aria-controls="topic-suggestions" aria-activedescendant={focused && suggestions[active] ? `topic-option-${active}` : undefined} value={title} onFocus={() => setFocused(true)} onBlur={() => window.setTimeout(() => setFocused(false), 100)} onKeyDown={onTopicKeyDown} onChange={(event) => { setTitle(event.target.value); setCanonicalTopicId(""); setCanonicalConceptId(""); setActive(0); }} placeholder="Try ‘Computer Networks’ or ‘Caching’" />
         {focused && suggestions.length > 0 ? <ul className="suggestion-list" id="topic-suggestions" role="listbox">{suggestions.map((item, index) => <li key={`${item.topicId}-${item.conceptId}`} id={`topic-option-${index}`} role="option" aria-selected={index === active}><button role="presentation" tabIndex={-1} type="button" onMouseDown={(event) => event.preventDefault()} onClick={() => { setTitle(item.value); setCanonicalTopicId(item.topicId); setCanonicalConceptId(item.conceptId); setFocused(false); inputRef.current?.focus(); }}><span>{item.label}</span><small>{item.detail}</small></button></li>)}</ul> : null}</div>

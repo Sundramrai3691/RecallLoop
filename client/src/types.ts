@@ -191,6 +191,7 @@ export interface StudySession {
   rawMaterial?: string;
   sourceType: SourceType;
   sourceUrl?: string | null;
+  groundingSourceId?: string | null;
   canonicalTopicId?: string | null;
   canonicalConceptId?: string | null;
   startedAt: string;

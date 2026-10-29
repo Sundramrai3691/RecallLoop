@@ -20,6 +20,8 @@ For a supported canonical check, the transaction creates a completed no-material
 
 `/dashboard` â†’ `/study/new` â†’ choose whether the material is new, previously studied but not confidently remembered, or intended for application â†’ enter a topic and required pasted text (optionally save an HTTP(S) link as provenance) â†’ `POST /api/study-sessions` extracts and persists concepts â†’ `/study/:id?intent=…` confirms the session and exposes recall/practice. URL content is not fetched and files are not uploaded. The intent affects session guidance and opens the existing practice disclosure for application; it does not change extraction or grading behavior.
 
+Study-session APIs are authenticated and owner-scoped; opening `/api/study-sessions` directly without a bearer token correctly returns `401 UNAUTHORIZED`. If creation returns `401`, the UI identifies a missing or expired sign-in as a definitive rejection, preserves the topic and notes, and permits retry after signing in. Other failed writes retain the conservative ambiguous-outcome message.
+
 ### Review and improve
 
 `/dashboard` â†’ `/review` lists due recalls from scheduler state, weak concepts from submitted learner evidence, unfinished study sessions, and planned/in-progress plan tasks. Due work links to `/recall/:id?returnTo=/review`; weak concepts offer supported practice with a resource fallback; unfinished sessions resume at `/study/:id`; planner tasks remain in `/plan/today`. The page explains due status from the existing schedule and weakness from submitted missed-point evidence. It does not invent dates or treat unassessed concepts as weak. Its empty state links to Test or Learn.
