@@ -257,9 +257,16 @@
       "sourceKind": "official_implementation_documentation",
       "version": "PostgreSQL 18; current stable major on 2026-10-29; 19 is release candidate",
       "relevantSections": [
+        "5.5 Constraints",
+        "5.11 Table Partitioning",
+        "7.2 Table Expressions",
+        "7.3 Select Lists",
+        "7.8 WITH Queries",
         "11.3 Multicolumn Indexes",
         "13.2 Transaction Isolation",
-        "13.3 Explicit Locking"
+        "13.3 Explicit Locking",
+        "26 High Availability, Load Balancing, and Replication",
+        "26.2 Log-Shipping Standby Servers"
       ],
       "claimTypes": [
         "implementation_behavior"
@@ -268,6 +275,20 @@
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "PostgreSQL documentation license; attribute and link. Avoid copying large passages.",
       "notes": "The project question bank currently cites PostgreSQL 16 docs in some revisions; retain that version for questions whose claims are version-pinned, and re-evaluate before changing the cited behavior."
+    },
+    {
+      "id": "DOC-CMU-15445-FALL2026",
+      "title": "CMU 15-445/645: Intro to Database Systems, Fall 2026",
+      "url": "https://15445.courses.cs.cmu.edu/fall2026/syllabus.html",
+      "publisher": "Carnegie Mellon University",
+      "sourceKind": "university_course_material",
+      "version": "Fall 2026 course offering",
+      "relevantSections": ["Course Goals: database table design using functional dependencies and normal forms"],
+      "claimTypes": ["pedagogical_explanation"],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Course syllabus is linked for attribution; no course exercises or prose are reproduced.",
+      "notes": "The course goal excerpt supports normalization and functional-dependency learning objectives; it is not used as an implementation-specific authority."
     },
     {
       "id": "DOC-POSTGRESQL-16",

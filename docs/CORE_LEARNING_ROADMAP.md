@@ -152,3 +152,12 @@ Each later item needs a measurable problem statement and acceptance evidence bef
 - Made the knowledge-check selector domain-aware and explicit about current revisions, human-review blockers, eligible count, mapped point text, and modes supported by the approved selector.
 - Added domain-specific review export and a database-grounded coverage report. Regeneration, review-packet production, and database/browser verification could not be completed in this session: Docker Desktop was unavailable and PostgreSQL on 127.0.0.1:5432 refused connections. The checked-in JSON remains a previous database snapshot.
 - Next: run migrations and seed with local PostgreSQL, regenerate coverage and five packets, execute full test/build/integration/E2E workflows, then obtain authorized independent review. Within-concept individual point selection remains future scope.
+
+## Phase U4 — DBMS coverage and first learner pilot (2026-10-29)
+
+- Added eight canonical points to the four existing DBMS concepts that previously had no points, using idempotent migration `023_dbms_core_points.sql`. No new concept identities were introduced.
+- Added 48 original candidates (two MCQs, three rapid-recall items, one distinct written verification per point). The written SQL tasks use rubric grading only; SQL execution is not implemented.
+- Scoped automated review preflight and apply both completed against configured local `recallloop`; all 48 exact current hashes were approved and published by the configured automated policy. No human-review events were created.
+- Live coverage is 4 DBMS topic clusters, 12 points, 72 current revisions, zero blueprint gaps. The complete current question inventory is 227 total / 198 current revisions; 186 current authored hashes are approved/published and 12 current HTTP drafts remain retired.
+- Unit tests passed 127/127 with 4 opt-in provider tests skipped; PostgreSQL integration passed 17/17. Server typecheck and client production build passed using the existing config-loader runner workaround. Vite retains the 560.21 kB chunk advisory.
+- The real browser learner pilot is not validated. Firefox WebDriver session creation succeeds, but its first navigation to local Vite does not return under bounded retries; assessment, remediation, readiness, reload and responsive browser checks were not reached. The next milestone is to isolate this host/browser navigation failure and then run the complete browser journey against the activated database.

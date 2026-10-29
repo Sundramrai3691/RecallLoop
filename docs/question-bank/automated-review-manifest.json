@@ -1,13 +1,13 @@
 {
   "policyVersion": "copilot-automated-quality-v1",
   "reviewMethod": "copilot_automated_review",
-  "generatedAt": "2026-10-28T19:39:38.830Z",
+  "generatedAt": "2026-10-29T13:55:49.787Z",
   "records": [
     {
-      "slug": "sde-db-composite-index-order-mcq-1",
-      "revisionId": "a6651368-92da-4150-87f5-655bd2203a7e",
-      "revision": 2,
-      "contentHash": "423e7f01d4ef37875f23f3a6f63629754cf13649e1439aeabf9673db8a74c0f7",
+      "slug": "sde-db-aggregate-grain-filter-mcq-1",
+      "revisionId": "221369b8-1f77-4696-9856-1d56b7f4abcb",
+      "revision": 1,
+      "contentHash": "1268f8862c466d73d42f96536c91c847d59673c6e893f6aa1987d55c44ed3d68",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -21,10 +21,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-db-composite-index-order-mcq-2",
-      "revisionId": "6d13f047-027a-424c-b3b3-a1bb2849ce3f",
-      "revision": 2,
-      "contentHash": "3a21d2da020962d595d0ab07f799cb7ddeb00dd3ca0e149d21bbad657ee16912",
+      "slug": "sde-db-aggregate-grain-filter-mcq-2",
+      "revisionId": "e1580fb8-fd16-48ff-974c-26d7701bbb94",
+      "revision": 1,
+      "contentHash": "a7c297e3bc9a6f0dc83a84f181489ddef647dd028dc012ad52df377b3d1c7216",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -38,10 +38,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-db-composite-index-order-recall-1",
-      "revisionId": "296a2573-17c6-4c0e-89ec-dcf9ba0f4f47",
-      "revision": 2,
-      "contentHash": "d63c7fddcdc80cc51c8c932006484afd4a69aee86c057bb921981fd6e6f1a396",
+      "slug": "sde-db-aggregate-grain-filter-recall-1",
+      "revisionId": "1506dedb-a4f0-4184-ac6a-c4a52558c514",
+      "revision": 1,
+      "contentHash": "f70952d6444283cab24e76d44fb3d3ec8aaf8efe65c669b1e355b7e7c4c4ce38",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -55,10 +55,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-db-composite-index-order-recall-2",
-      "revisionId": "1deef6d0-8d3c-4bd2-9bdf-3bf3f9f6d687",
-      "revision": 2,
-      "contentHash": "102a5c4f2dc60416f5ea81f7a6ed85ceda315b9df19b832947b60cb110b490c8",
+      "slug": "sde-db-aggregate-grain-filter-recall-2",
+      "revisionId": "a23bb6fe-1c59-4bb8-ad40-941f0dce2f67",
+      "revision": 1,
+      "contentHash": "55164c31e2cd57b7b25319bf0d73cafa2d20bc7b74af5853b929f0a0442ec625",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -72,10 +72,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-db-composite-index-order-recall-3",
-      "revisionId": "0602b7f8-fdaf-47ab-bb6b-612f9e3c8ea3",
-      "revision": 2,
-      "contentHash": "5f760bc2ee9cc80522369362503f1f8c7eb77a39a31331573b1890455443dfe7",
+      "slug": "sde-db-aggregate-grain-filter-recall-3",
+      "revisionId": "cdb741a0-4f35-498e-bdf7-79f54806c451",
+      "revision": 1,
+      "contentHash": "d10a2d7544aec0bdb72c0c74ed4f81b0ae31ac150e7cdbd40ddcad1edb71ba80",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -89,10 +89,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-db-composite-index-order-verification",
-      "revisionId": "3fdac3e1-ff8a-4250-a4e7-657fd8fe4e40",
-      "revision": 2,
-      "contentHash": "befb1d9cd2546d2fc67bd7ee711cb010d51bfbaa6c00a9ea033343863bd2eb30",
+      "slug": "sde-db-aggregate-grain-filter-verification",
+      "revisionId": "70301599-f094-43bf-8cf3-d5946bef181c",
+      "revision": 1,
+      "contentHash": "3944b2a6ee652c4138609d0cc68cfd71696bcf791c7533f740a81c96cf6d6c2f",
       "questionType": "short_explanation",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -106,10 +106,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-mcq-1",
-      "revisionId": "5d9e33e5-3e5d-4891-a963-28c8fa97c063",
-      "revision": 2,
-      "contentHash": "677218ffc81f79df9ef786a5bad6cbe4605b868da119d28f27951bc62b7e4149",
+      "slug": "sde-db-join-cardinality-null-mcq-1",
+      "revisionId": "458749b8-4c38-4c66-8d08-32382eb8e83e",
+      "revision": 1,
+      "contentHash": "4fe099fa523c67e64a983d79308e34041fcd648a56b792e04f3d2745924e9c57",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -123,10 +123,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-mcq-2",
-      "revisionId": "dc652151-1486-4e72-8f60-e2478d7a6120",
-      "revision": 2,
-      "contentHash": "eb9c50a4ca4c6ba27d5b5f269844552591cc638864e197ac0c71e626feb93589",
+      "slug": "sde-db-join-cardinality-null-mcq-2",
+      "revisionId": "77e617d8-7ce3-46ee-a633-a2124f63df53",
+      "revision": 1,
+      "contentHash": "a4b9b5a5d32cad04cfd67c438e925a4847270ffafeb34cd8fbe9493bb6d6902a",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -140,10 +140,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-recall-1",
-      "revisionId": "9da2e319-bf34-4531-a866-1c23b3418a88",
-      "revision": 2,
-      "contentHash": "4afbd472f69f30a819df7f16d78dfffc30bb5d238e361b9c7550c2e4fb835b68",
+      "slug": "sde-db-join-cardinality-null-recall-1",
+      "revisionId": "d59bb0d6-c4c8-4276-829a-b1ce78866952",
+      "revision": 1,
+      "contentHash": "fe9f225a47bdf30e57772404f19654ffffe85c32b4d2d2c0007a490ff8e6d3b0",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -157,10 +157,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-recall-2",
-      "revisionId": "4525ca22-43b3-4376-b15f-9787bc0143ac",
-      "revision": 2,
-      "contentHash": "e4034f9ef68d061b9caa9360d553b7625511d8fa1b4c609504fcfaf76d287331",
+      "slug": "sde-db-join-cardinality-null-recall-2",
+      "revisionId": "2754821b-81c4-4e3d-b8a2-1eaa07867b0c",
+      "revision": 1,
+      "contentHash": "3501c0c95bd6a25d6f720289006b9ff120ff42af231ae928083f00837a6eb11f",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -174,10 +174,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-recall-3",
-      "revisionId": "6a7ad48a-5676-40e3-9aa1-838046b82d66",
-      "revision": 2,
-      "contentHash": "d545a38fd32bc6d0b16b94478c932757ea746214f792f77efa61d474a84aa213",
+      "slug": "sde-db-join-cardinality-null-recall-3",
+      "revisionId": "3e565ea1-6588-4d1c-87ec-f8981e0aedf5",
+      "revision": 1,
+      "contentHash": "cfca82771967b16228055997ec028b896e00ca006ed67ffe2b4f0a4fd6997076",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -191,10 +191,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-process-thread-isolation-verification",
-      "revisionId": "8aede88f-c65d-4a47-955c-caea20f42c68",
-      "revision": 2,
-      "contentHash": "19f333d6ca404b10a34c78f99334dd4c680b546354d250f52e70e77000919a3b",
+      "slug": "sde-db-join-cardinality-null-verification",
+      "revisionId": "1271094f-7250-4c46-8785-e0d87747ef96",
+      "revision": 1,
+      "contentHash": "54e03f658155e204f9ae668477251bdaeb1979d51691213a9d4f0007e772ac93",
       "questionType": "short_explanation",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -208,10 +208,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-mcq-1",
-      "revisionId": "815d7498-d7c7-4275-81a8-56a31312625f",
-      "revision": 2,
-      "contentHash": "71e55ebdd7194589e38a97e7d3730f353625f992b029478bdf40850de519d1db",
+      "slug": "sde-db-model-keys-cardinality-mcq-1",
+      "revisionId": "a52dcefa-e855-42c9-bb29-0642e2a2fc26",
+      "revision": 1,
+      "contentHash": "606eb1151d116f3e3b9b90c7b5ed1ee544aecc66e576a41fb7770a1a95dabf24",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -225,10 +225,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-mcq-2",
-      "revisionId": "9f56db44-c2d1-4586-91e6-75668243b464",
-      "revision": 2,
-      "contentHash": "d9d490015470134af7408226fb582b6d87adbe200eb4ee85c7eb0777c44c998a",
+      "slug": "sde-db-model-keys-cardinality-mcq-2",
+      "revisionId": "9086192c-7a7f-4a56-87db-0e29201fd680",
+      "revision": 1,
+      "contentHash": "b42ca52584042ac94ff2741fccdc05e6d756451fda63e96293395278a13732e7",
       "questionType": "mcq",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -242,10 +242,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-recall-1",
-      "revisionId": "f7091bd7-2df8-4b6f-8710-317c2216106a",
-      "revision": 2,
-      "contentHash": "6c61788bd000bb5ec49f120654b85b9fb41100e82927e0ac1093d3bafdf9b62f",
+      "slug": "sde-db-model-keys-cardinality-recall-1",
+      "revisionId": "84b323bd-817f-4dee-9484-d26907d61d4e",
+      "revision": 1,
+      "contentHash": "15daa344a3c38cb81c9e6e5b8845abf96d02614070bcbf9016a2833732f07f79",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -259,10 +259,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-recall-2",
-      "revisionId": "d2ccc988-01d8-460d-89ba-cf4821960181",
-      "revision": 2,
-      "contentHash": "2b29b374ad917a2f4c483baf5e863f9b5fbf24abcca024c3acee08bb3fac3618",
+      "slug": "sde-db-model-keys-cardinality-recall-2",
+      "revisionId": "27a389d0-b64a-4c6e-bfbf-02b8f8b53e2d",
+      "revision": 1,
+      "contentHash": "9bf0ad540592e3637a9a4b7b5851bf965abc6a6982d251474df45911dea69172",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -276,10 +276,10 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-recall-3",
-      "revisionId": "aca96e6f-afde-4b2e-af65-ec52bbaaf646",
-      "revision": 2,
-      "contentHash": "32eb2f2f647115e0080d907c372615ea59f38ab56f73e2331bf5a5d021f29a43",
+      "slug": "sde-db-model-keys-cardinality-recall-3",
+      "revisionId": "8b729ffd-dffe-4f42-8eba-6552dc861e85",
+      "revision": 1,
+      "contentHash": "3607cc259c79a542c27431f8a346f0d45182dca47cc1cf16144284afd2a55a0a",
       "questionType": "rapid_recall",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -293,10 +293,520 @@
       "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
     },
     {
-      "slug": "sde-os-race-protect-invariant-verification",
-      "revisionId": "8cfa945c-e44c-4442-9fa6-7d58d32ad4a4",
-      "revision": 2,
-      "contentHash": "d18ea34c6876fa072113cc700a98c4872d08469ec8a17f2b5d7ebd36069f108f",
+      "slug": "sde-db-model-keys-cardinality-verification",
+      "revisionId": "ac8377ff-d411-4ca3-b788-7b3832e4486e",
+      "revision": 1,
+      "contentHash": "8e6e870ec5298f4c6fb140ad3801ac1753cfee77ab882d7d5277231824535bc6",
+      "questionType": "short_explanation",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-mcq-1",
+      "revisionId": "2f084404-60fa-49ff-b3fe-2439f7614069",
+      "revision": 1,
+      "contentHash": "c0465bc7ac63146ff91a0ca8c019839a50c2d0859d8fec2e0c55aa215a0e515f",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-mcq-2",
+      "revisionId": "b4f345df-142f-4198-b67f-304b026328a0",
+      "revision": 1,
+      "contentHash": "76f62ecb828b05ae229cbf0df0e62e9e59169a102bca899bef824a7f26a5e19a",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-recall-1",
+      "revisionId": "3c29b8c9-a381-4c22-bc25-c6f3b1ba05e4",
+      "revision": 1,
+      "contentHash": "e7074a93ab0863db42aa3a6200c850109dcc5414c1942994bce838890685f923",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-recall-2",
+      "revisionId": "3f81bd20-6455-4ebd-8411-e2fb65d25fba",
+      "revision": 1,
+      "contentHash": "a8403af09f46ede86aa6fe2b52d20fb8a5fa8437d84e2bfd5d8b0aa363bf33a3",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-recall-3",
+      "revisionId": "6a350de4-1008-4f0a-bf40-f9773b0ba0b0",
+      "revision": 1,
+      "contentHash": "f4a61f1db05fcdbdbb8d95d2f80b9145c300b507dfc634337f9323bc1aaba07d",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-model-normalize-anomalies-verification",
+      "revisionId": "eb646433-f69e-4425-87c3-c204acd3a67a",
+      "revision": 1,
+      "contentHash": "6363e27bed79bf9613c9c169debe40e9b7b1118e8260c36cdd4a21ac911e8561",
+      "questionType": "short_explanation",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-mcq-1",
+      "revisionId": "6a45d187-dd62-437d-9cf4-f36ee3cf8a33",
+      "revision": 1,
+      "contentHash": "9ded2abe655655f9bef67c15753a36e3782f27b0c190b2b9fd8e70749a71eb94",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-mcq-2",
+      "revisionId": "283f729e-9422-4fd0-adfb-ad14c174a971",
+      "revision": 1,
+      "contentHash": "143494d67dd8ce363791ac4168d2677b59ce3d6478658d8366c550af05f8fcb6",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-recall-1",
+      "revisionId": "cb69c617-2352-49e0-a6d5-473ccee26539",
+      "revision": 1,
+      "contentHash": "92affe797c45f724adf022e43228d7787579feb5d973913052fb6ca910d20984",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-recall-2",
+      "revisionId": "0e0afa87-946d-4dc1-a329-86fc94619e8c",
+      "revision": 1,
+      "contentHash": "ab8a2a72fc0a69e0a57c74a8c18b18e987c913cb9d6226b95c599c45b2f8afca",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-recall-3",
+      "revisionId": "ee796094-1301-4e6c-9711-d7d8d0cb3d16",
+      "revision": 1,
+      "contentHash": "85f662db3faeb884f0900b495917db39055af7c192aa3b3768145fa048dfdc38",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partitioning-scope-verification",
+      "revisionId": "8f192423-66ad-44f2-9a5c-0d078a20527e",
+      "revision": 1,
+      "contentHash": "99f66e382b77e6bdbe978eca8aaa8fd266eaad8c4ddcd5f8f71908eb23799b49",
+      "questionType": "short_explanation",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-mcq-1",
+      "revisionId": "36af11f2-c7e2-4229-856f-980c809fb85c",
+      "revision": 1,
+      "contentHash": "89cbd6ef9dcdd0885a22333acb4f7d22c9460d0740e4299d655f693a122316f6",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-mcq-2",
+      "revisionId": "1e76ae82-20d5-4df4-ab35-4050e5b0b214",
+      "revision": 1,
+      "contentHash": "18e4eb07d519dc1aba58c8eeb32ba50e670230d6a32f433513c8c60875e8f467",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-recall-1",
+      "revisionId": "6cf0c4e6-4742-47c0-9790-9853b0780d85",
+      "revision": 1,
+      "contentHash": "b7d8dd3cb2a824145780ad31b77e40dd894e33837c2f5166dffb5e524d0715d7",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-recall-2",
+      "revisionId": "c054ccc3-5504-4695-9d94-fdb0dcc7d2cc",
+      "revision": 1,
+      "contentHash": "7902d63926ca5e4627f69ecd6ccb3687c91ada1f2848ce86f902cdbdd97527c0",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-recall-3",
+      "revisionId": "afdf8bb4-e55c-47f7-9f05-b5c2202269cc",
+      "revision": 1,
+      "contentHash": "fc279c2f21fc24ad10d347d3a7a6c3b7deb43717a3759faf9c65caa389c094ee",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-partition-key-pruning-skew-verification",
+      "revisionId": "a2897ed8-f426-48ad-8bcc-665ff5c67c68",
+      "revision": 1,
+      "contentHash": "d550c6204c1f00216e1cfb31bee366ae926792b038d6adaa1cfee169f6e34170",
+      "questionType": "short_explanation",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-mcq-1",
+      "revisionId": "4871cd5c-fa45-4cf3-9970-5b0714a007b7",
+      "revision": 1,
+      "contentHash": "9e1425eef6a4fec399dbfaaaf6cf14fd072ff01643754c3b07418bdab79ec734",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-mcq-2",
+      "revisionId": "d75135b8-1cc4-48df-8293-34b5d2576405",
+      "revision": 1,
+      "contentHash": "f5e75af18a56ce21d66e104bc190c09afde006d63dba64d231034acd37ac86cb",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-recall-1",
+      "revisionId": "4dfe1fd5-29c2-4de1-aa48-a2c416def617",
+      "revision": 1,
+      "contentHash": "cc2ae5985331c7d16ed58715cd7f25f7db9d7d8e8a8889c4680793d665b96059",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-recall-2",
+      "revisionId": "d37dcf29-5d00-49da-be3d-daba39c64779",
+      "revision": 1,
+      "contentHash": "4a128c60662a4b0f11295d1a7aca93f0b09db18ca9f34514817b8d89bea87b50",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-recall-3",
+      "revisionId": "901d100f-1c98-4a98-b7c3-ee3ce00d8c90",
+      "revision": 1,
+      "contentHash": "af01e4fe0d6a6657de8bf3258e90db41623a170286417daf392afcde4b83f162",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-read-replica-lag-routing-verification",
+      "revisionId": "79a0192c-b0c9-47d5-bafe-a214c6218909",
+      "revision": 1,
+      "contentHash": "c36bef1da552331559c9d914bd0855ff54f66d9f8f937c58af88e450a46fa9e0",
+      "questionType": "short_explanation",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-mcq-1",
+      "revisionId": "3978d0c4-633c-4688-8d14-b599476101c0",
+      "revision": 1,
+      "contentHash": "5acc70db66afab88a9169960ddb5425a4f0899eefad447f2a4df1085913d9520",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-mcq-2",
+      "revisionId": "1dce6ace-c91c-4666-957b-a8ec34182b10",
+      "revision": 1,
+      "contentHash": "32d5e6742bfa30e565e52747f8f13c0447d58af936d820ffe0a407f1e259aad5",
+      "questionType": "mcq",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-recall-1",
+      "revisionId": "65dcbbfb-d584-4448-9c24-402394b5a673",
+      "revision": 1,
+      "contentHash": "0d9decb3b9647f0efdc472843720aeaa3725f8d78938d6e450b17b4d898f02a5",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-recall-2",
+      "revisionId": "bb0d837b-1b85-4fbe-a6a1-567aaaed3ff5",
+      "revision": 1,
+      "contentHash": "ee7d90f6261f3f39a2dea1b9365844d892cdcdb7cedae5ba7a9bb286b0b34782",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-recall-3",
+      "revisionId": "5e73a9f6-9506-4223-89bc-60dca3205a95",
+      "revision": 1,
+      "contentHash": "2612152b9b9621a941209bb5fb0ed85f833ab77e8e71b68c02260e1aebb24cc9",
+      "questionType": "rapid_recall",
+      "reviewStatus": "awaiting_subject_matter_review",
+      "publicationStatus": "draft",
+      "decision": "approved",
+      "findings": {
+        "QualityGate": [
+          "passed all structural and canonical validations."
+        ]
+      },
+      "sourceVerificationStatus": "verified",
+      "rationale": "The exact current revision passes the structural and canonical-quality gate and is suitable for automated approval."
+    },
+    {
+      "slug": "sde-db-replication-guarantees-purpose-verification",
+      "revisionId": "c686d01c-5c9d-44ae-bb32-2d9172afe10b",
+      "revision": 1,
+      "contentHash": "19f0fd4619bea7ac77b5c8a5bb7d4c35bb76b8e6b77be199baec4c7fdcf7835d",
       "questionType": "short_explanation",
       "reviewStatus": "awaiting_subject_matter_review",
       "publicationStatus": "draft",
@@ -311,8 +821,8 @@
     }
   ],
   "summary": {
-    "total": 18,
-    "approved": 18,
+    "total": 48,
+    "approved": 48,
     "changesRequested": 0,
     "rejected": 0,
     "blocked": 0

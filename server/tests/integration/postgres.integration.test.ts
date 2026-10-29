@@ -97,12 +97,12 @@ describe("PostgreSQL runtime integration", () => {
     const coreCoverage=await listKnowledgeCheckCoverage();
     const coreSubjects=coreCoverage.filter((subject:any)=>coreNames.includes(subject.domainName));
     expect(new Set(coreSubjects.map((subject:any)=>subject.domainName))).toEqual(new Set(coreNames));
-    expect(canonicalCoreSdeQuestions).toHaveLength(114);
+    expect(canonicalCoreSdeQuestions).toHaveLength(162);
     const candidates=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.revision=i.current_revision)::int current,
       count(*) FILTER(WHERE r.review_status='awaiting_subject_matter_review' AND r.publication_status='draft')::int pending,
       count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published')::int approved_or_published
       FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id WHERE i.slug LIKE 'sde-%' AND i.slug NOT LIKE 'sde-net-http-%'`);
-    expect(candidates.rows[0]).toEqual({total:132,current:114,pending:0,approved_or_published:114});
+    expect(candidates.rows[0]).toEqual({total:180,current:162,pending:0,approved_or_published:162});
     const immutableRevisions=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.revision=2 AND r.content_hash=ar.content_hash AND ar.decision='approved')::int approved_revision_2
       FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
       LEFT JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.policy_version='copilot-automated-quality-v1' AND ar.review_method='copilot_automated_review'
@@ -364,9 +364,9 @@ describe("PostgreSQL runtime integration", () => {
         .toEqual({status:"completed",submitted:result.questions.length,total:result.questions.length});
       expect(Number(result.assessment.observedMastery)).toBe(0);
       const baselineReport=(await getBaseline(baseline.assessment.id,userId)).assessment;
-      expect(baselineReport.observedEvidenceCount).toBe(3);
-      expect(baselineReport.observedStatus).toBe("Needs work");
       const assessedPoints=result.questions.flatMap((question:any)=>question.knowledgePointResults??[]);
+      expect(baselineReport.observedEvidenceCount).toBe(assessedPoints.length);
+      expect(baselineReport.observedStatus).toBe("Needs work");
       expect(assessedPoints.length).toBeGreaterThan(0);
       expect(result.questions.every((question:any)=>(question.knowledgePointResults??[]).length===1)).toBe(true);
       const uniquePoints=new Set(result.questions.flatMap((question:any)=>(question.knowledgePointResults??[]).map((point:any)=>`${question.conceptId}:${point.point.trim().toLowerCase().replace(/\s+/g," ")}`)));

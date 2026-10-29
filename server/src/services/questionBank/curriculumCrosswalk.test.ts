@@ -37,6 +37,20 @@ type Crosswalk = {
     }>;
     limitations: string[];
   };
+  dbmsCoverage: {
+    before: { concepts: number; knowledgePoints: number; currentRevisions: number; blueprintGaps: number };
+    after: { concepts: number; knowledgePoints: number; currentRevisions: number; assessmentBlueprintGaps: number };
+    points: Array<{
+      canonicalKnowledgePointId: string;
+      sourceIds: string[];
+      eligibleCurrentRevisionCount: number;
+      revisionIds: string[];
+      revisionContentHashes: string[];
+      questionTypes: string[];
+      automatedApproval: string;
+      answerRubricStatus: string;
+    }>;
+  };
 };
 
 async function loadArtifact<T>(filename: string): Promise<T> {
@@ -94,5 +108,23 @@ describe("consolidated curriculum artifacts", () => {
       if (area.existingConceptIds.length === 0) expect(area.disposition).toMatch(/^new_canonical_area/);
     }
     expect(crosswalk.pilot.limitations.some((limitation) => /no .*prerequisite edges/i.test(limitation))).toBe(true);
+
+    expect(crosswalk.dbmsCoverage.before).toEqual({ concepts: 4, knowledgePoints: 0, currentRevisions: 0, blueprintGaps: 4 });
+    expect(crosswalk.dbmsCoverage.after).toEqual({ concepts: 4, knowledgePoints: 8, currentRevisions: 48, assessmentBlueprintGaps: 0 });
+    expect(crosswalk.dbmsCoverage.points).toHaveLength(8);
+    expect(new Set(crosswalk.dbmsCoverage.points.map((point) => point.canonicalKnowledgePointId)).size).toBe(8);
+    for (const point of crosswalk.dbmsCoverage.points) {
+      expect(catalogPointIds.has(point.canonicalKnowledgePointId)).toBe(true);
+      expect(point.sourceIds.length).toBeGreaterThan(0);
+      for (const sourceId of point.sourceIds) expect(sourceIds.has(sourceId)).toBe(true);
+      expect(point.eligibleCurrentRevisionCount).toBe(6);
+      expect(point.revisionIds).toHaveLength(6);
+      expect(point.revisionContentHashes.every((hash) => /^[a-f0-9]{64}$/.test(hash))).toBe(true);
+      expect(point.questionTypes.filter((type) => type === "mcq")).toHaveLength(2);
+      expect(point.questionTypes.filter((type) => type === "rapid_recall")).toHaveLength(3);
+      expect(point.questionTypes.filter((type) => type === "short_explanation")).toHaveLength(1);
+      expect(point.automatedApproval).toContain("exact current content hash");
+      expect(point.answerRubricStatus).toMatch(/SQL.*not executed/i);
+    }
   });
 });

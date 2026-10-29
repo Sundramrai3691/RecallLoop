@@ -18,6 +18,7 @@
     "question-bank:benchmark:import": "tsx src/scripts/questionBankWorkflow.ts benchmark-import",
     "question-bank:review:export-domain": "tsx src/scripts/questionBankWorkflow.ts review-export-domain",
     "question-bank:automated-review": "tsx src/scripts/automatedQuestionReview.ts",
+    "question-bank:seed:dbms": "tsx src/scripts/seedDbmsCoreQuestions.ts",
     "question-bank:coverage": "tsx src/scripts/coreSdeCoverage.ts",
     "db:import-legacy": "tsx ../scripts/migrate-mongo-to-postgres.ts",
     "config:check": "tsx src/scripts/checkConfig.ts",

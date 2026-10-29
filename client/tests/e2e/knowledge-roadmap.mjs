@@ -129,6 +129,7 @@ try {
   await waitForDriver(driverPort);
   driver = await new Builder().usingServer(`http://127.0.0.1:${driverPort}`).forBrowser("firefox").setFirefoxOptions(options).build();
   await driver.manage().setTimeouts({ implicit: 0, pageLoad: 45000, script: 10000 });
+  console.log("PASS Firefox WebDriver session handshake");
   const registration = await fetch(`${apiUrl}/api/auth/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -137,6 +138,7 @@ try {
   const registeredLearner = await registration.json();
   assert.equal(registration.status, 201, `Could not create the disposable learner through the application API: ${JSON.stringify(registeredLearner)}`);
   const token = registeredLearner.token;
+  console.log("PASS disposable learner registration");
   await driver.get(clientUrl);
   await driver.executeScript("localStorage.setItem('recallloop_token', arguments[0])", token);
 
@@ -234,6 +236,7 @@ try {
   assert.equal(coverageSnapshot.status, 200, "Knowledge check must load database-backed coverage");
   assert.ok(coverageSnapshot.body.subjects.length > 0, "The seeded canonical subject taxonomy should be available");
   let canonicalAssessmentState = null;
+  let canonicalDbmsAssessmentState = null;
   const allCatalogConcepts = coverageSnapshot.body.subjects.flatMap((subject) => subject.topics.flatMap((topic) => topic.concepts.map((concept) => ({ subject, topic, concept }))));
   const unsupportedConcept = allCatalogConcepts.find(({ concept }) => concept.supportedModes.length === 0);
   if (unsupportedConcept) {
@@ -442,6 +445,71 @@ try {
     console.log(`PASS browser assessment journey: ${domainName} / ${candidate.concept.name} — 5 submitted answers, exact eligible revisions, persisted evidence`);
   }
 
+  // Pilot every DBMS topic cluster that is now assessment-eligible, plus the
+  // two previously covered OS concepts. This uses the same topic-selection and
+  // assessment UI as the regular learner journey and pins each current revision.
+  const pilotConcepts = [
+    "Data partitioning", "Read replication", "Join and aggregation queries", "Relational data modeling", "Index selection", "Isolation and atomicity",
+    "Processes, threads, and scheduling", "Synchronization and deadlocks",
+  ];
+  for (const conceptName of pilotConcepts) {
+    const candidate = allCatalogConcepts.find(({ concept }) => concept.name === conceptName && concept.supportedModes.includes("rapid_fire"));
+    assert.ok(candidate, `${conceptName} should have an eligible Rapid Fire assessment in the configured database`);
+    await driver.get(`${clientUrl}/knowledge-check`);
+    await driver.wait(until.elementLocated(By.id("knowledge-subject")), 10000);
+    await chooseSelectValue(driver, "knowledge-subject", candidate.subject.id);
+    await chooseSelectValue(driver, "knowledge-topic", candidate.topic.id);
+    const choices = await driver.findElements(By.css("input[name='concept']"));
+    let selected = false;
+    for (const choice of choices) {
+      if ((await choice.findElement(By.xpath("ancestor::label")).getText()).includes(conceptName)) {
+        await choice.click(); selected = true; break;
+      }
+    }
+    assert.equal(selected, true, `${conceptName} should be selectable from its current topic`);
+    await driver.wait(until.elementLocated(By.css("input[name='assessment-mode']")), 5000);
+    await driver.findElement(By.css("input[name='assessment-mode']")).click();
+    await driver.findElement(By.xpath("//button[contains(.,'Start knowledge check')]")).click();
+    await driver.wait(until.urlMatches(/\/assessments\/[0-9a-f-]+/i), 10000);
+    const assessmentId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const initial = await learnerApi("GET", `/api/assessments/${assessmentId}`);
+    assert.equal(initial.status, 200);
+    assert.equal(initial.body.assessment.mode, "rapid_fire");
+    assert.equal(initial.body.questions.length, 5);
+    assert.ok(initial.body.questions.every((question) => question.canonicalQuestionRevisionId), `${conceptName} must pin immutable canonical revisions`);
+    assert.ok(initial.body.questions.every((question) => !("expectedAnswer" in question) && !("correctOptionId" in question) && !("answer" in question.questionData) && !("explanation" in question.questionData)), `${conceptName} answers and grading explanations must remain hidden before submission`);
+    const currentIds = initial.body.questions.map((question) => question.canonicalQuestionRevisionId);
+    const exactEligible = await pool.query(
+      `SELECT count(*)::int AS count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision
+       WHERE r.id=ANY($1::uuid[]) AND i.canonical_concept_id=$2 AND r.publication_status='published' AND r.quality_status='valid' AND r.review_status IN ('automated_reviewed','subject_matter_reviewed')`,
+      [currentIds, candidate.concept.id],
+    );
+    assert.equal(exactEligible.rows[0].count, 5, `${conceptName} must use only its eligible exact current revisions`);
+    await driver.findElement(By.xpath("//button[contains(.,'Start Rapid Fire')]")).click();
+    for (let index = 0; index < initial.body.questions.length; index += 1) {
+      await driver.wait(until.elementLocated(By.css(".question-card")), 10000);
+      const progress = await driver.findElement(By.css(".assessment-progress .eyebrow")).getText();
+      const options = await driver.findElements(By.css(".question-card input[type='radio']"));
+      if (options.length) await options[index === 0 && conceptName === "Join and aggregation queries" ? 1 : 0].click();
+      else await driver.findElement(By.id("assessment-answer")).sendKeys(`For ${conceptName}, I would state the applicable rule, apply its conditions, and explain the resulting behavior or trade-off.`);
+      await driver.findElement(By.css(".question-card button[type='submit']")).click();
+      if (index < initial.body.questions.length - 1) await driver.wait(async () => (await driver.findElement(By.css(".assessment-progress .eyebrow")).getText()) !== progress, 15000);
+    }
+    await driver.wait(until.elementLocated(By.css(".assessment-question-feedback")), 20000);
+    const completed = await learnerApi("GET", `/api/assessments/${assessmentId}`);
+    assert.equal(completed.status, 200);
+    assert.equal(completed.body.result.total, 5);
+    assert.ok(completed.body.questions.every((question) => question.submittedAt), `${conceptName} answers must be submitted`);
+    const evidence = await pool.query("SELECT count(*)::int AS count FROM recall_evaluations WHERE recall_attempt_id=ANY($1::uuid[])", [completed.body.questions.map((question) => question.id)]);
+    assert.equal(evidence.rows[0].count, 5, `${conceptName} must persist evidence for every answer`);
+    await driver.get(`${clientUrl}/assessments/${assessmentId}`);
+    const reloaded = await learnerApi("GET", `/api/assessments/${assessmentId}`);
+    assert.equal(reloaded.status, 200, `${conceptName} result should survive reload`);
+    assert.ok(reloaded.body.questions.every((question) => question.submittedAt), `${conceptName} submitted state should persist after reload`);
+    if (conceptName === "Join and aggregation queries") canonicalDbmsAssessmentState = { assessmentId, canonicalConceptId: candidate.concept.id, ...completed.body };
+    console.log(`PASS DBMS/OS learner pilot: ${conceptName} — 5 exact eligible revisions, submitted and persisted`);
+  }
+
   // Journey B: a learner can study supplied text directly from Home without first taking a test.
   await driver.get(`${clientUrl}/dashboard`);
   const homeLearnLink = await driver.wait(until.elementLocated(By.css("a[href='/study/new']")), 10000);
@@ -612,6 +680,61 @@ try {
     const httpReadiness = verifiedReadiness.body.skills.find((skill) => skill.name === canonicalSkill.rows[0].name);
     assert.equal(httpReadiness.strengths, 1, "My Readiness should reflect the latest submitted verification evidence for the mapped point");
     console.log("PASS canonical assessment-to-remediation-to-verification-to-readiness loop in disposable PostgreSQL");
+  }
+
+  if (canonicalDbmsAssessmentState) {
+    const weakAttempt = canonicalDbmsAssessmentState.questions.find((question) => question.evaluation?.knowledgePointResults?.some((point) => point.status === "missing" || point.status === "partial"));
+    assert.ok(weakAttempt, "The deliberately incorrect DBMS answer should create evidence for a specific weak point");
+    const dbmsSourceReference = "https://example.com/u2-dbms-join-notes";
+    const dbmsSource = await learnerApi("POST", "/api/grounding/sources", {
+      title: "U2 DBMS join and aggregation notes",
+      text: "An INNER JOIN returns matching row pairs. A LEFT JOIN keeps each left-side row and supplies NULL for missing right-side values. A one-to-many join can multiply rows. WHERE filters rows before grouping; HAVING filters groups after aggregate values are computed. Preserve the intended grain or pre-aggregate before joining another one-to-many relation.",
+      sourceType: "markdown", reference: dbmsSourceReference, provenance: { providedBy: "learner", test: "dbms-pilot" },
+    });
+    assert.equal(dbmsSource.status, 201, `Could not ingest DBMS remediation notes: ${JSON.stringify(dbmsSource.body)}`);
+    const remediationResult = await learnerApi("POST", `/api/remediations/from-attempt/${weakAttempt.id}`);
+    assert.equal(remediationResult.status, 200, `Could not create DBMS remediation: ${JSON.stringify(remediationResult.body)}`);
+    const remediation = remediationResult.body.remediation;
+    assert.equal(remediation.status, "ready");
+    assert.ok(["Can predict INNER and LEFT JOIN row preservation, NULL extension, and row multiplication from join cardinality.", "Can write or diagnose grouped aggregates using WHERE, HAVING, join grain, and duplicate-count safeguards."].includes(remediation.knowledgePoint), "DBMS remediation must target the diagnosed join or aggregation point");
+    assert.ok(remediation.sources.some((source) => source.sourceId === dbmsSource.body.source.id && source.reference === dbmsSourceReference), "DBMS remediation must cite the learner-provided source that covers the diagnosed skill");
+    await driver.get(`${clientUrl}/remediations/${remediation.id}`);
+    await driver.wait(until.elementLocated(By.css(".remediation-explanation")), 10000);
+    await driver.findElement(By.xpath("//button[contains(.,'Check what you remember')]" )).click();
+    await driver.wait(until.urlMatches(/\/recall\/[0-9a-f-]+$/i), 10000);
+    const verificationId = new URL(await driver.getCurrentUrl()).pathname.split("/").at(-1);
+    const verification = await learnerApi("GET", `/api/recalls/${verificationId}`);
+    assert.equal(verification.status, 200);
+    assert.ok(verification.body.recall.canonicalQuestionRevisionId, "DBMS verification should select a current approved canonical revision");
+    assert.ok(!canonicalDbmsAssessmentState.questions.some((question) => question.canonicalQuestionRevisionId === verification.body.recall.canonicalQuestionRevisionId), "DBMS verification must use a distinct immutable revision");
+    const answer = remediation.knowledgePoint.startsWith("Can predict INNER")
+      ? "INNER JOIN returns only matching row pairs. LEFT JOIN preserves each left row and uses NULL for a missing right row; one-to-many matches multiply rows. A right-side WHERE filter can remove the NULL-extended rows."
+      : "WHERE filters paid order rows before grouping by customer. HAVING filters groups with at least two paid orders. A second one-to-many join can multiply order rows and inflate counts and sums, so preserve order grain or pre-aggregate orders first.";
+    await driver.findElement(By.id("answer")).sendKeys(answer);
+    await driver.findElement(By.css("form button[type='submit']")).click();
+    await driver.wait(until.urlContains(`/recall/${verificationId}/result`), 10000);
+    const verifiedRemediation = await learnerApi("GET", `/api/remediations/${remediation.id}`);
+    assert.equal(verifiedRemediation.body.remediation.status, "verified");
+    assert.equal(verifiedRemediation.body.remediation.improved, true, "DBMS verification should persist improvement evidence");
+    const persisted = await pool.query(`SELECT kp.canonical_knowledge_point_id,a.canonical_question_revision_id FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id WHERE a.id=$1`, [verificationId]);
+    assert.equal(persisted.rows[0]?.canonical_question_revision_id, verification.body.recall.canonicalQuestionRevisionId);
+    const diagnosedPoint = await pool.query("SELECT id FROM knowledge_points WHERE concept_id=$1 AND statement=$2", [canonicalDbmsAssessmentState.canonicalConceptId, remediation.knowledgePoint]);
+    assert.equal(persisted.rows[0]?.canonical_knowledge_point_id, diagnosedPoint.rows[0]?.id, "DBMS verification evidence must remain attached to the exact diagnosed canonical point");
+    const goal = await learnerApi("POST", "/api/goals", { title: "U2 DBMS verification readiness", description: "Disposable DBMS evidence check", goalType: "learning", weeklyTimeBudgetMinutes: 60 });
+    assert.equal(goal.status, 201);
+    const skill = await pool.query("SELECT cs.name FROM canonical_concepts cc JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills cs ON cs.id=t.skill_id WHERE cc.id=$1", [canonicalDbmsAssessmentState.canonicalConceptId]);
+    const readinessSkillResult = await learnerApi("POST", `/api/goals/${goal.body.goal.id}/skills`, { name: skill.rows[0].name, description: "DBMS verification evidence", priority: 80 });
+    assert.equal(readinessSkillResult.status, 201);
+    const readiness = await learnerApi("GET", `/api/goals/${goal.body.goal.id}/readiness`);
+    const dbmsReadiness = readiness.body.skills.find((item) => item.name === skill.rows[0].name);
+    assert.equal(dbmsReadiness.totalPoints, 12);
+    assert.equal(dbmsReadiness.unassessedPoints, dbmsReadiness.totalPoints - dbmsReadiness.assessedPoints);
+    assert.ok(dbmsReadiness.unassessedPoints > 0, "Unassessed DBMS points must remain explicitly unknown after a partial learner pilot");
+    assert.ok(dbmsReadiness.strengths >= 1, "Readiness should reflect the persisted successful DBMS verification");
+    await driver.get(`${clientUrl}/assessments/${canonicalDbmsAssessmentState.assessmentId}`);
+    const afterReload = await learnerApi("GET", `/api/assessments/${canonicalDbmsAssessmentState.assessmentId}`);
+    assert.ok(afterReload.body.questions.every((question) => question.submittedAt), "DBMS learner evidence should survive a result reload");
+    console.log("PASS DBMS diagnosis-to-grounded-remediation-to-distinct-verification loop with persisted improvement evidence");
   }
 
   assert.ok(caching && cacheConcept, "Backend Engineer should retain its actual Cache-aside topic mapping");

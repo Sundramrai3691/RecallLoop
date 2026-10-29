@@ -8,16 +8,16 @@
     "host": "127.0.0.1",
     "mutationsPerformed": false,
     "catalogConcepts": 34,
-    "catalogKnowledgePoints": 26,
+    "catalogKnowledgePoints": 34,
     "relationshipCounts": {
       "concept_prerequisites": 0,
       "concept_sources": 0,
       "knowledge_sources": 540,
       "distinct_knowledge_source_urls": 4
     },
-    "note": "Catalog/crosswalk data was read-only. Separately, the explicitly scoped 18 immutable question revision-2 rows were seeded and automated-reviewed; no taxonomy, learner, or historical revision rows were rewritten. Credentials are not stored.",
-    "totalQuestionRevisions": 179,
-    "currentQuestionRevisions": 150,
+    "note": "Catalog/crosswalk data was queried read-only after additive migration 023 and scoped DBMS question seeding/review. Question revision writes were limited to the 48 authored DBMS candidates; no learner or historical revision rows were rewritten. Credentials are not stored.",
+    "totalQuestionRevisions": 227,
+    "currentQuestionRevisions": 198,
     "questionRevisionMutationsPerformed": true
   },
   "sourceRegistry": "source_registry.json",
@@ -45,16 +45,53 @@
     {
       "domain": "Backend Engineering",
       "skill": {
-        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
-        "name": "Caching"
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
       },
       "topic": {
-        "id": "184916a8-f3a6-4dc3-affd-24b191fa6357",
-        "name": "Eviction"
+        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
+        "name": "Message Queues"
       },
       "concept": {
-        "id": "10407aba-bd86-45e3-9622-b4bc185a502a",
-        "name": "LRU and LFU eviction"
+        "id": "088badd0-c87a-413c-a698-d41f9aaf1cd2",
+        "name": "Consumer acknowledgements"
+      },
+      "knowledgePoint": {
+        "id": "048ea4ad-0c06-487c-86d1-58c974152ef9",
+        "statement": "Can explain acknowledgement timing and redelivery."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
+        "name": "Operations"
+      },
+      "topic": {
+        "id": "bf9c75f7-02d6-4e11-bbd2-f4479a55c634",
+        "name": "Docker"
+      },
+      "concept": {
+        "id": "8bd2fcca-3204-4c50-9911-0525e26b12ab",
+        "name": "Container fundamentals"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
+        "name": "Message Queues"
+      },
+      "concept": {
+        "id": "b3237c90-4478-40cd-8855-f0b3253c42d9",
+        "name": "Dead letter handling"
       },
       "knowledgePoint": null,
       "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
@@ -82,36 +119,16 @@
     {
       "domain": "Backend Engineering",
       "skill": {
-        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
-        "name": "Caching"
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
       },
       "topic": {
-        "id": "8cf2aba7-cb16-48f6-9881-9eb4d373c16d",
-        "name": "Rate Limiting"
+        "id": "1838347d-ce2f-43ce-862b-a74e337f6fa2",
+        "name": "Pub/Sub"
       },
       "concept": {
-        "id": "f623e929-cae2-4010-be86-be8bb7a5d705",
-        "name": "Token bucket rate limiting"
-      },
-      "knowledgePoint": {
-        "id": "016cdf17-c613-466e-8e71-b7e4c0c11044",
-        "statement": "Can compare burst capacity and sustained rate."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "02d574d7-dc0a-4364-b849-83273e6632f2",
-        "name": "Concurrency"
-      },
-      "topic": {
-        "id": "ff55f876-4795-4f92-b57c-b1a964f41d4d",
-        "name": "Concurrency"
-      },
-      "concept": {
-        "id": "d388c9bb-10ff-4663-a0e2-3d716e968894",
-        "name": "Work coordination"
+        "id": "c4964bfd-8f82-40b9-9837-2f6d06cca243",
+        "name": "Event fanout"
       },
       "knowledgePoint": null,
       "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
@@ -119,16 +136,53 @@
     {
       "domain": "Backend Engineering",
       "skill": {
-        "id": "ebfd2a49-2edd-4c0f-8140-b6b015179048",
-        "name": "HTTP and APIs"
+        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
+        "name": "Operations"
       },
       "topic": {
-        "id": "2a971def-40df-4bf5-a4a1-7c2ae2d7df2f",
-        "name": "Authentication"
+        "id": "8e9126d0-ce40-4ca5-89d0-98b335ff2bca",
+        "name": "Load Balancing"
       },
       "concept": {
-        "id": "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
-        "name": "Token authentication"
+        "id": "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
+        "name": "Health-aware routing"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
+        "name": "Messaging"
+      },
+      "topic": {
+        "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
+        "name": "Retries and Idempotency"
+      },
+      "concept": {
+        "id": "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
+        "name": "Idempotent operations"
+      },
+      "knowledgePoint": {
+        "id": "038856d1-b2ba-4a8c-bd00-42a3e233e2a7",
+        "statement": "Can design a safe repeated operation."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "184916a8-f3a6-4dc3-affd-24b191fa6357",
+        "name": "Eviction"
+      },
+      "concept": {
+        "id": "10407aba-bd86-45e3-9622-b4bc185a502a",
+        "name": "LRU and LFU eviction"
       },
       "knowledgePoint": null,
       "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
@@ -174,80 +228,6 @@
         "name": "Messaging"
       },
       "topic": {
-        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
-        "name": "Message Queues"
-      },
-      "concept": {
-        "id": "088badd0-c87a-413c-a698-d41f9aaf1cd2",
-        "name": "Consumer acknowledgements"
-      },
-      "knowledgePoint": {
-        "id": "048ea4ad-0c06-487c-86d1-58c974152ef9",
-        "statement": "Can explain acknowledgement timing and redelivery."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
-        "name": "Messaging"
-      },
-      "topic": {
-        "id": "f42b58a3-93df-4c28-96d2-9a08076d576d",
-        "name": "Message Queues"
-      },
-      "concept": {
-        "id": "b3237c90-4478-40cd-8855-f0b3253c42d9",
-        "name": "Dead letter handling"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
-        "name": "Messaging"
-      },
-      "topic": {
-        "id": "1838347d-ce2f-43ce-862b-a74e337f6fa2",
-        "name": "Pub/Sub"
-      },
-      "concept": {
-        "id": "c4964bfd-8f82-40b9-9837-2f6d06cca243",
-        "name": "Event fanout"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
-        "name": "Messaging"
-      },
-      "topic": {
-        "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
-        "name": "Retries and Idempotency"
-      },
-      "concept": {
-        "id": "f1e0fc99-d14c-4c58-b624-ed92fbb40d10",
-        "name": "Idempotent operations"
-      },
-      "knowledgePoint": {
-        "id": "038856d1-b2ba-4a8c-bd00-42a3e233e2a7",
-        "statement": "Can design a safe repeated operation."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "c84c49b3-f521-4e01-ba69-646a99255b33",
-        "name": "Messaging"
-      },
-      "topic": {
         "id": "d485b6ab-1662-4371-82a4-7bbb94c4caf0",
         "name": "Retries and Idempotency"
       },
@@ -265,46 +245,66 @@
         "name": "Operations"
       },
       "topic": {
-        "id": "bf9c75f7-02d6-4e11-bbd2-f4479a55c634",
-        "name": "Docker"
-      },
-      "concept": {
-        "id": "8bd2fcca-3204-4c50-9911-0525e26b12ab",
-        "name": "Container fundamentals"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
-        "name": "Operations"
-      },
-      "topic": {
-        "id": "8e9126d0-ce40-4ca5-89d0-98b335ff2bca",
-        "name": "Load Balancing"
-      },
-      "concept": {
-        "id": "a20257ce-b8ba-43f6-9b04-8427a7e8d33c",
-        "name": "Health-aware routing"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Backend Engineering",
-      "skill": {
-        "id": "00ed7927-dcbe-423c-95e7-08d97261c682",
-        "name": "Operations"
-      },
-      "topic": {
         "id": "06f1e6b3-4073-4862-a105-97a4206e1ec2",
         "name": "Observability"
       },
       "concept": {
         "id": "b994e420-d68d-4114-97e8-76ecc0319da2",
         "name": "Service telemetry"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "ebfd2a49-2edd-4c0f-8140-b6b015179048",
+        "name": "HTTP and APIs"
+      },
+      "topic": {
+        "id": "2a971def-40df-4bf5-a4a1-7c2ae2d7df2f",
+        "name": "Authentication"
+      },
+      "concept": {
+        "id": "ff0512ca-575b-4c42-b61d-7a3fa1bcb3b8",
+        "name": "Token authentication"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "8290b04e-aad3-489b-b5aa-2e7a2b7663d0",
+        "name": "Caching"
+      },
+      "topic": {
+        "id": "8cf2aba7-cb16-48f6-9881-9eb4d373c16d",
+        "name": "Rate Limiting"
+      },
+      "concept": {
+        "id": "f623e929-cae2-4010-be86-be8bb7a5d705",
+        "name": "Token bucket rate limiting"
+      },
+      "knowledgePoint": {
+        "id": "016cdf17-c613-466e-8e71-b7e4c0c11044",
+        "statement": "Can compare burst capacity and sustained rate."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Backend Engineering",
+      "skill": {
+        "id": "02d574d7-dc0a-4364-b849-83273e6632f2",
+        "name": "Concurrency"
+      },
+      "topic": {
+        "id": "ff55f876-4795-4f92-b57c-b1a964f41d4d",
+        "name": "Concurrency"
+      },
+      "concept": {
+        "id": "d388c9bb-10ff-4663-a0e2-3d716e968894",
+        "name": "Work coordination"
       },
       "knowledgePoint": null,
       "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
@@ -390,154 +390,6 @@
       "disposition": "reuse_existing_point_add_source_mapping_after_verification"
     },
     {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
-        "name": "Indexes"
-      },
-      "concept": {
-        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
-        "name": "Index selection"
-      },
-      "knowledgePoint": {
-        "id": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
-        "statement": "Can explain how a composite B-tree index column order affects equality and range predicates."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
-        "name": "Indexes"
-      },
-      "concept": {
-        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
-        "name": "Index selection"
-      },
-      "knowledgePoint": {
-        "id": "820a6a53-19a5-4ad2-b403-330ea1ea1563",
-        "statement": "Can weigh index selectivity and read benefit against write, storage, and maintenance cost."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
-        "name": "Replication and Sharding"
-      },
-      "concept": {
-        "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
-        "name": "Data partitioning"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
-        "name": "Replication and Sharding"
-      },
-      "concept": {
-        "id": "f2f44101-3c97-4be9-9883-c010a982b124",
-        "name": "Read replication"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
-        "name": "SQL"
-      },
-      "concept": {
-        "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
-        "name": "Join and aggregation queries"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
-        "name": "SQL"
-      },
-      "concept": {
-        "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
-        "name": "Relational data modeling"
-      },
-      "knowledgePoint": null,
-      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
-        "name": "Transactions"
-      },
-      "concept": {
-        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
-        "name": "Isolation and atomicity"
-      },
-      "knowledgePoint": {
-        "id": "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
-        "statement": "Can describe atomic commit and isolation tradeoffs."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "Database Management Systems",
-      "skill": {
-        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
-        "name": "Databases"
-      },
-      "topic": {
-        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
-        "name": "Transactions"
-      },
-      "concept": {
-        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
-        "name": "Isolation and atomicity"
-      },
-      "knowledgePoint": {
-        "id": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
-        "statement": "Can predict a non-repeatable read or serialization anomaly from a transaction schedule and isolation level."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
       "domain": "Data Structures and Algorithms",
       "skill": {
         "id": "faf7aae4-a0e2-4d8e-93f1-d486e38d8339",
@@ -616,6 +468,314 @@
         "statement": "Can explain when a visited set is required and bound traversal work by vertices and edges."
       },
       "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+        "name": "Data partitioning"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+        "name": "Data partitioning"
+      },
+      "knowledgePoint": {
+        "id": "59c88890-767a-416f-aa1f-a82a91b3de0d",
+        "statement": "Can distinguish horizontal table partitioning from vertical decomposition and distributed sharding."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
+        "name": "Data partitioning"
+      },
+      "knowledgePoint": {
+        "id": "4c627271-64b6-42fc-9be0-f6d535d842bc",
+        "statement": "Can select and evaluate a partition key and strategy using query predicates, pruning, skew, and operational costs."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
+        "name": "Indexes"
+      },
+      "concept": {
+        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
+        "name": "Index selection"
+      },
+      "knowledgePoint": {
+        "id": "26b0d582-35e0-42e5-8d86-e4d365ed1724",
+        "statement": "Can explain how a composite B-tree index column order affects equality and range predicates."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
+        "name": "Indexes"
+      },
+      "concept": {
+        "id": "c3845193-fb08-4e92-847e-380e21cd480b",
+        "name": "Index selection"
+      },
+      "knowledgePoint": {
+        "id": "820a6a53-19a5-4ad2-b403-330ea1ea1563",
+        "statement": "Can weigh index selectivity and read benefit against write, storage, and maintenance cost."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
+        "name": "Transactions"
+      },
+      "concept": {
+        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+        "name": "Isolation and atomicity"
+      },
+      "knowledgePoint": {
+        "id": "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
+        "statement": "Can describe atomic commit and isolation tradeoffs."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "f729d0d7-3abf-44ae-97ab-d88982ce847d",
+        "name": "Transactions"
+      },
+      "concept": {
+        "id": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
+        "name": "Isolation and atomicity"
+      },
+      "knowledgePoint": {
+        "id": "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "statement": "Can predict a non-repeatable read or serialization anomaly from a transaction schedule and isolation level."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+        "name": "Join and aggregation queries"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+        "name": "Join and aggregation queries"
+      },
+      "knowledgePoint": {
+        "id": "853435a9-8606-49f8-b818-6bfb11348d40",
+        "statement": "Can predict INNER and LEFT JOIN row preservation, NULL extension, and row multiplication from join cardinality."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
+        "name": "Join and aggregation queries"
+      },
+      "knowledgePoint": {
+        "id": "ee8d9584-a376-4309-ba42-143bfd2110e5",
+        "statement": "Can write or diagnose grouped aggregates using WHERE, HAVING, join grain, and duplicate-count safeguards."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "f2f44101-3c97-4be9-9883-c010a982b124",
+        "name": "Read replication"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "f2f44101-3c97-4be9-9883-c010a982b124",
+        "name": "Read replication"
+      },
+      "knowledgePoint": {
+        "id": "f9736139-63ca-46a5-8699-310168b78efd",
+        "statement": "Can compare asynchronous and synchronous replication guarantees and distinguish replication from backup and partitioning."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "4bde337a-3231-422d-84ba-45a8963b97c4",
+        "name": "Replication and Sharding"
+      },
+      "concept": {
+        "id": "f2f44101-3c97-4be9-9883-c010a982b124",
+        "name": "Read replication"
+      },
+      "knowledgePoint": {
+        "id": "072fd0ff-cc07-4ad7-925c-ca26af329f07",
+        "statement": "Can reason about primary and replica roles, replication lag, stale reads, and read-after-write routing."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+        "name": "Relational data modeling"
+      },
+      "knowledgePoint": null,
+      "disposition": "reuse_existing_concept_add_point_contract_and_source_mapping"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+        "name": "Relational data modeling"
+      },
+      "knowledgePoint": {
+        "id": "2b2fc2f0-6180-46ef-b542-ffaaf2e84dfd",
+        "statement": "Can model entities and relationship cardinality with candidate and primary keys, foreign keys, and junction tables."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
+    },
+    {
+      "domain": "Database Management Systems",
+      "skill": {
+        "id": "eaf0ea46-811e-470a-892b-9bc91e96b036",
+        "name": "Databases"
+      },
+      "topic": {
+        "id": "5456a6fa-8177-403c-818f-1cee78d9a468",
+        "name": "SQL"
+      },
+      "concept": {
+        "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
+        "name": "Relational data modeling"
+      },
+      "knowledgePoint": {
+        "id": "f7f51033-08e1-48eb-9845-77d41a1393fd",
+        "statement": "Can use functional dependencies, normalization, and constraints to prevent update anomalies while stating workload trade-offs."
+      },
+      "disposition": "existing DBMS concept; point added in additive migration 023 for assessed coverage"
     },
     {
       "domain": "Operating Systems",
@@ -700,6 +860,26 @@
     {
       "domain": "System Design",
       "skill": {
+        "id": "1d34795a-acdb-44a1-9a45-bae7d273cd20",
+        "name": "Scalability"
+      },
+      "topic": {
+        "id": "a21c4082-77c5-4e76-aec6-6de4eaab7593",
+        "name": "Capacity Planning"
+      },
+      "concept": {
+        "id": "539f01ae-8c51-4c52-967a-84188355d620",
+        "name": "Back-of-the-envelope capacity"
+      },
+      "knowledgePoint": {
+        "id": "c9464d7f-7de9-4281-b4ed-d4db06203684",
+        "statement": "Can estimate request rate and storage from explicit workload assumptions and unit conversions."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
         "id": "930c36a0-787d-4834-a35a-087b370c30f4",
         "name": "Architecture"
       },
@@ -740,46 +920,6 @@
     {
       "domain": "System Design",
       "skill": {
-        "id": "9a157f43-7745-4062-8c06-350d88d22701",
-        "name": "Reliability"
-      },
-      "topic": {
-        "id": "1248bccc-ddf5-4a41-88ac-7467d648bb0a",
-        "name": "Failure Recovery"
-      },
-      "concept": {
-        "id": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
-        "name": "Graceful degradation"
-      },
-      "knowledgePoint": {
-        "id": "d80798b0-4f29-49f1-9f6d-7aead2e9dd89",
-        "statement": "Can choose a bounded fallback when a dependency fails and state which user-visible guarantee changes."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "System Design",
-      "skill": {
-        "id": "1d34795a-acdb-44a1-9a45-bae7d273cd20",
-        "name": "Scalability"
-      },
-      "topic": {
-        "id": "a21c4082-77c5-4e76-aec6-6de4eaab7593",
-        "name": "Capacity Planning"
-      },
-      "concept": {
-        "id": "539f01ae-8c51-4c52-967a-84188355d620",
-        "name": "Back-of-the-envelope capacity"
-      },
-      "knowledgePoint": {
-        "id": "c9464d7f-7de9-4281-b4ed-d4db06203684",
-        "statement": "Can estimate request rate and storage from explicit workload assumptions and unit conversions."
-      },
-      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
-    },
-    {
-      "domain": "System Design",
-      "skill": {
         "id": "1d34795a-acdb-44a1-9a45-bae7d273cd20",
         "name": "Scalability"
       },
@@ -796,6 +936,26 @@
         "statement": "Can explain which consistency and availability behavior a client observes during a network partition."
       },
       "disposition": "reuse_existing_point_add_source_mapping_after_verification"
+    },
+    {
+      "domain": "System Design",
+      "skill": {
+        "id": "9a157f43-7745-4062-8c06-350d88d22701",
+        "name": "Reliability"
+      },
+      "topic": {
+        "id": "1248bccc-ddf5-4a41-88ac-7467d648bb0a",
+        "name": "Failure Recovery"
+      },
+      "concept": {
+        "id": "03a64f54-f319-4044-9594-df1bc4a9b8d7",
+        "name": "Graceful degradation"
+      },
+      "knowledgePoint": {
+        "id": "d80798b0-4f29-49f1-9f6d-7aead2e9dd89",
+        "statement": "Can choose a bounded fallback when a dependency fails and state which user-visible guarantee changes."
+      },
+      "disposition": "reuse_existing_point_add_source_mapping_after_verification"
     }
   ],
   "assessmentSnapshot": {
@@ -806,7 +966,7 @@
       },
       {
         "domain": "Database Management Systems",
-        "eligible_points": 4
+        "eligible_points": 12
       },
       {
         "domain": "Data Structures and Algorithms",
@@ -1918,9 +2078,17 @@
         "26b0d582-35e0-42e5-8d86-e4d365ed1724",
         "820a6a53-19a5-4ad2-b403-330ea1ea1563",
         "018c6ec2-c99d-465b-a2fa-c92fb15026e7",
-        "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca"
+        "7a6ec8bd-b281-4bd6-8bc5-efc1222c2fca",
+        "59c88890-767a-416f-aa1f-a82a91b3de0d",
+        "4c627271-64b6-42fc-9be0-f6d535d842bc",
+        "853435a9-8606-49f8-b818-6bfb11348d40",
+        "ee8d9584-a376-4309-ba42-143bfd2110e5",
+        "f9736139-63ca-46a5-8699-310168b78efd",
+        "072fd0ff-cc07-4ad7-925c-ca26af329f07",
+        "2b2fc2f0-6180-46ef-b542-ffaaf2e84dfd",
+        "f7f51033-08e1-48eb-9845-77d41a1393fd"
       ],
-      "disposition": "reuse_catalog; add point contracts for SQL and relational modeling gaps"
+      "disposition": "reuse catalog; eight source-grounded DBMS point contracts added for partitioning, replication, joins/aggregates and relational modeling; broader SQL gaps remain."
     },
     {
       "id": "networks_http",
@@ -2014,5 +2182,380 @@
       ],
       "disposition": "reuse_for_relevant_goals; do not gate general entry-level foundation"
     }
-  ]
+  ],
+  "dbmsCoverage": {
+    "scope": "Four previously unpointed existing DBMS concepts; two atomic points each.",
+    "before": {
+      "concepts": 4,
+      "knowledgePoints": 0,
+      "currentRevisions": 0,
+      "blueprintGaps": 4
+    },
+    "after": {
+      "concepts": 4,
+      "knowledgePoints": 8,
+      "currentRevisions": 48,
+      "assessmentBlueprintGaps": 0
+    },
+    "points": [
+      {
+        "id": "dbms-data-partitioning-59c88890",
+        "canonicalKnowledgePointId": "59c88890-767a-416f-aa1f-a82a91b3de0d",
+        "concept": "Data partitioning",
+        "statement": "Can distinguish horizontal table partitioning from vertical decomposition and distributed sharding.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "6a45d187-dd62-437d-9cf4-f36ee3cf8a33",
+          "283f729e-9422-4fd0-adfb-ad14c174a971",
+          "cb69c617-2352-49e0-a6d5-473ccee26539",
+          "0e0afa87-946d-4dc1-a329-86fc94619e8c",
+          "ee796094-1301-4e6c-9711-d7d8d0cb3d16",
+          "8f192423-66ad-44f2-9a5c-0d078a20527e"
+        ],
+        "revisionContentHashes": [
+          "9ded2abe655655f9bef67c15753a36e3782f27b0c190b2b9fd8e70749a71eb94",
+          "143494d67dd8ce363791ac4168d2677b59ce3d6478658d8366c550af05f8fcb6",
+          "92affe797c45f724adf022e43228d7787579feb5d973913052fb6ca910d20984",
+          "ab8a2a72fc0a69e0a57c74a8c18b18e987c913cb9d6226b95c599c45b2f8afca",
+          "85f662db3faeb884f0900b495917db39055af7c192aa3b3768145fa048dfdc38",
+          "99f66e382b77e6bdbe978eca8aaa8fd266eaad8c4ddcd5f8f71908eb23799b49"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-data-partitioning-4c627271",
+        "canonicalKnowledgePointId": "4c627271-64b6-42fc-9be0-f6d535d842bc",
+        "concept": "Data partitioning",
+        "statement": "Can select and evaluate a partition key and strategy using query predicates, pruning, skew, and operational costs.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "36af11f2-c7e2-4229-856f-980c809fb85c",
+          "1e76ae82-20d5-4df4-ab35-4050e5b0b214",
+          "6cf0c4e6-4742-47c0-9790-9853b0780d85",
+          "c054ccc3-5504-4695-9d94-fdb0dcc7d2cc",
+          "afdf8bb4-e55c-47f7-9f05-b5c2202269cc",
+          "a2897ed8-f426-48ad-8bcc-665ff5c67c68"
+        ],
+        "revisionContentHashes": [
+          "89cbd6ef9dcdd0885a22333acb4f7d22c9460d0740e4299d655f693a122316f6",
+          "18e4eb07d519dc1aba58c8eeb32ba50e670230d6a32f433513c8c60875e8f467",
+          "b7d8dd3cb2a824145780ad31b77e40dd894e33837c2f5166dffb5e524d0715d7",
+          "7902d63926ca5e4627f69ecd6ccb3687c91ada1f2848ce86f902cdbdd97527c0",
+          "fc279c2f21fc24ad10d347d3a7a6c3b7deb43717a3759faf9c65caa389c094ee",
+          "d550c6204c1f00216e1cfb31bee366ae926792b038d6adaa1cfee169f6e34170"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-join-and-aggregation-queries-853435a9",
+        "canonicalKnowledgePointId": "853435a9-8606-49f8-b818-6bfb11348d40",
+        "concept": "Join and aggregation queries",
+        "statement": "Can predict INNER and LEFT JOIN row preservation, NULL extension, and row multiplication from join cardinality.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "458749b8-4c38-4c66-8d08-32382eb8e83e",
+          "77e617d8-7ce3-46ee-a633-a2124f63df53",
+          "d59bb0d6-c4c8-4276-829a-b1ce78866952",
+          "2754821b-81c4-4e3d-b8a2-1eaa07867b0c",
+          "3e565ea1-6588-4d1c-87ec-f8981e0aedf5",
+          "1271094f-7250-4c46-8785-e0d87747ef96"
+        ],
+        "revisionContentHashes": [
+          "4fe099fa523c67e64a983d79308e34041fcd648a56b792e04f3d2745924e9c57",
+          "a4b9b5a5d32cad04cfd67c438e925a4847270ffafeb34cd8fbe9493bb6d6902a",
+          "fe9f225a47bdf30e57772404f19654ffffe85c32b4d2d2c0007a490ff8e6d3b0",
+          "3501c0c95bd6a25d6f720289006b9ff120ff42af231ae928083f00837a6eb11f",
+          "cfca82771967b16228055997ec028b896e00ca006ed67ffe2b4f0a4fd6997076",
+          "54e03f658155e204f9ae668477251bdaeb1979d51691213a9d4f0007e772ac93"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-join-and-aggregation-queries-ee8d9584",
+        "canonicalKnowledgePointId": "ee8d9584-a376-4309-ba42-143bfd2110e5",
+        "concept": "Join and aggregation queries",
+        "statement": "Can write or diagnose grouped aggregates using WHERE, HAVING, join grain, and duplicate-count safeguards.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "221369b8-1f77-4696-9856-1d56b7f4abcb",
+          "e1580fb8-fd16-48ff-974c-26d7701bbb94",
+          "1506dedb-a4f0-4184-ac6a-c4a52558c514",
+          "a23bb6fe-1c59-4bb8-ad40-941f0dce2f67",
+          "cdb741a0-4f35-498e-bdf7-79f54806c451",
+          "70301599-f094-43bf-8cf3-d5946bef181c"
+        ],
+        "revisionContentHashes": [
+          "1268f8862c466d73d42f96536c91c847d59673c6e893f6aa1987d55c44ed3d68",
+          "a7c297e3bc9a6f0dc83a84f181489ddef647dd028dc012ad52df377b3d1c7216",
+          "f70952d6444283cab24e76d44fb3d3ec8aaf8efe65c669b1e355b7e7c4c4ce38",
+          "55164c31e2cd57b7b25319bf0d73cafa2d20bc7b74af5853b929f0a0442ec625",
+          "d10a2d7544aec0bdb72c0c74ed4f81b0ae31ac150e7cdbd40ddcad1edb71ba80",
+          "3944b2a6ee652c4138609d0cc68cfd71696bcf791c7533f740a81c96cf6d6c2f"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-read-replication-f9736139",
+        "canonicalKnowledgePointId": "f9736139-63ca-46a5-8699-310168b78efd",
+        "concept": "Read replication",
+        "statement": "Can compare asynchronous and synchronous replication guarantees and distinguish replication from backup and partitioning.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "3978d0c4-633c-4688-8d14-b599476101c0",
+          "1dce6ace-c91c-4666-957b-a8ec34182b10",
+          "65dcbbfb-d584-4448-9c24-402394b5a673",
+          "bb0d837b-1b85-4fbe-a6a1-567aaaed3ff5",
+          "5e73a9f6-9506-4223-89bc-60dca3205a95",
+          "c686d01c-5c9d-44ae-bb32-2d9172afe10b"
+        ],
+        "revisionContentHashes": [
+          "5acc70db66afab88a9169960ddb5425a4f0899eefad447f2a4df1085913d9520",
+          "32d5e6742bfa30e565e52747f8f13c0447d58af936d820ffe0a407f1e259aad5",
+          "0d9decb3b9647f0efdc472843720aeaa3725f8d78938d6e450b17b4d898f02a5",
+          "ee7d90f6261f3f39a2dea1b9365844d892cdcdb7cedae5ba7a9bb286b0b34782",
+          "2612152b9b9621a941209bb5fb0ed85f833ab77e8e71b68c02260e1aebb24cc9",
+          "19f0fd4619bea7ac77b5c8a5bb7d4c35bb76b8e6b77be199baec4c7fdcf7835d"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-read-replication-072fd0ff",
+        "canonicalKnowledgePointId": "072fd0ff-cc07-4ad7-925c-ca26af329f07",
+        "concept": "Read replication",
+        "statement": "Can reason about primary and replica roles, replication lag, stale reads, and read-after-write routing.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "4871cd5c-fa45-4cf3-9970-5b0714a007b7",
+          "d75135b8-1cc4-48df-8293-34b5d2576405",
+          "4dfe1fd5-29c2-4de1-aa48-a2c416def617",
+          "d37dcf29-5d00-49da-be3d-daba39c64779",
+          "901d100f-1c98-4a98-b7c3-ee3ce00d8c90",
+          "79a0192c-b0c9-47d5-bafe-a214c6218909"
+        ],
+        "revisionContentHashes": [
+          "9e1425eef6a4fec399dbfaaaf6cf14fd072ff01643754c3b07418bdab79ec734",
+          "f5e75af18a56ce21d66e104bc190c09afde006d63dba64d231034acd37ac86cb",
+          "cc2ae5985331c7d16ed58715cd7f25f7db9d7d8e8a8889c4680793d665b96059",
+          "4a128c60662a4b0f11295d1a7aca93f0b09db18ca9f34514817b8d89bea87b50",
+          "af01e4fe0d6a6657de8bf3258e90db41623a170286417daf392afcde4b83f162",
+          "c36bef1da552331559c9d914bd0855ff54f66d9f8f937c58af88e450a46fa9e0"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-relational-data-modeling-2b2fc2f0",
+        "canonicalKnowledgePointId": "2b2fc2f0-6180-46ef-b542-ffaaf2e84dfd",
+        "concept": "Relational data modeling",
+        "statement": "Can model entities and relationship cardinality with candidate and primary keys, foreign keys, and junction tables.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18",
+          "DOC-CMU-15445-FALL2026"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "a52dcefa-e855-42c9-bb29-0642e2a2fc26",
+          "9086192c-7a7f-4a56-87db-0e29201fd680",
+          "84b323bd-817f-4dee-9484-d26907d61d4e",
+          "27a389d0-b64a-4c6e-bfbf-02b8f8b53e2d",
+          "8b729ffd-dffe-4f42-8eba-6552dc861e85",
+          "ac8377ff-d411-4ca3-b788-7b3832e4486e"
+        ],
+        "revisionContentHashes": [
+          "606eb1151d116f3e3b9b90c7b5ed1ee544aecc66e576a41fb7770a1a95dabf24",
+          "b42ca52584042ac94ff2741fccdc05e6d756451fda63e96293395278a13732e7",
+          "15daa344a3c38cb81c9e6e5b8845abf96d02614070bcbf9016a2833732f07f79",
+          "9bf0ad540592e3637a9a4b7b5851bf965abc6a6982d251474df45911dea69172",
+          "3607cc259c79a542c27431f8a346f0d45182dca47cc1cf16144284afd2a55a0a",
+          "8e6e870ec5298f4c6fb140ad3801ac1753cfee77ab882d7d5277231824535bc6"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      },
+      {
+        "id": "dbms-relational-data-modeling-f7f51033",
+        "canonicalKnowledgePointId": "f7f51033-08e1-48eb-9845-77d41a1393fd",
+        "concept": "Relational data modeling",
+        "statement": "Can use functional dependencies, normalization, and constraints to prevent update anomalies while stating workload trade-offs.",
+        "sourceIds": [
+          "DOC-POSTGRESQL-18",
+          "DOC-CMU-15445-FALL2026"
+        ],
+        "sourceStatus": "Official PostgreSQL 18 sections were excerpt-checked 2026-10-29; CMU Fall 2026 Course Goals excerpt supports functional dependencies and normal forms. The questions and query tasks are original; automated approval is not independent expert review.",
+        "assessmentFormats": [
+          "single_choice",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "eligibleCurrentRevisionCount": 6,
+        "revisionIds": [
+          "2f084404-60fa-49ff-b3fe-2439f7614069",
+          "b4f345df-142f-4198-b67f-304b026328a0",
+          "3c29b8c9-a381-4c22-bc25-c6f3b1ba05e4",
+          "3f81bd20-6455-4ebd-8411-e2fb65d25fba",
+          "6a350de4-1008-4f0a-bf40-f9773b0ba0b0",
+          "eb646433-f69e-4425-87c3-c204acd3a67a"
+        ],
+        "revisionContentHashes": [
+          "c0465bc7ac63146ff91a0ca8c019839a50c2d0859d8fec2e0c55aa215a0e515f",
+          "76f62ecb828b05ae229cbf0df0e62e9e59169a102bca899bef824a7f26a5e19a",
+          "e7074a93ab0863db42aa3a6200c850109dcc5414c1942994bce838890685f923",
+          "a8403af09f46ede86aa6fe2b52d20fb8a5fa8437d84e2bfd5d8b0aa363bf33a3",
+          "f4a61f1db05fcdbdbb8d95d2f80b9145c300b507dfc634337f9323bc1aaba07d",
+          "6363e27bed79bf9613c9c169debe40e9b7b1118e8260c36cdd4a21ac911e8561"
+        ],
+        "questionTypes": [
+          "mcq",
+          "mcq",
+          "rapid_recall",
+          "rapid_recall",
+          "rapid_recall",
+          "short_explanation"
+        ],
+        "automatedApproval": "approved; exact current content hash; automated only",
+        "answerRubricStatus": "Authored structures, deterministic MCQ keys, rubrics and source claims checked; SQL examples are assessed as written reasoning and are not executed.",
+        "distinctVerificationCriteria": "Use the separate short-explanation revision with a changed schema/query/scenario to assess the same underlying point.",
+        "confidence": "primary technical source excerpt checked; no independent human review or learner outcome"
+      }
+    ],
+    "limitations": [
+      "SQL written responses are graded through the existing rubric evaluator; the application does not execute SQL.",
+      "Automated review confirms exact authored hashes and structural contracts; it is not independent expert validation or evidence of learner effectiveness."
+    ]
+  }
 }

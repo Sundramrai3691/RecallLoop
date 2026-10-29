@@ -1,19 +1,19 @@
 {
   "reportVersion": 2,
-  "generatedAt": "2026-10-28T19:41:01.245Z",
+  "generatedAt": "2026-10-29T14:11:58.432Z",
   "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
   "catalog": {
     "domains": 6,
     "topicClusters": 28,
-    "knowledgePoints": 26
+    "knowledgePoints": 34
   },
   "bank": {
-    "totalRevisions": 179,
-    "currentRevisions": 150,
-    "currentQuestionIdentityCount": 150,
-    "mappedCurrentRevisions": 150,
-    "provenanceCompleteCurrentRevisions": 150,
-    "authoredHashMatches": 138,
+    "totalRevisions": 227,
+    "currentRevisions": 198,
+    "currentQuestionIdentityCount": 198,
+    "mappedCurrentRevisions": 198,
+    "provenanceCompleteCurrentRevisions": 198,
+    "authoredHashMatches": 186,
     "engineeringIssueCount": 0,
     "engineeringIssues": [],
     "humanReviewApprovals": 0
@@ -1457,7 +1457,7 @@
     {
       "domain": "Database Management Systems",
       "topicClusterCount": 4,
-      "knowledgePointCount": 4,
+      "knowledgePointCount": 12,
       "topics": [
         {
           "id": "71eb1532-4d74-499b-ac53-2de2e69394ca",
@@ -1490,12 +1490,34 @@
             {
               "id": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
               "name": "Data partitioning",
-              "points": []
+              "points": [
+                {
+                  "id": "4c627271-64b6-42fc-9be0-f6d535d842bc",
+                  "statement": "Can select and evaluate a partition key and strategy using query predicates, pruning, skew, and operational costs.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "59c88890-767a-416f-aa1f-a82a91b3de0d",
+                  "statement": "Can distinguish horizontal table partitioning from vertical decomposition and distributed sharding.",
+                  "currentRevisionCount": 6
+                }
+              ]
             },
             {
               "id": "f2f44101-3c97-4be9-9883-c010a982b124",
               "name": "Read replication",
-              "points": []
+              "points": [
+                {
+                  "id": "072fd0ff-cc07-4ad7-925c-ca26af329f07",
+                  "statement": "Can reason about primary and replica roles, replication lag, stale reads, and read-after-write routing.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "f9736139-63ca-46a5-8699-310168b78efd",
+                  "statement": "Can compare asynchronous and synchronous replication guarantees and distinguish replication from backup and partitioning.",
+                  "currentRevisionCount": 6
+                }
+              ]
             }
           ]
         },
@@ -1507,12 +1529,34 @@
             {
               "id": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
               "name": "Join and aggregation queries",
-              "points": []
+              "points": [
+                {
+                  "id": "853435a9-8606-49f8-b818-6bfb11348d40",
+                  "statement": "Can predict INNER and LEFT JOIN row preservation, NULL extension, and row multiplication from join cardinality.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "ee8d9584-a376-4309-ba42-143bfd2110e5",
+                  "statement": "Can write or diagnose grouped aggregates using WHERE, HAVING, join grain, and duplicate-count safeguards.",
+                  "currentRevisionCount": 6
+                }
+              ]
             },
             {
               "id": "d1e429cf-5fc8-415b-a94c-f03077781a46",
               "name": "Relational data modeling",
-              "points": []
+              "points": [
+                {
+                  "id": "2b2fc2f0-6180-46ef-b542-ffaaf2e84dfd",
+                  "statement": "Can model entities and relationship cardinality with candidate and primary keys, foreign keys, and junction tables.",
+                  "currentRevisionCount": 6
+                },
+                {
+                  "id": "f7f51033-08e1-48eb-9845-77d41a1393fd",
+                  "statement": "Can use functional dependencies, normalization, and constraints to prevent update anomalies while stating workload trade-offs.",
+                  "currentRevisionCount": 6
+                }
+              ]
             }
           ]
         },
@@ -1540,39 +1584,39 @@
           ]
         }
       ],
-      "totalQuestionRevisions": 30,
-      "currentQuestionRevisions": 24,
+      "totalQuestionRevisions": 78,
+      "currentQuestionRevisions": 72,
       "learnerCreatedQuestions": 0,
-      "canonicalCurrentQuestions": 24,
+      "canonicalCurrentQuestions": 72,
       "byQuestionType": {
-        "mcq": 8,
-        "rapid_recall": 12,
-        "short_explanation": 4
+        "mcq": 24,
+        "rapid_recall": 36,
+        "short_explanation": 12
       },
       "byCognitiveLevel": {
-        "application": 4,
-        "explanation": 4,
-        "recall": 12,
-        "recognition": 4
+        "application": 12,
+        "explanation": 12,
+        "recall": 36,
+        "recognition": 12
       },
       "byDifficulty": {
-        "1": 4,
-        "2": 8,
-        "3": 12
+        "1": 12,
+        "2": 24,
+        "3": 36
       },
       "byReviewState": {
-        "automated_reviewed": 24
+        "automated_reviewed": 72
       },
       "byPublicationState": {
-        "published": 24
+        "published": 72
       },
       "mappingCompleteness": {
-        "mappedCurrentRevisions": 24,
-        "totalCurrentRevisions": 24
+        "mappedCurrentRevisions": 72,
+        "totalCurrentRevisions": 72
       },
       "provenanceCompleteness": {
-        "completeCurrentRevisions": 24,
-        "totalCurrentRevisions": 24
+        "completeCurrentRevisions": 72,
+        "totalCurrentRevisions": 72
       },
       "assessmentCoverage": [
         {
@@ -1625,20 +1669,17 @@
           "conceptId": "225037d0-6b28-4d18-bd7c-4eeecbaf3f2f",
           "concept": "Data partitioning",
           "topic": "Replication and Sharding",
-          "availability": "study_only",
-          "eligibleByType": {},
-          "supportedModes": [],
+          "availability": "available",
+          "eligibleByType": {
+            "mcq": 4,
+            "rapid_recall": 6,
+            "short_explanation": 2
+          },
+          "supportedModes": [
+            "rapid_fire"
+          ],
           "missingBlueprintRequirements": {
-            "rapid_fire": {
-              "mcq": {
-                "required": 2,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 3,
-                "eligible": 0
-              }
-            },
+            "rapid_fire": {},
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1652,18 +1693,6 @@
               }
             },
             "mastery_check": {
-              "mcq": {
-                "required": 1,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 1,
-                "eligible": 0
-              },
-              "short_explanation": {
-                "required": 1,
-                "eligible": 0
-              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1678,28 +1707,25 @@
               }
             }
           },
-          "currentQuestionRevisions": 0,
-          "distinctVerificationCandidateAvailable": false,
-          "distinctVerificationEligible": false
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": true
         },
         {
           "conceptId": "f2f44101-3c97-4be9-9883-c010a982b124",
           "concept": "Read replication",
           "topic": "Replication and Sharding",
-          "availability": "study_only",
-          "eligibleByType": {},
-          "supportedModes": [],
+          "availability": "available",
+          "eligibleByType": {
+            "mcq": 4,
+            "rapid_recall": 6,
+            "short_explanation": 2
+          },
+          "supportedModes": [
+            "rapid_fire"
+          ],
           "missingBlueprintRequirements": {
-            "rapid_fire": {
-              "mcq": {
-                "required": 2,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 3,
-                "eligible": 0
-              }
-            },
+            "rapid_fire": {},
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1713,18 +1739,6 @@
               }
             },
             "mastery_check": {
-              "mcq": {
-                "required": 1,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 1,
-                "eligible": 0
-              },
-              "short_explanation": {
-                "required": 1,
-                "eligible": 0
-              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1739,28 +1753,25 @@
               }
             }
           },
-          "currentQuestionRevisions": 0,
-          "distinctVerificationCandidateAvailable": false,
-          "distinctVerificationEligible": false
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": true
         },
         {
           "conceptId": "e24313a2-67bc-401d-a0e2-4c387cb1ab14",
           "concept": "Join and aggregation queries",
           "topic": "SQL",
-          "availability": "study_only",
-          "eligibleByType": {},
-          "supportedModes": [],
+          "availability": "available",
+          "eligibleByType": {
+            "mcq": 4,
+            "rapid_recall": 6,
+            "short_explanation": 2
+          },
+          "supportedModes": [
+            "rapid_fire"
+          ],
           "missingBlueprintRequirements": {
-            "rapid_fire": {
-              "mcq": {
-                "required": 2,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 3,
-                "eligible": 0
-              }
-            },
+            "rapid_fire": {},
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1774,18 +1785,6 @@
               }
             },
             "mastery_check": {
-              "mcq": {
-                "required": 1,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 1,
-                "eligible": 0
-              },
-              "short_explanation": {
-                "required": 1,
-                "eligible": 0
-              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1800,28 +1799,25 @@
               }
             }
           },
-          "currentQuestionRevisions": 0,
-          "distinctVerificationCandidateAvailable": false,
-          "distinctVerificationEligible": false
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": true
         },
         {
           "conceptId": "d1e429cf-5fc8-415b-a94c-f03077781a46",
           "concept": "Relational data modeling",
           "topic": "SQL",
-          "availability": "study_only",
-          "eligibleByType": {},
-          "supportedModes": [],
+          "availability": "available",
+          "eligibleByType": {
+            "mcq": 4,
+            "rapid_recall": 6,
+            "short_explanation": 2
+          },
+          "supportedModes": [
+            "rapid_fire"
+          ],
           "missingBlueprintRequirements": {
-            "rapid_fire": {
-              "mcq": {
-                "required": 2,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 3,
-                "eligible": 0
-              }
-            },
+            "rapid_fire": {},
             "deep_recall": {
               "descriptive": {
                 "required": 1,
@@ -1835,18 +1831,6 @@
               }
             },
             "mastery_check": {
-              "mcq": {
-                "required": 1,
-                "eligible": 0
-              },
-              "rapid_recall": {
-                "required": 1,
-                "eligible": 0
-              },
-              "short_explanation": {
-                "required": 1,
-                "eligible": 0
-              },
               "scenario": {
                 "required": 1,
                 "eligible": 0
@@ -1861,9 +1845,9 @@
               }
             }
           },
-          "currentQuestionRevisions": 0,
-          "distinctVerificationCandidateAvailable": false,
-          "distinctVerificationEligible": false
+          "currentQuestionRevisions": 12,
+          "distinctVerificationCandidateAvailable": true,
+          "distinctVerificationEligible": true
         },
         {
           "conceptId": "27e998a0-dec9-45a3-8a1e-1c77c40f7573",
@@ -1912,7 +1896,7 @@
           "distinctVerificationEligible": true
         }
       ],
-      "coverageGapCount": 4,
+      "coverageGapCount": 0,
       "reviewBlockerCount": 0
     },
     {
