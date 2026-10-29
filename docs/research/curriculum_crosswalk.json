@@ -954,7 +954,7 @@
           "EDU-OSTEP-CH04",
           "EDU-OSTEP-CH26"
         ],
-        "sourceStatus": "OSTEP v1.10 chapter 4 ?4.1 and chapter 26 ?26.1 directly checked against process address-space and thread-sharing claims. Six immutable revision-2 candidates were reissued with a distinct transfer task, exact authored hashes, and automated approval; no independent expert review or learner outcome is claimed.",
+        "sourceStatus": "OSTEP v1.10 chapter 4 section 4.1 and chapter 26 section 26.1 directly checked against process address-space and thread-sharing claims. Six immutable revision-2 candidates were reissued with a distinct transfer task, exact authored hashes, and automated approval; no independent expert review or learner outcome is claimed.",
         "assessmentFormats": [
           "single_choice",
           "rapid_recall",
@@ -962,7 +962,7 @@
         ],
         "eligibleCurrentRevisionCount": 6,
         "verification": "Automated review/published eligibility only; not independent human validation.",
-        "sourceVerificationNote": "OSTEP v1.10 chapter 4 ?4.1 and chapter 26 ?26.1 directly checked against process address-space and thread-sharing claims. Six immutable revision-2 candidates were reissued with a distinct transfer task, exact authored hashes, and automated approval; no independent expert review or learner outcome is claimed.",
+        "sourceVerificationNote": "OSTEP v1.10 chapter 4 section 4.1 and chapter 26 section 26.1 directly checked against process address-space and thread-sharing claims. Six immutable revision-2 candidates were reissued with a distinct transfer task, exact authored hashes, and automated approval; no independent expert review or learner outcome is claimed.",
         "targetRoles": [
           "general entry-level software developer"
         ],

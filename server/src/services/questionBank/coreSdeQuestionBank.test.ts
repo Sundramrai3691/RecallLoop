@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "./coreSdeQuestionBank.js";
 
 describe("Core SDE question bank",()=>{
