@@ -2,12 +2,13 @@ import { createHash } from "node:crypto";
 import { query } from "../../db/postgres.js";
 import { AppError, conflict, notFound } from "../../utils/errors.js";
 import { recommendResources } from "../resources/resourceRecommendationService.js";
-import { beginSourceProcessing, createOrGetRemediation, failSourceProcessing, finishSourceProcessing, findSource, getRemediation, getRemediationForVerification, listSources, retrieveChunks, storeRemediationRetrieval, updateRemediation, updateRemediationStatus } from "../../repositories/groundingRepository.js";
-import { chunkText } from "./chunker.js";
+import { beginSourceProcessing, countSourceChunks, createOrGetRemediation, failSourceProcessing, finishSourceProcessing, findSource, getRemediation, getRemediationForVerification, listSources, retrieveChunks, storeRemediationRetrieval, updateRemediation, updateRemediationStatus, updateSourceExtractedContent } from "../../repositories/groundingRepository.js";
+import { chunkText, stableChunkId } from "./chunker.js";
 import { cosineSimilarity, createEmbeddingProvider, type EmbeddingProvider } from "./embeddingProvider.js";
 import { createGroundedRemediator, type GroundedRemediator, type GroundingSource } from "./remediationGenerator.js";
 import { significantTokens } from "../../lib/llm/json.js";
 import { fetchPublicArticle } from "./webArticleExtractor.js";
+import { extractPdfPages, MAX_PDF_BYTES } from "./pdfExtractor.js";
 
 const MAX_SOURCE_CHARS=250_000;
 const MIN_RELEVANCE=0.22;
@@ -34,6 +35,7 @@ export async function ingestGroundingSource(userId:string,input:{title?:string;t
   const text=content.replace(/\r\n?/g,"\n").trim();
   const contentHash=createHash("sha256").update(text).digest("hex");
   const document=await beginSourceProcessing({userId,title,sourceType,reference,provenance,content:text,contentHash});
+  if(document.duplicate&&document.processingStatus==="processed")return {...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
   try {
     if(input.resourceId){const resource=await query(`SELECT 1 FROM resources WHERE id=$1`,[input.resourceId]);if(!resource.rowCount)throw notFound("Resource not found","RESOURCE_NOT_FOUND");await query(`UPDATE grounding_sources SET resource_id=$3 WHERE id=$1 AND user_id=$2`,[document.id,userId,input.resourceId]);}
     const chunks=chunkText(document.id,contentHash,text);
@@ -48,6 +50,47 @@ export async function ingestGroundingSource(userId:string,input:{title?:string;t
   }catch(error){
     await failSourceProcessing(document.id,error instanceof Error?error.message:"Source processing failed");
     throw error;
+  }
+}
+
+export async function ingestGroundingPdf(userId:string,input:{title?:string;reference?:string;provenance?:Record<string,unknown>;file?:Buffer},options:{embeddingProvider?:EmbeddingProvider;pdfExtractor?:typeof extractPdfPages}={}) {
+  const file=input.file;
+  if(!Buffer.isBuffer(file))throw new AppError("Upload a PDF file.",400,"PDF_FILE_REQUIRED");
+  if(file.length>MAX_PDF_BYTES)throw new AppError("This PDF is larger than the 10 MB upload limit.",413,"PDF_TOO_LARGE");
+  const title=input.title?.trim()??"";
+  if(!title||title.length>200)throw new AppError("A title is required and must be at most 200 characters",400,"VALIDATION_ERROR");
+  const reference=input.reference?.trim()??"";
+  if(reference.length>1000)throw new AppError("reference must be at most 1,000 characters",400,"VALIDATION_ERROR");
+  const contentHash=createHash("sha256").update(file).digest("hex");
+  const provenance={...(input.provenance??{}),extraction:{method:"pdfjs-page-text-v1",status:"processing",pageCount:null,pages:[]}};
+  const document=await beginSourceProcessing({userId,title,sourceType:"pdf",reference,provenance,content:"",contentHash});
+  if(document.duplicate&&document.processingStatus==="processed")return {...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
+  if(document.duplicate&&document.processingStatus==="processing")return {...document,chunkCount:0,duplicate:true};
+  try {
+    const extracted=await (options.pdfExtractor??extractPdfPages)(file);
+    const pageSummaries=extracted.pages.map((page)=>({pageNumber:page.pageNumber,extractedCharacters:page.text.length,hasText:page.text.length>0}));
+    const finalProvenance={...(input.provenance??{}),extraction:{method:"pdfjs-page-text-v1",status:"processed",pageCount:extracted.pageCount,pages:pageSummaries}};
+    await updateSourceExtractedContent(document.id,{content:extracted.text,provenance:finalProvenance});
+    const chunks=extracted.pages.flatMap((page)=>{
+      if(!page.text) return [];
+      return chunkText(document.id,contentHash,page.text).map((chunk)=>({...chunk,order:0,metadata:{...chunk.metadata,pageNumber:page.pageNumber}}));
+    });
+    // Keep a single stable document order while maintaining each chunk's original PDF page.
+    chunks.forEach((chunk,index)=>{chunk.order=index;chunk.id=stableChunkId(document.id,contentHash,index,`${chunk.metadata.pageNumber}\0${chunk.text}`);});
+    if(!chunks.length)throw new AppError("No usable text could be extracted from this PDF.",422,"PDF_NO_EXTRACTABLE_TEXT");
+    const provider=options.embeddingProvider??createEmbeddingProvider();
+    const vectors=await provider.embed(chunks.map((chunk)=>chunk.text));
+    if(vectors.length!==chunks.length||vectors.some((vector)=>!vector.length||vector.some((value)=>!Number.isFinite(value))))throw new AppError("Embedding provider returned missing or invalid vectors",503,"EMBEDDING_INVALID_RESPONSE");
+    const dimensions=vectors[0].length;
+    if(vectors.some((vector)=>vector.length!==dimensions))throw new AppError("Embedding provider returned inconsistent vector dimensions",503,"EMBEDDING_INVALID_RESPONSE");
+    const processed=await finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider);
+    return {...processed,chunkCount:chunks.length,duplicate:document.duplicate};
+  }catch(error){
+    const sourceStatus=error instanceof AppError&&error.code==="PDF_NO_EXTRACTABLE_TEXT"?"scanned_or_no_extractable_text":"failed";
+    const safeMessage=error instanceof AppError?error.message:"PDF extraction failed. Check the file and try again.";
+    await failSourceProcessing(document.id,safeMessage,sourceStatus);
+    const saved=await findSource(userId,document.id);
+    return {...saved,chunkCount:0,duplicate:document.duplicate};
   }
 }
 
@@ -76,7 +119,7 @@ export function rankRetrievedChunks(searchText:string,embedding:number[],candida
     const lexical=queryTokens.size?[...queryTokens].filter((token)=>chunkTokens.has(token)).length/queryTokens.size:0;
     const semantic=Math.max(0,cosineSimilarity(embedding,chunk.embedding));
     return {...chunk,relevance:Number((semantic*.55+lexical*.45).toFixed(4))};
-  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId)).slice(0,limit).map(({embedding,...chunk})=>chunk);
+  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId)).slice(0,limit).map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber)}));
 }
 
 export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {

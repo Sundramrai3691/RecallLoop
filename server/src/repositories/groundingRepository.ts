@@ -11,9 +11,18 @@ function mapDocument(row:any):GroundingDocument { return {id:row.id,userId:row.u
 export async function beginSourceProcessing(input:{userId:string;title:string;sourceType:string;reference:string;provenance:Record<string,unknown>;content:string;contentHash:string}) {
   const result=await query<any>(`INSERT INTO grounding_sources(user_id,title,source_type,reference,provenance,content,content_hash,processing_status,processing_error)
     VALUES($1,$2,$3,$4,$5,$6,$7,'processing',NULL)
-    ON CONFLICT(user_id,content_hash) DO UPDATE SET title=EXCLUDED.title,source_type=EXCLUDED.source_type,reference=EXCLUDED.reference,provenance=EXCLUDED.provenance,content=EXCLUDED.content,processing_status='processing',processing_error=NULL,updated_at=now()
+    ON CONFLICT(user_id,content_hash) DO UPDATE SET title=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.title ELSE EXCLUDED.title END,source_type=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.source_type ELSE EXCLUDED.source_type END,reference=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.reference ELSE EXCLUDED.reference END,provenance=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.provenance ELSE EXCLUDED.provenance END,content=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.content ELSE EXCLUDED.content END,processing_status=CASE WHEN grounding_sources.processing_status='processed' THEN 'processed' ELSE 'processing' END,processing_error=CASE WHEN grounding_sources.processing_status='processed' THEN grounding_sources.processing_error ELSE NULL END,updated_at=now()
     RETURNING *, (xmax=0) AS inserted`,[input.userId,input.title,input.sourceType,input.reference,JSON.stringify(input.provenance),input.content,input.contentHash]);
   return {...mapDocument(result.rows[0]),duplicate:!result.rows[0].inserted};
+}
+
+export async function updateSourceExtractedContent(sourceId:string,input:{content:string;provenance:Record<string,unknown>}) {
+  await query(`UPDATE grounding_sources SET content=$2,provenance=$3,updated_at=now() WHERE id=$1`,[sourceId,input.content,JSON.stringify(input.provenance)]);
+}
+
+export async function countSourceChunks(sourceId:string):Promise<number> {
+  const result=await query<{count:string}>(`SELECT count(*)::int AS count FROM grounding_chunks WHERE source_id=$1`,[sourceId]);
+  return Number(result.rows[0]?.count??0);
 }
 
 export async function finishSourceProcessing(sourceId:string,chunks:Array<TextChunk & {embedding:number[]}>,provider:EmbeddingProvider) {
@@ -27,8 +36,8 @@ export async function finishSourceProcessing(sourceId:string,chunks:Array<TextCh
   return mapDocument(result.rows[0]);
 }
 
-export async function failSourceProcessing(sourceId:string,error:string) {
-  await query(`UPDATE grounding_sources SET processing_status='failed',processing_error=$2,updated_at=now() WHERE id=$1`,[sourceId,error.slice(0,1000)]);
+export async function failSourceProcessing(sourceId:string,error:string,status="failed") {
+  await query(`UPDATE grounding_sources SET processing_status=$3,processing_error=$2,updated_at=now() WHERE id=$1`,[sourceId,error.slice(0,1000),status]);
 }
 
 export async function findSource(userId:string,sourceId:string) {
@@ -42,7 +51,7 @@ export async function listSources(userId:string) {
 }
 
 export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=40):Promise<Array<GroundingSource & {embedding:number[]}>> {
-  const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
+  const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
     FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
     WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3
     ORDER BY s.created_at DESC,c.chunk_order LIMIT $4`,[userId,providerName,queryEmbedding.length,5000]);
@@ -67,7 +76,7 @@ export async function updateRemediation(remediationId:string,input:{status:strin
 }
 
 export async function getRemediation(userId:string,remediationId:string) {
-  const result=await query<any>(`SELECT r.*,c.name AS "conceptName",json_agg(json_build_object('chunkId',gc.id,'sourceId',s.id,'title',s.title,'sourceType',s.source_type,'reference',s.reference,'provenance',s.provenance,'relevance',grc.relevance,'chunkOrder',gc.chunk_order,'text',gc.content) ORDER BY grc.rank) FILTER(WHERE gc.id IS NOT NULL) AS sources
+  const result=await query<any>(`SELECT r.*,c.name AS "conceptName",json_agg(json_build_object('chunkId',gc.id,'sourceId',s.id,'title',s.title,'sourceType',s.source_type,'reference',s.reference,'provenance',s.provenance,'pageNumber',gc.metadata->>'pageNumber','relevance',grc.relevance,'chunkOrder',gc.chunk_order,'text',gc.content) ORDER BY grc.rank) FILTER(WHERE gc.id IS NOT NULL) AS sources
     FROM grounded_remediations r JOIN personal_concepts c ON c.id=r.concept_id AND c.user_id=r.user_id
     LEFT JOIN grounded_remediation_chunks grc ON grc.remediation_id=r.id LEFT JOIN grounding_chunks gc ON gc.id=grc.chunk_id LEFT JOIN grounding_sources s ON s.id=gc.source_id
     WHERE r.id=$1 AND r.user_id=$2 GROUP BY r.id,c.name`,[remediationId,userId]);

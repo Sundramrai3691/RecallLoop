@@ -2,13 +2,39 @@
 
 Status is based on checked-in source and commands run as of 2026-10-29. This is not a claim about any deployed environment or production usage.
 
+## 2026-10-29 PDF ingestion final verification
+
+The configured target is `127.0.0.1:5432/recallloop` as role `recallloop`; a read-only query confirmed the connected database and role. Migration `025_pdf_grounding_sources.sql` is present and applied. The grounding constraints admit `pdf` sources and the `scanned_or_no_extractable_text` state. Browser and integration test users were cleaned up; the final check found zero remaining `e2e-core` / `pdf-import` test users.
+
+| Area | Current result | Evidence |
+|---|---|---|
+| PDF extraction and provenance | IMPLEMENTED / TESTED | Authenticated raw PDF upload, PDF.js text extraction, per-page chunks/citations, source-byte hashing, deduplicated retry, and explicit malformed/encrypted/oversized/scanned states. Limits: 10 MiB, 100 pages, 250,000 extracted characters. OCR and DOCX are not implemented. |
+| Unit tests | TESTED | `npm.cmd exec -w server -- vitest run --configLoader runner`: 30 files, 144 passed, 4 opt-in provider tests skipped. Includes PDF extraction and unsupported upload encoding regressions. |
+| PostgreSQL integration | TESTED | `npm.cmd run test:integration -w server`: 19/19 passed against the configured database, including migration replay, PDF page provenance, duplicate retry, ownership, and scanned/malformed persistence. |
+| Build and configuration | TESTED | `npm.cmd run build -w server` passed. Client typecheck and production Vite build passed within `npm.cmd run test:e2e:core`; the minified client chunk is 565.66 kB and exceeds Vite's 500 kB advisory threshold. `npm.cmd run config:check -w server` passed using a temporary command-local Node `os.userInfo()` fallback for this Windows sandbox's `uv_os_get_passwd ENOMEM`; no application or global settings were changed. |
+| Browser learner journey | BROWSER VALIDATED | `npm.cmd run test:e2e` passed in Edge against production preview and local PostgreSQL after becoming an alias for the existing core Playwright test: register, TXT/Markdown/PDF ingestion with page citations, scanned/malformed PDF feedback, DBMS assessment, grounded diagnosis/remediation, distinct verification, readiness and reload persistence, responsive widths, and keyboard disclosure. Firefox remains a separate target and is host-blocked by the unsupported installed version. |
+| Dependency advisories | FOLLOW-UP REQUIRED | Compatible audit fixes were applied. Remaining Zod (high) and Vitest dependency advisories require breaking major upgrades; those upgrades were not included in this ingestion milestone. |
+
+The earlier same-day resource-ingestion snapshot immediately below is historical and superseded by this PDF update.
+
+## 2026-10-29 Firefox compatibility investigation and E2E routing
+
+| Check | Evidence and outcome |
+|---|---|
+| Executables and client | Legacy test explicitly selects `C:\Program Files\Mozilla Firefox\firefox.exe` (file version and `--version`: 103.0.2). Selenium is 4.25.0. The `geckodriver` npm wrapper started `%TEMP%\geckodriver.exe` 0.37.1. No Firefox or geckodriver executable is on `PATH`; no second Firefox installation or installed Firefox ESR was found in the checked locations. |
+| Compatibility | Mozilla's support table requires Firefox 115 ESR minimum for geckodriver 0.37.1. This machine's 103.0.2 is outside that range. Firefox 115+ is not installed. WindowsApps exposes `winget.exe`, but invoking it returns “The file cannot be accessed by the system”; downloading supported geckodriver 0.33.0 for Firefox 103 also failed with network `EACCES`. No external installation was performed. |
+| Capabilities and navigation | Selenium 4.25.0 created a Firefox session and negotiated `browserName=firefox`, `browserVersion=103.0.2`; `moz:debuggerAddress` was omitted. A bounded standalone navigation to a local `http://127.0.0.1:<ephemeral-port>/` page timed out at 7 seconds. Firefox logged `InstallerPrefs.jsm` / `nsIWindowsRegKey.create` `NS_ERROR_FAILURE`; this is an additional sandbox warning, so the unsupported version pairing is confirmed but cannot be isolated as the sole cause without a supported browser install. No user browser was terminated. |
+| Runner routing | Root `npm.cmd run test:e2e` aliases to the existing production-preview Edge/Playwright core journey and passed after the routing change. The legacy Selenium suite remains available as `npm.cmd run test:e2e:firefox` and preflights browser version, binary path, and pinned geckodriver 0.37.1 before starting services. On this host it exits promptly with the unsupported 103.0.2 / 115 ESR minimum explanation. This is a diagnostic/default-runner improvement, not a claim that Firefox navigation is fixed. |
+
+The next compatible Firefox validation requires installing Firefox 115 ESR or newer through an available managed installation route. The stable Edge core E2E target remains the local browser regression path.
+
 ## 2026-10-29 Firefox diagnosis, Edge core-loop pilot, and resource ingestion
 
 The application configuration explicitly targets loopback PostgreSQL `127.0.0.1:5432/recallloop` as role `recallloop`; no credentials are included here. Additive migration `024_grounding_web_article_sources.sql` was applied to that database. Integration and browser-created disposable users were deleted on cleanup; no persistent learner evidence was modified.
 
 | Area | Current result | Evidence |
 |---|---|---|
-| Firefox WebDriver | BLOCKED ON HOST | Firefox 103.0.2 with geckodriver 0.37.1 completes the WebDriver session handshake, then stalls on navigation to a local static HTML page after the local server logs the request. This isolates the failure below RecallLoop; no usable Firefox page/title/console result was produced. The legacy `npm.cmd run test:e2e` suite remains unverified because its Firefox journey cannot proceed. |
+| Firefox WebDriver | BLOCKED ON HOST | Firefox 103.0.2 with geckodriver 0.37.1 completes the WebDriver session handshake, then stalls on navigation to a local static HTML page. At the time of this historical snapshot the root E2E command invoked Firefox; it has since been routed to Edge/Playwright, with Firefox retained at `npm.cmd run test:e2e:firefox`. |
 | Edge Playwright core learner loop | BROWSER VALIDATED | `npm.cmd run test:e2e:core` passed through UI registration, TXT/Markdown source ingestion, loopback URL rejection without source creation, video transcript unavailable state, DBMS Index selection, five deliberately weak assessment answers, persisted diagnosis, grounded remediation, a distinct sixth immutable revision for verification, improved persisted outcome, readiness with both assessed and unassessed points, reload, responsive dashboard at 390/1440 px, and keyboard-opened source disclosure. The isolated user and related evidence were removed by the test. External Google Fonts were fulfilled with empty test CSS because network access is unavailable; API, client, database, and learner screens were real. |
 | Article ingestion | IMPLEMENTED / TESTED | Public HTML article support now validates standard-port HTTP(S), rejects local/private/reserved destinations, rechecks redirects, pins a checked public IPv4 address, enforces 8-second and 2 MB limits, extracts readable main/article content and heading provenance, and feeds the existing source hash/chunk/embed/retrieval path. Unit tests cover URL/redirect/content extraction and a PostgreSQL test verifies persisted article records through the same service using a controlled extractor fixture. A real external site fetch was not browser-tested because outbound access is denied. |
 | Text/document/video resource paths | PARTIAL | Pasted text plus UTF-8 TXT/Markdown upload use the existing grounding pipeline. PDF/OCR, DOCX, and video transcript retrieval are not implemented; the UI says so and offers paste/upload alternatives. No background queue exists in this architecture; extraction and embedding remain synchronous. |
@@ -160,9 +186,19 @@ npm run dev
 npm run test:e2e
 ```
 
-The E2E command launches isolated API and Vite child processes with deterministic mock providers on ports 3101 and 5174, and uses a uniquely named learner in the local `recallloop` database, which it deletes after the scenario. It requires Firefox, Microsoft Edge for Playwright exact-viewport checks, and an already migrated/seeded local database; it does not reuse the developer API/client processes.
+`npm run test:e2e` is the legacy Firefox Selenium suite. `npm run test:e2e:core` builds the client, starts an isolated deterministic API and production Vite preview, and runs the focused Edge/Playwright core learner journey against the configured local database. Both use disposable uniquely named accounts and clean them up; the focused suite checks responsive and keyboard behavior.
 
 The compose file defines PostgreSQL 16 on port 5432. If Docker is unavailable, provide a PostgreSQL instance matching `DATABASE_URL` in `.env`. Apply migrations before the first API run; startup itself only runs `SELECT 1`.
+
+## 2026-10-29 PDF resource ingestion and page provenance
+
+- Added authenticated page-aware PDF ingestion through the existing grounding source/chunk/retrieval/remediation path. Migration `025_pdf_grounding_sources.sql` is applied to the explicitly configured loopback database `127.0.0.1:5432/recallloop` as role `recallloop`; a read-only check confirmed both PDF source and no-extractable-text constraints. Integration/E2E test users remaining after cleanup: 0. No existing learner evidence was changed.
+- Upload/extraction limits: 10 MiB upload, 100 pages, 250,000 extracted characters. Content signature is checked; password-protected and malformed files fail with safe messages; parsed documents with no usable text persist as `scanned_or_no_extractable_text`. OCR, DOCX, background jobs, and raw-binary retention are not supported. Page number, page text, per-page availability summary, source identity, and byte hash remain linked.
+- PDF.js `6.4.299` is the parser. Because it supports Node `>=22.13.0` or `>=24`, root/server engines now require Node `>=22.13.0`; local Node `24.18.0` passed. `docs/adr/013-pdf-ingestion-and-runtime.md` records this runtime and provenance decision.
+- `npm.cmd exec -w server -- vitest run --configLoader runner`: 29 files, 142 passed, 4 opt-in live tests skipped. `npm.cmd run test:integration -w server`: 19/19 passed, including migration replay, page persistence, duplicate retries, owner isolation, malformed and scanned outcomes. `npm.cmd run build`: server/client passed; Vite reports the existing large client chunk (565.66 kB).
+- `npm.cmd run test:e2e:core`: passed in Edge against the configured PostgreSQL database using the production client preview. It registered an isolated learner, uploaded text/Markdown and a three-page PDF with a blank page, verified page 1/3 storage and a page-cited remediation passage, displayed scanned-like and malformed PDF outcomes, then completed the existing weak-answer → diagnosis → grounded remediation → distinct revision verification → persisted readiness/reload flow. Responsive dashboard checks at 390/1440 px and keyboard disclosure passed. Firefox Selenium was not rerun; its previously verified local navigation stall is unchanged and out of scope.
+- `npm.cmd audit fix` updated non-breaking request/parser and Vite dependencies. The audit still reports Zod high severity and Vitest/@vitest-mocker/tinypool moderate/critical development advisories that require breaking major-version upgrades; production readiness therefore remains gated on that separate dependency migration. A Vite dev-server optimizer failure also motivated running this core E2E against freshly built production assets.
+- Next highest-value milestone: upgrade Zod and Vitest safely, then add DOCX only if it can preserve the same ownership, extraction, and provenance guarantees. OCR remains a separate future decision.
 
 ## 2026-10-11 — Core learning pipeline repair, Phase 1
 

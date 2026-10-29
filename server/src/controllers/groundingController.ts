@@ -1,9 +1,20 @@
 import type { NextFunction, Response } from "express";
 import type { AuthenticatedRequest } from "../lib/auth.js";
-import { createGroundedRemediation, createVerification, getGroundedRemediation, getGroundingSources, getGroundingSource, ingestGroundingSource } from "../services/grounding/groundedRemediationService.js";
+import { createGroundedRemediation, createVerification, getGroundedRemediation, getGroundingSources, getGroundingSource, ingestGroundingPdf, ingestGroundingSource } from "../services/grounding/groundedRemediationService.js";
 import { serializeAttempt } from "../lib/serialize.js";
+import { AppError } from "../utils/errors.js";
 
 export async function ingestSourceHandler(req:AuthenticatedRequest,res:Response,next:NextFunction){try{const result=await ingestGroundingSource(req.user!.id,req.body??{});res.status(result.duplicate?200:201).json({source:result});}catch(error){next(error);}}
+export async function ingestPdfHandler(req:AuthenticatedRequest,res:Response,next:NextFunction){try{
+  if(!Buffer.isBuffer(req.body))throw new AppError("Upload a PDF using the supported PDF file control.",400,"PDF_CONTENT_TYPE_REQUIRED");
+  const title=req.get("x-resource-title")??"";
+  const reference=req.get("x-resource-reference")??"";
+  let provenance:Record<string,unknown>={submittedBy:"learner"};
+  const rawProvenance=req.get("x-resource-provenance");
+  if(rawProvenance){try{const value=JSON.parse(rawProvenance);if(!value||typeof value!=="object"||Array.isArray(value))throw new Error();provenance={...provenance,...value};}catch{throw new AppError("Resource attribution details are invalid.",400,"PDF_PROVENANCE_INVALID");}}
+  const result=await ingestGroundingPdf(req.user!.id,{title,reference,provenance,file:req.body});
+  res.status(result.duplicate?200:201).json({source:result});
+}catch(error){next(error);}}
 export async function listSourcesHandler(req:AuthenticatedRequest,res:Response,next:NextFunction){try{res.json({sources:await getGroundingSources(req.user!.id)});}catch(error){next(error);}}
 export async function getSourceHandler(req:AuthenticatedRequest,res:Response,next:NextFunction){try{res.json({source:await getGroundingSource(req.user!.id,req.params.id)});}catch(error){next(error);}}
 export async function createRemediationHandler(req:AuthenticatedRequest,res:Response,next:NextFunction){try{res.json({remediation:await createGroundedRemediation(req.user!.id,req.params.attemptId)});}catch(error){next(error);}}

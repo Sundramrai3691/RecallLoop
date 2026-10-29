@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
 import { mkdir, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -13,6 +14,8 @@ import { start as startGeckodriver } from "geckodriver";
 import { chromium } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
+const require = createRequire(import.meta.url);
+const seleniumVersion = require("selenium-webdriver/package.json").version;
 dotenv.config({ path: path.join(root, ".env") });
 
 async function findFreePort() {
@@ -36,7 +39,24 @@ const email = `e2e-roadmap-${Date.now()}-${Math.random().toString(16).slice(2)}@
 const password = `E2e-${Math.random().toString(36).slice(2)}-${Date.now()}`;
 let foreignAccountEmail;
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-const options = new firefox.Options().setBinary("C:\\Program Files\\Mozilla Firefox\\firefox.exe").addArguments("-headless");
+const geckodriverVersion = "0.37.1";
+const firefoxBinary = process.env.RECALLLOOP_FIREFOX_BINARY ?? "C:\\Program Files\\Mozilla Firefox\\firefox.exe";
+const firefoxVersionResult = spawnSync("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "(Get-Item -LiteralPath $env:RECALLLOOP_FIREFOX_BINARY).VersionInfo.FileVersion"], {
+  encoding: "utf8",
+  timeout: 15000,
+  windowsHide: true,
+  env: { ...process.env, RECALLLOOP_FIREFOX_BINARY: firefoxBinary },
+});
+if (firefoxVersionResult.error || firefoxVersionResult.status !== 0) {
+  throw new Error(`Could not inspect Firefox executable metadata at ${firefoxBinary}: ${firefoxVersionResult.error?.message ?? firefoxVersionResult.stderr}`);
+}
+const firefoxVersion = firefoxVersionResult.stdout.match(/(\d+)\.(\d+)(?:\.(\d+))?/);
+if (!firefoxVersion) throw new Error(`Could not parse Firefox executable version at ${firefoxBinary}: ${firefoxVersionResult.stdout.trim()}`);
+const firefoxVersionLabel = `${firefoxVersion[1]}.${firefoxVersion[2]}${firefoxVersion[3] ? `.${firefoxVersion[3]}` : ""}`;
+if (Number(firefoxVersion[1]) < 115) {
+  throw new Error(`Firefox ${firefoxVersionLabel} at ${firefoxBinary} is unsupported by geckodriver ${geckodriverVersion}; install Firefox 115 ESR or newer, or use npm run test:e2e for the Edge/Playwright default.`);
+}
+const options = new firefox.Options().setBinary(firefoxBinary).addArguments("-headless");
 const apiPort = await findFreePort();
 const clientPort = await findFreePort();
 const driverPort = await findFreePort();
@@ -125,9 +145,13 @@ try {
   ], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
   await waitForUrl(clientUrl, clientProcess);
 
-  geckodriver = await startGeckodriver({ host: "127.0.0.1", port: driverPort });
+  console.log(`Firefox binary: ${firefoxBinary} (${firefoxVersionLabel}); geckodriver: ${geckodriverVersion}; Selenium: ${seleniumVersion}`);
+  geckodriver = await startGeckodriver({ host: "127.0.0.1", port: driverPort, geckoDriverVersion: geckodriverVersion });
   await waitForDriver(driverPort);
   driver = await new Builder().usingServer(`http://127.0.0.1:${driverPort}`).forBrowser("firefox").setFirefoxOptions(options).build();
+  const firefoxCapabilities = await driver.getCapabilities();
+  console.log(`Firefox session browserVersion=${firefoxCapabilities.get("browserVersion")}; moz:debuggerAddress=${firefoxCapabilities.get("moz:debuggerAddress") ?? "omitted"}`);
+  assert.notEqual(firefoxCapabilities.get("moz:debuggerAddress"), true, "This test does not use Selenium's Firefox CDP debugger connection");
   await driver.manage().setTimeouts({ implicit: 0, pageLoad: 45000, script: 10000 });
   console.log("PASS Firefox WebDriver session handshake");
   const registration = await fetch(`${apiUrl}/api/auth/register`, {
@@ -139,6 +163,7 @@ try {
   assert.equal(registration.status, 201, `Could not create the disposable learner through the application API: ${JSON.stringify(registeredLearner)}`);
   const token = registeredLearner.token;
   console.log("PASS disposable learner registration");
+  console.log(`Firefox first application navigation: ${clientUrl}`);
   await driver.get(clientUrl);
   await driver.executeScript("localStorage.setItem('recallloop_token', arguments[0])", token);
 

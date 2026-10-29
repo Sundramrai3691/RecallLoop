@@ -13,15 +13,16 @@
     "dev:client": "npm run dev -w client",
     "build": "npm run build -w server && npm run build -w client",
     "test": "npm run test -w server",
-    "test:e2e": "node client/tests/e2e/knowledge-roadmap.mjs",
-    "test:e2e:core": "node client/tests/e2e/core-loop.playwright.mjs",
+    "test:e2e": "npm run test:e2e:core",
+    "test:e2e:core": "npm run build -w client && node client/tests/e2e/core-loop.playwright.mjs",
+    "test:e2e:firefox": "node client/tests/e2e/knowledge-roadmap.mjs",
     "test:assessment-loop": "node scripts/run-isolated-assessment-loop.mjs",
     "question-bank:activate": "node scripts/activate-question-bank-review.mjs",
     "question-bank:coverage": "npm run question-bank:coverage -w server",
     "start": "npm run start -w server"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22.13.0"
   },
   "devDependencies": {
     "concurrently": "^9.1.2",

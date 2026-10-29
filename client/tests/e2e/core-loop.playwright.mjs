@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
+import { tmpdir } from "node:os";
 import path from "node:path";
+import { unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Pool } from "pg";
@@ -20,6 +22,7 @@ const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const processes = [];
 let browser;
 let userId;
+let userInfoPreload;
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -55,6 +58,26 @@ async function authenticatedApi(token, url, init = {}) {
   assert(response.ok, `${init.method ?? "GET"} ${url} failed: ${JSON.stringify(body)}`);
   return body;
 }
+function pdfFixture(pageTexts) {
+  const objects = [];
+  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
+  const pageIds = pageTexts.map((_text, index) => 3 + index * 2);
+  objects[2] = `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
+  pageTexts.forEach((text, index) => {
+    const pageId = pageIds[index]; const contentId = pageId + 1;
+    objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${pageIds.length * 2 + 3} 0 R >> >> /Contents ${contentId} 0 R >>`;
+    const escaped = text.replace(/([\\()])/g, "\\$1");
+    const stream = text ? `BT /F1 12 Tf 72 720 Td (${escaped}) Tj ET` : "";
+    objects[contentId] = `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`;
+  });
+  objects[pageIds.length * 2 + 3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
+  const chunks = [Buffer.from("%PDF-1.7\n%----\n", "ascii")]; const offsets = [0]; let offset = chunks[0].length;
+  for (let id = 1; id < objects.length; id++) { offsets[id] = offset; const object = Buffer.from(`${id} 0 obj\n${objects[id]}\nendobj\n`, "ascii"); chunks.push(object); offset += object.length; }
+  const xrefOffset = offset; let xref = `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
+  for (let id = 1; id < objects.length; id++) xref += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+  xref += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  chunks.push(Buffer.from(xref, "ascii")); return Buffer.concat(chunks);
+}
 async function waitForAssessment(token, url, assessmentId, predicate) {
   const end = Date.now() + 10_000;
   while (Date.now() < end) {
@@ -69,9 +92,13 @@ try {
   const apiPort = await freePort(); const clientPort = await freePort();
   const apiUrl = `http://127.0.0.1:${apiPort}`; const clientUrl = `http://127.0.0.1:${clientPort}`;
   const childEnv = { ...process.env, PORT: String(apiPort), CLIENT_ORIGIN: clientUrl, LLM_PROVIDER: "mock", LLM_API_KEY: "", EMBEDDING_PROVIDER: "mock", EMBEDDING_API_KEY: "", REMEDIATION_PROVIDER: "mock" };
-  const apiProcess = start("mock-provider API", [path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"), childEnv);
+  userInfoPreload = path.join(tmpdir(), `recallloop-userinfo-${process.pid}.cjs`);
+  await writeFile(userInfoPreload, "const os=require('node:os');const original=os.userInfo;os.userInfo=()=>{try{return original()}catch{return {uid:-1,gid:-1,username:'local-user',homedir:os.homedir(),shell:''}}};", "ascii");
+  const preloadArgument = `--require=\"${userInfoPreload.replaceAll("\\", "/")}\"`;
+  const apiEnv = { ...childEnv, NODE_OPTIONS: [process.env.NODE_OPTIONS, preloadArgument].filter(Boolean).join(" ") };
+  const apiProcess = start("mock-provider API", [path.join(root, "node_modules/tsx/dist/cli.mjs"), "src/index.ts"], path.join(root, "server"), apiEnv);
   await waitFor(`${apiUrl}/api/health`, apiProcess);
-  const clientProcess = start("Vite client", [path.join(root, "node_modules/vite/bin/vite.js"), "--configLoader", "runner", "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort"], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
+  const clientProcess = start("Vite production preview", [path.join(root, "node_modules/vite/bin/vite.js"), "preview", "--configLoader", "runner", "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort"], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
   await waitFor(clientUrl, clientProcess);
   browser = await chromium.launch({ channel: "msedge", headless: true });
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
@@ -82,7 +109,8 @@ try {
   await page.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
 
   await page.goto(`${clientUrl}/register`, { waitUntil: "commit", timeout: 10_000 });
-  await page.locator("#name").waitFor({ timeout: 10_000 });
+  try { await page.locator("#name").waitFor({ timeout: 10_000 }); }
+  catch { throw new Error(`Register screen did not render (url=${page.url()}, title=${await page.title()}, body=${JSON.stringify((await page.locator("body").innerText()).slice(0,600))}, browserErrors=${JSON.stringify(browserErrors)})`); }
   await page.locator("#name").fill("RecallLoop Core Pilot");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);
@@ -120,8 +148,42 @@ try {
   await page.getByRole("button", { name: "Save learning material" }).click();
   await page.getByRole("status").filter({ hasText: "source was extracted" }).waitFor({ timeout: 10_000 });
   assert.equal((await authenticatedApi(token, `${apiUrl}/api/grounding/sources`)).sources.length, 2, "The TXT/Markdown upload should enter the existing grounding library");
-  await page.locator("#material-file").setInputFiles({ name: "unsupported.pdf", mimeType: "application/pdf", buffer: Buffer.from("%PDF-not-parsed", "utf8") });
-  await page.getByRole("alert").filter({ hasText: "PDF text extraction is not configured" }).waitFor({ timeout: 5000 });
+  await page.locator("#material-type").selectOption("pdf");
+  const pdfBuffer = pdfFixture([
+    "A composite B-tree index on tenant_id and created_at supports predicates on the leading tenant_id column and can also use created_at.",
+    "",
+    "A composite index generally cannot provide an efficient lookup when a query filters only by created_at. Indexes add write cost and storage.",
+  ]);
+  await page.locator("#material-file").setInputFiles({ name: "dbms-index-guide.pdf", mimeType: "application/pdf", buffer: pdfBuffer });
+  await page.getByRole("status").filter({ hasText: "dbms-index-guide.pdf" }).waitFor();
+  await page.getByRole("button", { name: "Upload PDF" }).click();
+  await page.waitForFunction(() => document.querySelector(".notice")?.textContent.includes("Extracted text from 3 PDF pages") || document.querySelector("[role='alert']")?.textContent, null, { timeout: 10_000 });
+  if (!(await page.locator(".notice").textContent().catch(() => ""))?.includes("Extracted text from 3 PDF pages")) {
+    const state = await page.evaluate(() => ({ alert: document.querySelector("[role='alert']")?.textContent, sourceRows: [...document.querySelectorAll(".source-row")].map((row) => row.textContent) }));
+    throw new Error(`PDF upload did not complete successfully: ${JSON.stringify(state)}`);
+  }
+  const pdfSources = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
+  assert.equal(pdfSources.sources.length, 3);
+  const pdfSource = pdfSources.sources.find((source) => source.sourceType === "pdf");
+  assert(pdfSource && pdfSource.processingStatus === "processed");
+  const pdfDetails = (await authenticatedApi(token, `${apiUrl}/api/grounding/sources/${pdfSource.id}`)).source;
+  assert.deepEqual(pdfDetails.provenance.extraction.pages.map((item) => [item.pageNumber, item.hasText]), [[1, true], [2, false], [3, true]]);
+  const pageChunks = await pool.query("SELECT metadata->>'pageNumber' AS page_number FROM grounding_chunks WHERE source_id=$1 ORDER BY chunk_order", [pdfSource.id]);
+  assert.deepEqual(pageChunks.rows.map((row) => Number(row.page_number)), [1, 3]);
+
+  await page.locator("#material-type").selectOption("pdf");
+  await page.locator("#material-file").setInputFiles({ name: "scanned.pdf", mimeType: "application/pdf", buffer: pdfFixture(["", ""]) });
+  await page.getByRole("button", { name: "Upload PDF" }).click();
+  await page.getByRole("alert").filter({ hasText: "No usable text could be extracted" }).waitFor({ timeout: 10_000 });
+  const afterScanned = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
+  assert(afterScanned.sources.some((source) => source.processingStatus === "scanned_or_no_extractable_text"), "No-text PDFs must be persisted as unavailable, never ready");
+
+  await page.locator("#material-type").selectOption("pdf");
+  await page.locator("#material-file").setInputFiles({ name: "not-a-pdf.pdf", mimeType: "application/pdf", buffer: Buffer.from("This is not a PDF", "utf8") });
+  await page.getByRole("button", { name: "Upload PDF" }).click();
+  await page.getByRole("alert").filter({ hasText: "not a valid PDF" }).waitFor({ timeout: 10_000 });
+  const afterMalformed = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
+  assert(afterMalformed.sources.some((source) => source.processingStatus === "failed" && source.title === "not-a-pdf.pdf"), "Malformed PDF uploads must retain a truthful failed extraction status");
 
   await page.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
   await page.locator("#knowledge-subject").waitFor();
@@ -177,6 +239,8 @@ try {
   const remediation = remediationResult.remediation;
   assert.equal(remediation.status, "ready");
   assert(remediation.sources.length > 0, "Remediation must be grounded in the learner's persisted source");
+  const pdfPassage = remediation.sources.find((source) => source.sourceType === "pdf");
+  assert(pdfPassage && [1, 3].includes(Number(pdfPassage.pageNumber)), "A PDF-grounded remediation excerpt must retain its original one-based page reference");
   await page.goto(`${clientUrl}/remediations/${remediation.id}`, { waitUntil: "domcontentloaded" });
   await page.locator(".remediation-explanation").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: /Check what you remember/ }).click();
@@ -227,7 +291,7 @@ try {
   assert(evidence.rows[0].attempts >= originalAttemptIds.length + 1 && evidence.rows[0].submitted >= originalAttemptIds.length + 1, "The full journey's attempts must remain persisted for the isolated learner");
   assert(evidence.rows[0].revisions >= 2, "Persisted assessment and verification evidence must reference distinct revisions");
   assert.deepEqual(browserErrors, [], `Browser JavaScript errors: ${browserErrors.join("; ")}`);
-  console.log(`PASS Edge Playwright core loop: register → ingest text/Markdown → DBMS assessment → diagnosis → grounded remediation → distinct verification → persisted readiness/reload; responsive dashboard and keyboard disclosure passed (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
+  console.log(`PASS Edge Playwright core loop: register, text/Markdown/PDF with page citations, DBMS assessment, diagnosis, grounded remediation, distinct verification, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
 } catch (error) {
   for (const entry of processes) console.error(`${entry.name} output: ${entry.output}`);
   throw error;
@@ -235,5 +299,6 @@ try {
   await browser?.close().catch(() => {});
   if (userId) await pool.query("DELETE FROM app_users WHERE id=$1", [userId]).catch((error) => console.error("Could not clean up isolated pilot learner:", error.message));
   await Promise.all(processes.map(stop));
+  if (userInfoPreload) await unlink(userInfoPreload).catch(() => {});
   await pool.end();
 }

@@ -22,12 +22,12 @@ import {
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const token = localStorage.getItem("recallloop_token");
   const res = await fetch(path, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(options?.headers ?? {}),
     },
-    ...options,
   });
 
   let body: unknown = null;
@@ -197,7 +197,8 @@ export const api = {
 
   learningPack(conceptId:string,availableMinutes:number,goalId?:string){const params=new URLSearchParams({conceptId,availableMinutes:String(availableMinutes)});if(goalId)params.set("goalId",goalId);return request<{pack:{conceptId:string;conceptName:string;availableMinutes:number;estimatedTotalMinutes:number;remainingMinutes:number;items:Array<{kind:string;title:string;minutes:number;reason:string;url?:string}>}}>(`/api/resources/learning-pack?${params.toString()}`);},
 
-  ingestGroundingSource(input:{title?:string;text?:string;sourceType:"text"|"markdown"|"web_article";reference?:string;url?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;content?:string;contentHash:string;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources',{method:'POST',body:JSON.stringify(input)});},
+  ingestGroundingSource(input:{title?:string;text?:string;sourceType:"text"|"markdown"|"web_article";reference?:string;url?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;content?:string;contentHash:string;provenance?:Record<string,unknown>;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources',{method:'POST',body:JSON.stringify(input)});},
+  ingestGroundingPdf(file:File,input:{title:string;reference?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;content?:string;contentHash:string;provenance:Record<string,unknown>;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources/pdf',{method:'POST',headers:{'Content-Type':'application/pdf','X-Resource-Title':input.title,'X-Resource-Reference':input.reference??'','X-Resource-Provenance':JSON.stringify(input.provenance??{})},body:file});},
   listGroundingSources(){return request<{sources:Array<{id:string;title:string;sourceType:string;reference:string;provenance:Record<string,unknown>;contentHash:string;processingStatus:string;processingError:string|null;createdAt:string;updatedAt:string;chunkCount:number}>}>('/api/grounding/sources');},
   createRemediation(attemptId:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/from-attempt/${attemptId}`,{method:'POST'});},
   getRemediation(id:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/${id}`);},

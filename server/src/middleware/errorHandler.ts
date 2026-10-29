@@ -3,7 +3,7 @@ import { AppError } from "../utils/errors.js";
 
 export function errorHandler(
   err: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -14,6 +14,22 @@ export function errorHandler(
       code: err.code,
       ...(err.retryable !== undefined ? { retryable: err.retryable } : {}),
       ...(err.retryAfterSeconds !== undefined ? { retryAfterSeconds: err.retryAfterSeconds } : {}),
+    });
+    return;
+  }
+
+  const requestError = err as { status?: number; type?: string };
+  if (requestError.type === "entity.too.large" || requestError.status === 413) {
+    const isPdfUpload = req.path === "/api/grounding/sources/pdf";
+    res.status(413).json(isPdfUpload
+      ? { error: "This upload exceeds the 10 MB PDF limit.", code: "PDF_TOO_LARGE" }
+      : { error: "The request body is too large.", code: "PAYLOAD_TOO_LARGE" });
+    return;
+  }
+  if (requestError.type === "encoding.unsupported" && req.path === "/api/grounding/sources/pdf") {
+    res.status(415).json({
+      error: "Send the PDF as an uncompressed application/pdf body.",
+      code: "PDF_ENCODING_UNSUPPORTED",
     });
     return;
   }

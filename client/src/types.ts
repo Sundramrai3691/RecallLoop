@@ -156,6 +156,7 @@ export interface GroundedRemediationSource {
   provenance: Record<string, unknown>;
   relevance: number;
   chunkOrder: number;
+  pageNumber?: number | null;
   text: string;
 }
 

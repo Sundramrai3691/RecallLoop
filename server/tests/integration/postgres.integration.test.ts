@@ -12,7 +12,8 @@ import { recommendResources } from "../../src/services/resources/resourceRecomme
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
 import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
-import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
+import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
+import { makePdf } from "../../src/services/grounding/pdfExtractorFixtures.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
 import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
 import { getRoleRoadmap } from "../../src/services/knowledge/knowledgeService.js";
@@ -735,6 +736,47 @@ describe("PostgreSQL runtime integration", () => {
       expect(persisted.rows[0].content_hash).toBe(source.contentHash);
       expect(persisted.rows[0].processing_status).toBe("processed");
       await expect(getGroundingSource(randomUUID(),source.id)).rejects.toThrow("Source not found");
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("persists PDF page provenance, deduplicates successful retries, and records scanned PDFs without making them ready",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','PDF Import Test') RETURNING id`,[`pdf-import-${randomUUID()}@test.local`])).rows[0].id;
+    const embedCalls=vi.fn(async(texts:string[])=>texts.map(()=>[1,0,0]));
+    const embeddingProvider={name:"pdf-test-embedder",dimensions:3,embed:embedCalls};
+    try{
+      const file=makePdf([
+        "A composite B-tree index on tenant_id and created_at supports predicates on its leading tenant_id column.",
+        "",
+        "The composite index generally does not provide an efficient lookup when a query filters only by created_at.",
+      ]);
+      const source=await ingestGroundingPdf(userId,{title:"Indexing guide.pdf",reference:"Indexing guide.pdf",provenance:{attribution:"Learner-provided document"},file},{embeddingProvider});
+      expect(source.sourceType).toBe("pdf");
+      expect(source.processingStatus).toBe("processed");
+      expect(source.content).toContain("[Page 1]");
+      expect(source.content).toContain("[Page 3]");
+      expect(source.provenance.extraction).toMatchObject({method:"pdfjs-page-text-v1",status:"processed",pageCount:3,pages:[{pageNumber:1,hasText:true},{pageNumber:2,hasText:false},{pageNumber:3,hasText:true}]});
+      const persistedChunks=await postgres.query<any>(`SELECT metadata->>'pageNumber' AS page_number,content FROM grounding_chunks WHERE source_id=$1 ORDER BY chunk_order`,[source.id]);
+      expect(persistedChunks.rows.map((row:any)=>Number(row.page_number))).toEqual([1,3]);
+      expect(persistedChunks.rows[0].content).toContain("tenant_id");
+      const callsAfterFirst=embedCalls.mock.calls.length;
+      const repeated=await ingestGroundingPdf(userId,{title:"Same bytes, renamed.pdf",file},{embeddingProvider});
+      expect(repeated.id).toBe(source.id);
+      expect(repeated.duplicate).toBe(true);
+      expect(repeated.processingStatus).toBe("processed");
+      expect(await postgres.query<any>(`SELECT count(*)::int AS count FROM grounding_chunks WHERE source_id=$1`,[source.id])).toMatchObject({rows:[{count:2}]});
+      expect(embedCalls).toHaveBeenCalledTimes(callsAfterFirst);
+      await expect(getGroundingSource(randomUUID(),source.id)).rejects.toThrow("Source not found");
+
+      const scanned=await ingestGroundingPdf(userId,{title:"Scanned.pdf",file:makePdf(["",""])} ,{embeddingProvider});
+      expect(scanned.processingStatus).toBe("scanned_or_no_extractable_text");
+      expect(scanned.processingError).toContain("OCR is not available");
+      expect(scanned.chunkCount).toBe(0);
+      const persisted=await postgres.query<any>(`SELECT processing_status,processing_error FROM grounding_sources WHERE id=$1 AND user_id=$2`,[scanned.id,userId]);
+      expect(persisted.rows[0]).toMatchObject({processing_status:"scanned_or_no_extractable_text"});
+
+      const malformed=await ingestGroundingPdf(userId,{title:"Broken.pdf",file:Buffer.from("%PDF-1.7 truncated")},{embeddingProvider});
+      expect(malformed.processingStatus).toBe("failed");
+      expect(malformed.processingError).toContain("malformed, truncated");
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 });
