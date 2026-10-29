@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build --configLoader runner",
+    "test:e2e:firefox": "npm run build && node tests/e2e/knowledge-roadmap.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

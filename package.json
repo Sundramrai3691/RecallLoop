@@ -14,8 +14,8 @@
     "build": "npm run build -w server && npm run build -w client",
     "test": "npm run test -w server",
     "test:e2e": "npm run test:e2e:core",
-    "test:e2e:core": "npm run build -w client && node client/tests/e2e/core-loop.playwright.mjs",
-    "test:e2e:firefox": "node client/tests/e2e/knowledge-roadmap.mjs",
+    "test:e2e:core": "npm run build -w client && node client/tests/e2e/core-loop.playwright.mjs --browser=edge",
+    "test:e2e:firefox": "npm run test:e2e:firefox -w client",
     "test:assessment-loop": "node scripts/run-isolated-assessment-loop.mjs",
     "question-bank:activate": "node scripts/activate-question-bank-review.mjs",
     "question-bank:coverage": "npm run question-bank:coverage -w server",
@@ -25,9 +25,7 @@
     "node": ">=22.13.0"
   },
   "devDependencies": {
-    "concurrently": "^9.1.2",
-    "geckodriver": "^5.0.0",
-    "selenium-webdriver": "4.25.0"
+    "concurrently": "^9.1.2"
   },
   "dependencies": {
     "pg": "^8.23.0"

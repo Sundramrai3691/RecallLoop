@@ -27,18 +27,20 @@
     "config:check": "tsx src/scripts/checkConfig.ts",
     "test:providers:live": "vitest run src/services/providers/providerSmoke.live.test.ts --reporter=verbose",
     "test:integration": "vitest run --config vitest.integration.config.ts --reporter=verbose --configLoader runner",
-    "test": "vitest run",
-    "test:watch": "vitest"
+    "test": "vitest run --configLoader runner",
+    "test:watch": "vitest --configLoader runner"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "htmlparser2": "^10.0.0",
     "jsonwebtoken": "^9.0.3",
+    "mammoth": "^1.13.0",
     "pdfjs-dist": "^6.4.299",
     "pg": "^8.23.0",
-    "zod": "^3.24.2"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -48,9 +50,10 @@
     "@types/node": "^22.13.10",
     "@types/pg": "^8.23.1",
     "@types/supertest": "^6.0.2",
+    "jszip": "^3.10.2",
     "supertest": "^7.0.0",
     "tsx": "^4.19.3",
     "typescript": "^5.8.2",
-    "vitest": "^3.0.9"
+    "vitest": "^5.0.5"
   }
 }

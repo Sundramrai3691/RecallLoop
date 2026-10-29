@@ -9,6 +9,7 @@ import { createGroundedRemediator, type GroundedRemediator, type GroundingSource
 import { significantTokens } from "../../lib/llm/json.js";
 import { fetchPublicArticle } from "./webArticleExtractor.js";
 import { extractPdfPages, MAX_PDF_BYTES } from "./pdfExtractor.js";
+import { extractDocx, MAX_DOCX_BYTES } from "./docxExtractor.js";
 
 const MAX_SOURCE_CHARS=250_000;
 const MIN_RELEVANCE=0.22;
@@ -94,6 +95,42 @@ export async function ingestGroundingPdf(userId:string,input:{title?:string;refe
   }
 }
 
+export async function ingestGroundingDocx(userId:string,input:{title?:string;reference?:string;provenance?:Record<string,unknown>;file?:Buffer},options:{embeddingProvider?:EmbeddingProvider;docxExtractor?:typeof extractDocx}={}) {
+  const file=input.file;
+  if(!Buffer.isBuffer(file))throw new AppError("Upload a DOCX file.",400,"DOCX_FILE_REQUIRED");
+  if(file.length>MAX_DOCX_BYTES)throw new AppError("This DOCX is larger than the 10 MB upload limit.",413,"DOCX_TOO_LARGE");
+  const title=input.title?.trim()??"";if(!title||title.length>200)throw new AppError("A title is required and must be at most 200 characters",400,"VALIDATION_ERROR");
+  const reference=input.reference?.trim()??"";if(reference.length>1000)throw new AppError("reference must be at most 1,000 characters",400,"VALIDATION_ERROR");
+  const contentHash=createHash("sha256").update(file).digest("hex");
+  const provenance={...(input.provenance??{}),extraction:{method:"mammoth-structured-docx-v1",status:"processing",paragraphCount:null,sections:[]}};
+  const document=await beginSourceProcessing({userId,title,sourceType:"docx",reference,provenance,content:"",contentHash});
+  if(document.duplicate&&document.processingStatus==="processed")return{...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
+  if(document.duplicate&&document.processingStatus==="processing")return{...document,chunkCount:0,duplicate:true};
+  try{
+    const extracted=await(options.docxExtractor??extractDocx)(file);
+    const finalProvenance={...(input.provenance??{}),extraction:{method:"mammoth-structured-docx-v1",status:"processed",paragraphCount:extracted.paragraphCount,sections:extracted.sections}};
+    await updateSourceExtractedContent(document.id,{content:extracted.text,provenance:finalProvenance});
+    const chunks=chunkText(document.id,contentHash,extracted.text).map((chunk)=>{
+      const intersecting=extracted.segments.filter((segment)=>segment.end>chunk.metadata.start&&segment.start<chunk.metadata.end);
+      const paragraphs=intersecting.map((segment)=>segment.paragraph);
+      const sections=[...new Set(intersecting.map((segment)=>segment.section).filter((section):section is string=>Boolean(section)))];
+      const metadata={...chunk.metadata,section:sections.join("; ")||null,...(paragraphs.length?{paragraphStart:Math.min(...paragraphs),paragraphEnd:Math.max(...paragraphs)}:{})};
+      return{...chunk,metadata,id:stableChunkId(document.id,contentHash,chunk.order,`${JSON.stringify(metadata)}\0${chunk.text}`)};
+    });
+    if(!chunks.length)throw new AppError("No useful text could be extracted from this DOCX.",422,"DOCX_EMPTY");
+    const provider=options.embeddingProvider??createEmbeddingProvider();
+    const vectors=await provider.embed(chunks.map((chunk)=>chunk.text));
+    if(vectors.length!==chunks.length||vectors.some((vector)=>!vector.length||vector.some((value)=>!Number.isFinite(value))))throw new AppError("Embedding provider returned missing or invalid vectors",503,"EMBEDDING_INVALID_RESPONSE");
+    const dimensions=vectors[0].length;if(vectors.some((vector)=>vector.length!==dimensions))throw new AppError("Embedding provider returned inconsistent vector dimensions",503,"EMBEDDING_INVALID_RESPONSE");
+    const processed=await finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider);
+    return{...processed,chunkCount:chunks.length,duplicate:document.duplicate};
+  }catch(error){
+    const safeMessage=error instanceof AppError?error.message:"DOCX extraction failed. Check the file and try again.";
+    await failSourceProcessing(document.id,safeMessage);
+    return{...(await findSource(userId,document.id))!,chunkCount:0,duplicate:document.duplicate};
+  }
+}
+
 export async function getGroundingSources(userId:string){return listSources(userId);}
 export async function getGroundingSource(userId:string,sourceId:string){const source=await findSource(userId,sourceId);if(!source)throw notFound("Source not found","SOURCE_NOT_FOUND");return source;}
 
@@ -119,7 +156,7 @@ export function rankRetrievedChunks(searchText:string,embedding:number[],candida
     const lexical=queryTokens.size?[...queryTokens].filter((token)=>chunkTokens.has(token)).length/queryTokens.size:0;
     const semantic=Math.max(0,cosineSimilarity(embedding,chunk.embedding));
     return {...chunk,relevance:Number((semantic*.55+lexical*.45).toFixed(4))};
-  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId)).slice(0,limit).map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber)}));
+  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId)).slice(0,limit).map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber),paragraphStart:chunk.paragraphStart==null?null:Number(chunk.paragraphStart),paragraphEnd:chunk.paragraphEnd==null?null:Number(chunk.paragraphEnd)}));
 }
 
 export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {

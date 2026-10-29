@@ -20,16 +20,18 @@ export function errorHandler(
 
   const requestError = err as { status?: number; type?: string };
   if (requestError.type === "entity.too.large" || requestError.status === 413) {
-    const isPdfUpload = req.path === "/api/grounding/sources/pdf";
-    res.status(413).json(isPdfUpload
-      ? { error: "This upload exceeds the 10 MB PDF limit.", code: "PDF_TOO_LARGE" }
+    const isDocumentUpload = req.path === "/api/grounding/sources/pdf"||req.path==="/api/grounding/sources/docx";
+    const kind=req.path.endsWith("/docx")?"DOCX":"PDF";
+    res.status(413).json(isDocumentUpload
+      ? { error: `This upload exceeds the 10 MB ${kind} limit.`, code: `${kind}_TOO_LARGE` }
       : { error: "The request body is too large.", code: "PAYLOAD_TOO_LARGE" });
     return;
   }
-  if (requestError.type === "encoding.unsupported" && req.path === "/api/grounding/sources/pdf") {
+  if (requestError.type === "encoding.unsupported" && (req.path === "/api/grounding/sources/pdf"||req.path==="/api/grounding/sources/docx")) {
+    const isDocx=req.path.endsWith("/docx");
     res.status(415).json({
-      error: "Send the PDF as an uncompressed application/pdf body.",
-      code: "PDF_ENCODING_UNSUPPORTED",
+      error: isDocx?"Send the DOCX as an uncompressed Word document body.":"Send the PDF as an uncompressed application/pdf body.",
+      code: isDocx?"DOCX_ENCODING_UNSUPPORTED":"PDF_ENCODING_UNSUPPORTED",
     });
     return;
   }

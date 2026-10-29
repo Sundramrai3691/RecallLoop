@@ -51,7 +51,7 @@ export async function listSources(userId:string) {
 }
 
 export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=40):Promise<Array<GroundingSource & {embedding:number[]}>> {
-  const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
+  const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.metadata->>'section' AS section,c.metadata->>'paragraphStart' AS "paragraphStart",c.metadata->>'paragraphEnd' AS "paragraphEnd",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
     FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
     WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3
     ORDER BY s.created_at DESC,c.chunk_order LIMIT $4`,[userId,providerName,queryEmbedding.length,5000]);
@@ -76,7 +76,7 @@ export async function updateRemediation(remediationId:string,input:{status:strin
 }
 
 export async function getRemediation(userId:string,remediationId:string) {
-  const result=await query<any>(`SELECT r.*,c.name AS "conceptName",json_agg(json_build_object('chunkId',gc.id,'sourceId',s.id,'title',s.title,'sourceType',s.source_type,'reference',s.reference,'provenance',s.provenance,'pageNumber',gc.metadata->>'pageNumber','relevance',grc.relevance,'chunkOrder',gc.chunk_order,'text',gc.content) ORDER BY grc.rank) FILTER(WHERE gc.id IS NOT NULL) AS sources
+  const result=await query<any>(`SELECT r.*,c.name AS "conceptName",json_agg(json_build_object('chunkId',gc.id,'sourceId',s.id,'title',s.title,'sourceType',s.source_type,'reference',s.reference,'provenance',s.provenance,'pageNumber',gc.metadata->>'pageNumber','section',gc.metadata->>'section','paragraphStart',gc.metadata->>'paragraphStart','paragraphEnd',gc.metadata->>'paragraphEnd','relevance',grc.relevance,'chunkOrder',gc.chunk_order,'text',gc.content) ORDER BY grc.rank) FILTER(WHERE gc.id IS NOT NULL) AS sources
     FROM grounded_remediations r JOIN personal_concepts c ON c.id=r.concept_id AND c.user_id=r.user_id
     LEFT JOIN grounded_remediation_chunks grc ON grc.remediation_id=r.id LEFT JOIN grounding_chunks gc ON gc.id=grc.chunk_id LEFT JOIN grounding_sources s ON s.id=gc.source_id
     WHERE r.id=$1 AND r.user_id=$2 GROUP BY r.id,c.name`,[remediationId,userId]);

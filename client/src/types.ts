@@ -157,6 +157,9 @@ export interface GroundedRemediationSource {
   relevance: number;
   chunkOrder: number;
   pageNumber?: number | null;
+  section?: string | null;
+  paragraphStart?: number | null;
+  paragraphEnd?: number | null;
   text: string;
 }
 

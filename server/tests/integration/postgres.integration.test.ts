@@ -23,6 +23,8 @@ import { resetEvaluatorForTests } from "../../src/services/evaluator/index.js";
 import { seedCanonicalQuestionBank } from "../../src/db/seedCanonicalQuestionBank.js";
 import { listEligibleCanonicalQuestions } from "../../src/services/questionBank/questionBankService.js";
 import { canonicalCoreSdeQuestions } from "../../src/services/questionBank/coreSdeQuestionBank.js";
+import JSZip from "jszip";
+import { ingestGroundingDocx } from "../../src/services/grounding/groundedRemediationService.js";
 
 describe("PostgreSQL runtime integration", () => {
   beforeAll(async () => {
@@ -777,6 +779,35 @@ describe("PostgreSQL runtime integration", () => {
       const malformed=await ingestGroundingPdf(userId,{title:"Broken.pdf",file:Buffer.from("%PDF-1.7 truncated")},{embeddingProvider});
       expect(malformed.processingStatus).toBe("failed");
       expect(malformed.processingError).toContain("malformed, truncated");
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("persists DOCX structure and paragraph references, deduplicates retries and rejects invalid archives",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','DOCX Import Test') RETURNING id`,[`docx-import-${randomUUID()}@test.local`])).rows[0].id;
+    const zip=new JSZip();
+    zip.file("[Content_Types].xml",`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+    zip.file("_rels/.rels",`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+    zip.file("word/styles.xml",`<?xml version="1.0"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/></w:style></w:styles>`);
+    const p=(text:string,style="")=>`<w:p>${style?`<w:pPr><w:pStyle w:val="${style}"/></w:pPr>`:""}<w:r><w:t>${text}</w:t></w:r></w:p>`;
+    const body=p("Composite indexes","Heading1")+p("A B-tree composite index supports predicates on leading columns and affects query planning.")+`<w:tbl><w:tr><w:tc>${p("SQL")}</w:tc><w:tc>${p("CREATE INDEX idx_demo ON orders (tenant_id, created_at);")}</w:tc></w:tr></w:tbl>`;
+    zip.file("word/document.xml",`<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr/></w:body></w:document>`);
+    const file=await zip.generateAsync({type:"nodebuffer",compression:"DEFLATE"});
+    const embed=vi.fn(async(texts:string[])=>texts.map(()=>[1,0,0]));
+    const embeddingProvider={name:"docx-test-embedder",dimensions:3,embed};
+    try{
+      const source=await ingestGroundingDocx(userId,{title:"Composite index notes.docx",reference:"Composite index notes.docx",file},{embeddingProvider});
+      expect(source.sourceType).toBe("docx");expect(source.processingStatus).toBe("processed");expect(source.content).toContain("SQL | CREATE INDEX idx_demo ON orders (tenant_id, created_at);");
+      expect(source.provenance.extraction).toMatchObject({method:"mammoth-structured-docx-v1",status:"processed",sections:["Composite indexes"]});
+      const chunks=await postgres.query<any>(`SELECT metadata->>'section' AS section,metadata->>'paragraphStart' AS paragraph_start,metadata->>'paragraphEnd' AS paragraph_end FROM grounding_chunks WHERE source_id=$1`,[source.id]);
+      expect(chunks.rows.some((row:any)=>row.section==="Composite indexes"&&Number(row.paragraph_start)>0&&Number(row.paragraph_end)>=Number(row.paragraph_start))).toBe(true);
+      const calls=embed.mock.calls.length;
+      const repeated=await ingestGroundingDocx(userId,{title:"Renamed.docx",file},{embeddingProvider});
+      expect(repeated.id).toBe(source.id);expect(repeated.duplicate).toBe(true);expect(repeated.processingStatus).toBe("processed");expect(embed).toHaveBeenCalledTimes(calls);
+      await expect(getGroundingSource(randomUUID(),source.id)).rejects.toThrow("Source not found");
+      const invalid=await ingestGroundingDocx(userId,{title:"Broken.docx",file:Buffer.from("not a docx")},{embeddingProvider});
+      expect(invalid.processingStatus).toBe("failed");expect(invalid.processingError).toContain("not a valid DOCX");expect(invalid.chunkCount).toBe(0);
+      const persisted=await postgres.query<any>(`SELECT processing_status,processing_error FROM grounding_sources WHERE id=$1 AND user_id=$2`,[invalid.id,userId]);
+      expect(persisted.rows[0].processing_status).toBe("failed");
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 });

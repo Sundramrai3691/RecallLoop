@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
 import { spawn } from "node:child_process";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
@@ -7,7 +8,8 @@ import { unlink, writeFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import dotenv from "dotenv";
 import { Pool } from "pg";
-import { chromium } from "playwright";
+import JSZip from "jszip";
+import { chromium, firefox } from "playwright";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../..");
 dotenv.config({ path: path.join(root, ".env") });
@@ -23,6 +25,11 @@ const processes = [];
 let browser;
 let userId;
 let userInfoPreload;
+const browserName = process.argv.includes("--browser=firefox") ? "firefox" : process.argv.includes("--browser=edge") ? "edge" : process.env.RECALLLOOP_E2E_BROWSER ?? "edge";
+assert(["edge", "firefox"].includes(browserName), `Unsupported E2E browser: ${browserName}`);
+if (browserName === "firefox" && !existsSync(firefox.executablePath())) {
+  throw new Error(`Playwright Firefox is not installed at ${firefox.executablePath()}. Run "npx playwright install firefox" or use the Firefox CI workflow.`);
+}
 
 function freePort() {
   return new Promise((resolve, reject) => {
@@ -78,6 +85,19 @@ function pdfFixture(pageTexts) {
   xref += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
   chunks.push(Buffer.from(xref, "ascii")); return Buffer.concat(chunks);
 }
+async function docxFixture({malformed=false}={}) {
+  if(malformed)return Buffer.from("This is not a Word document", "utf8");
+  const zip=new JSZip();
+  zip.file("[Content_Types].xml",`<?xml version="1.0"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  zip.file("_rels/.rels",`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  zip.file("word/_rels/document.xml.rels",`<?xml version="1.0"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/numbering" Target="numbering.xml"/></Relationships>`);
+  zip.file("word/styles.xml",`<?xml version="1.0"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:style w:type="paragraph" w:styleId="Heading1"><w:name w:val="heading 1"/></w:style></w:styles>`);
+  zip.file("word/numbering.xml",`<?xml version="1.0"?><w:numbering xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:abstractNum w:abstractNumId="0"><w:lvl w:ilvl="0"><w:numFmt w:val="bullet"/><w:lvlText w:val="•"/></w:lvl></w:abstractNum><w:num w:numId="1"><w:abstractNumId w:val="0"/></w:num></w:numbering>`);
+  const p=(value,style="")=>`<w:p>${style?`<w:pPr><w:pStyle w:val="${style}"/></w:pPr>`:""}<w:r><w:t xml:space="preserve">${value}</w:t></w:r></w:p>`;
+  const body=p("Index selection","Heading1")+p("A composite B-tree index on tenant_id and created_at supports the leading tenant_id prefix. Indexes add write cost and storage.")+`<w:p><w:pPr><w:numPr><w:ilvl w:val="0"/><w:numId w:val="1"/></w:numPr></w:pPr><w:r><w:t>Queries using only the second key generally cannot use the same efficient lookup.</w:t></w:r></w:p><w:tbl><w:tr><w:tc>${p("SQL")}</w:tc><w:tc>${p("CREATE INDEX idx_orders_tenant ON orders (tenant_id, created_at);")}</w:tc></w:tr></w:tbl>`;
+  zip.file("word/document.xml",`<?xml version="1.0"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${body}<w:sectPr/></w:body></w:document>`);
+  return zip.generateAsync({type:"nodebuffer",compression:"DEFLATE"});
+}
 async function waitForAssessment(token, url, assessmentId, predicate) {
   const end = Date.now() + 10_000;
   while (Date.now() < end) {
@@ -89,6 +109,7 @@ async function waitForAssessment(token, url, assessmentId, predicate) {
 }
 
 try {
+  console.log(`Starting ${browserName} Playwright core journey.`);
   const apiPort = await freePort(); const clientPort = await freePort();
   const apiUrl = `http://127.0.0.1:${apiPort}`; const clientUrl = `http://127.0.0.1:${clientPort}`;
   const childEnv = { ...process.env, PORT: String(apiPort), CLIENT_ORIGIN: clientUrl, LLM_PROVIDER: "mock", LLM_API_KEY: "", EMBEDDING_PROVIDER: "mock", EMBEDDING_API_KEY: "", REMEDIATION_PROVIDER: "mock" };
@@ -100,7 +121,10 @@ try {
   await waitFor(`${apiUrl}/api/health`, apiProcess);
   const clientProcess = start("Vite production preview", [path.join(root, "node_modules/vite/bin/vite.js"), "preview", "--configLoader", "runner", "--host", "127.0.0.1", "--port", String(clientPort), "--strictPort"], path.join(root, "client"), { ...childEnv, API_PROXY_TARGET: apiUrl });
   await waitFor(clientUrl, clientProcess);
-  browser = await chromium.launch({ channel: "msedge", headless: true });
+  browser = browserName === "firefox"
+    ? await firefox.launch({ headless: true })
+    : await chromium.launch({ channel: "msedge", headless: true });
+  console.log(`Started ${browserName} ${browser.version()}.`);
   const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
   const browserErrors = [];
   page.on("pageerror", (error) => browserErrors.push(error.message));
@@ -171,6 +195,28 @@ try {
   const pageChunks = await pool.query("SELECT metadata->>'pageNumber' AS page_number FROM grounding_chunks WHERE source_id=$1 ORDER BY chunk_order", [pdfSource.id]);
   assert.deepEqual(pageChunks.rows.map((row) => Number(row.page_number)), [1, 3]);
 
+  await page.locator("#material-type").selectOption("docx");
+  const docxBuffer = await docxFixture();
+  await page.locator("#material-file").setInputFiles({ name: "index-selection-notes.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: docxBuffer });
+  await page.getByRole("status").filter({ hasText: "index-selection-notes.docx" }).waitFor();
+  await page.getByRole("button", { name: "Upload DOCX" }).click();
+  await page.getByRole("status").filter({ hasText: "Extracted" }).waitFor({ timeout: 10_000 });
+  const withDocx = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
+  const docxSource = withDocx.sources.find((source) => source.sourceType === "docx");
+  assert(docxSource && docxSource.processingStatus === "processed", "Valid DOCX should persist as processed material");
+  const docxDetails = (await authenticatedApi(token, `${apiUrl}/api/grounding/sources/${docxSource.id}`)).source;
+  assert(docxDetails.content.includes("SQL | CREATE INDEX idx_orders_tenant"), "Extracted table data must be retained in source content");
+  assert(docxDetails.provenance.extraction.paragraphCount >= 4 && docxDetails.provenance.extraction.sections.includes("Index selection"), "DOCX extraction should retain section and paragraph provenance");
+  const docxChunks = await pool.query("SELECT metadata->>'section' AS section, metadata->>'paragraphStart' AS paragraph_start, metadata->>'paragraphEnd' AS paragraph_end FROM grounding_chunks WHERE source_id=$1 ORDER BY chunk_order", [docxSource.id]);
+  assert(docxChunks.rows.some((row) => row.section === "Index selection" && Number(row.paragraph_start) > 0 && Number(row.paragraph_end) >= Number(row.paragraph_start)), "DOCX chunk references should identify section and source paragraphs");
+
+  await page.locator("#material-type").selectOption("docx");
+  await page.locator("#material-file").setInputFiles({ name: "broken.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: await docxFixture({ malformed: true }) });
+  await page.getByRole("button", { name: "Upload DOCX" }).click();
+  await page.getByRole("alert").filter({ hasText: "not a valid DOCX" }).waitFor({ timeout: 10_000 });
+  const afterInvalidDocx = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
+  assert(afterInvalidDocx.sources.some((source) => source.sourceType === "docx" && source.processingStatus === "failed" && source.title === "broken.docx"), "Invalid DOCX must be retained as a failed source, never marked ready");
+
   await page.locator("#material-type").selectOption("pdf");
   await page.locator("#material-file").setInputFiles({ name: "scanned.pdf", mimeType: "application/pdf", buffer: pdfFixture(["", ""]) });
   await page.getByRole("button", { name: "Upload PDF" }).click();
@@ -183,7 +229,7 @@ try {
   await page.getByRole("button", { name: "Upload PDF" }).click();
   await page.getByRole("alert").filter({ hasText: "not a valid PDF" }).waitFor({ timeout: 10_000 });
   const afterMalformed = await authenticatedApi(token, `${apiUrl}/api/grounding/sources`);
-  assert(afterMalformed.sources.some((source) => source.processingStatus === "failed" && source.title === "not-a-pdf.pdf"), "Malformed PDF uploads must retain a truthful failed extraction status");
+  assert(afterMalformed.sources.some((source) => source.sourceType === "pdf" && source.processingStatus === "failed" && source.title === "not-a-pdf.pdf"), `Malformed PDF uploads must retain a truthful failed extraction status: ${JSON.stringify(afterMalformed.sources.map(({title,sourceType,processingStatus,processingError})=>({title,sourceType,processingStatus,processingError})))}`);
 
   await page.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
   await page.locator("#knowledge-subject").waitFor();
@@ -241,6 +287,8 @@ try {
   assert(remediation.sources.length > 0, "Remediation must be grounded in the learner's persisted source");
   const pdfPassage = remediation.sources.find((source) => source.sourceType === "pdf");
   assert(pdfPassage && [1, 3].includes(Number(pdfPassage.pageNumber)), "A PDF-grounded remediation excerpt must retain its original one-based page reference");
+  const docxPassage = remediation.sources.find((source) => source.sourceType === "docx");
+  assert(docxPassage && docxPassage.section === "Index selection" && Number(docxPassage.paragraphStart) > 0, "Grounded DOCX remediation must retain section and paragraph citations");
   await page.goto(`${clientUrl}/remediations/${remediation.id}`, { waitUntil: "domcontentloaded" });
   await page.locator(".remediation-explanation").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: /Check what you remember/ }).click();
@@ -291,7 +339,7 @@ try {
   assert(evidence.rows[0].attempts >= originalAttemptIds.length + 1 && evidence.rows[0].submitted >= originalAttemptIds.length + 1, "The full journey's attempts must remain persisted for the isolated learner");
   assert(evidence.rows[0].revisions >= 2, "Persisted assessment and verification evidence must reference distinct revisions");
   assert.deepEqual(browserErrors, [], `Browser JavaScript errors: ${browserErrors.join("; ")}`);
-  console.log(`PASS Edge Playwright core loop: register, text/Markdown/PDF with page citations, DBMS assessment, diagnosis, grounded remediation, distinct verification, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
+  console.log(`PASS ${browserName} Playwright core loop: register, text/Markdown/PDF/DOCX with page/section citations, DOCX invalid-file state, DBMS assessment, diagnosis, grounded remediation, distinct verification, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
 } catch (error) {
   for (const entry of processes) console.error(`${entry.name} output: ${entry.output}`);
   throw error;

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 
-export interface TextChunk { id: string; order: number; text: string; metadata: { start: number; end: number; pageNumber?: number }; }
+export interface TextChunk { id: string; order: number; text: string; metadata: { start: number; end: number; pageNumber?: number; section?:string|null; paragraphStart?:number; paragraphEnd?:number }; }
 
 export function stableChunkId(sourceId: string, contentHash: string, order: number, text: string): string {
   return createHash("sha256").update(`${sourceId}\0${contentHash}\0${order}\0${text}`).digest("hex");

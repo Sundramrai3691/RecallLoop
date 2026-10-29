@@ -43,4 +43,11 @@ describe("errorHandler", () => {
       code: "INTERNAL_ERROR",
     });
   });
+
+  it("returns an actionable unsupported-encoding error for DOCX uploads",()=>{
+    const response=responseDouble();
+    errorHandler({type:"encoding.unsupported",status:415},{path:"/api/grounding/sources/docx"} as Request,response,vi.fn() as NextFunction);
+    expect(response.status).toHaveBeenCalledWith(415);
+    expect(response.json).toHaveBeenCalledWith({error:"Send the DOCX as an uncompressed Word document body.",code:"DOCX_ENCODING_UNSUPPORTED"});
+  });
 });

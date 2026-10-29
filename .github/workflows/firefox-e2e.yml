@@ -1,0 +1,63 @@
+name: Firefox end-to-end
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  firefox-core-loop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: recallloop
+          POSTGRES_USER: recallloop
+          POSTGRES_PASSWORD: recallloop
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U recallloop -d recallloop"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgres://recallloop:recallloop@127.0.0.1:5432/recallloop
+      LLM_PROVIDER: mock
+      LLM_API_KEY: ""
+      EMBEDDING_PROVIDER: mock
+      EMBEDDING_API_KEY: ""
+      REMEDIATION_PROVIDER: mock
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.18.0
+          cache: npm
+      - run: npm ci
+      - name: Install the Playwright-pinned Firefox build
+        run: npx playwright install --with-deps firefox
+      - name: Record browser automation versions
+        run: |
+          node --version
+          node -p "'Playwright ' + require('./node_modules/playwright/package.json').version"
+          node --input-type=module -e "import { firefox } from 'playwright'; const browser = await firefox.launch({ headless: true }); console.log('Firefox ' + browser.version()); await browser.close();"
+      - name: Prepare disposable CI database
+        run: |
+          npm run db:migrate -w server
+          npm run db:seed -w server
+          npm run question-bank:automated-review -w server -- --apply
+      - name: Run the real Firefox learner journey
+        shell: bash
+        run: set -o pipefail; npm run test:e2e:firefox 2>&1 | tee firefox-e2e.log
+      - name: Preserve Firefox logs on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: firefox-e2e-log
+          path: firefox-e2e.log
+          if-no-files-found: ignore
+          retention-days: 14

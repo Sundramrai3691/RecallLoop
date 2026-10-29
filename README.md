@@ -77,6 +77,7 @@ npm run question-bank:coverage
 - `npm run build` type-checks/builds both workspaces.
 - `npm run test:integration -w server` requires a migrated, seeded PostgreSQL database.
 - `npm run test:e2e` runs browser journeys against the configured local database and requires the supported browsers.
+- `npm run test:e2e` runs the shared Playwright core journey in Edge. `npm run test:e2e:firefox` runs the same real learner journey in Playwright Firefox; install its version-matched browser with `npx playwright install firefox` first. CI provisions Firefox through the dedicated workflow.
 - `npm run test:assessment-loop` creates a disposable database on loopback PostgreSQL, runs integration and browser coverage with test-only review fixtures, then removes that database. It requires local database `CREATEDB` permission and the browser dependencies.
 - `npm run question-bank:coverage` creates a database-grounded Core SDE coverage snapshot. Run after migrations and seed; the checked-in JSON is a snapshot, not a live report.
 
