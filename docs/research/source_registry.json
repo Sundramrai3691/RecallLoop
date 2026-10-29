@@ -35,8 +35,16 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 9110; June 2022; STD 97",
-      "relevantSections": ["8 Fields", "9 Methods", "12 Content Negotiation", "13 Conditional Requests", "15 Status Codes"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "8 Fields",
+        "9 Methods",
+        "12 Content Negotiation",
+        "13 Conditional Requests",
+        "15 Status Codes"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public IETF RFC; link and summarize, do not reproduce extensive text.",
@@ -49,8 +57,17 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 9111; June 2022",
-      "relevantSections": ["2 Overview", "3 Storing Responses", "4 Constructing Responses from Caches", "4.2 Freshness", "4.3 Validation", "5 Cache-Control"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "2 Overview",
+        "3 Storing Responses",
+        "4 Constructing Responses from Caches",
+        "4.2 Freshness",
+        "4.3 Validation",
+        "5 Cache-Control"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -63,8 +80,15 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 9112; June 2022; STD 99",
-      "relevantSections": ["2 Message", "3.2 Message Parsing", "6 Message Body", "7.1 Chunked Transfer Coding"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "2 Message",
+        "3.2 Message Parsing",
+        "6 Message Body",
+        "7.1 Chunked Transfer Coding"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -77,8 +101,15 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 9293; August 2022; STD 7",
-      "relevantSections": ["2.2.2 User/TCP Interface", "3.4.1 Sequence Numbers", "3.8.6 Managing the Window", "3.10 Event Processing"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "2.2.2 User/TCP Interface",
+        "3.4.1 Sequence Numbers",
+        "3.8.6 Managing the Window",
+        "3.10 Event Processing"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -91,8 +122,12 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 768; August 1980",
-      "relevantSections": ["entire short specification"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "entire short specification"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -105,8 +140,14 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 1034; November 1987",
-      "relevantSections": ["2.3 Name space specifications", "4 Name servers", "5 Resolvers"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "2.3 Name space specifications",
+        "4 Name servers",
+        "5 Resolvers"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -119,8 +160,14 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 1035; November 1987",
-      "relevantSections": ["4 Messages", "5.3 Resolver", "6.1 Name server implementation"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "4 Messages",
+        "5.3 Resolver",
+        "6.1 Name server implementation"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -133,8 +180,15 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 9846; July 2026",
-      "relevantSections": ["1 Introduction", "2 Protocol Overview", "4.1 Handshake Protocol", "7.1 Key Schedule"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "1 Introduction",
+        "2 Protocol Overview",
+        "4.1 Handshake Protocol",
+        "7.1 Key Schedule"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -147,8 +201,12 @@
       "publisher": "IETF",
       "sourceKind": "standards_track_rfc",
       "version": "RFC 8446; August 2018",
-      "relevantSections": ["historical comparison only"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "historical comparison only"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "superseded",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public IETF RFC; link and summarize.",
@@ -162,8 +220,12 @@
       "publisher": "The Open Group / IEEE",
       "sourceKind": "standard",
       "version": "Issue 8; 2024 edition",
-      "relevantSections": ["TBD by specific process, shell, file, and threading claim"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "TBD by specific process, shell, file, and threading claim"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Check standard terms before storage or reproduction; link-only use is preferred.",
@@ -176,8 +238,12 @@
       "publisher": "ISO/IEC",
       "sourceKind": "paid_standard",
       "version": "ISO/IEC 9075:2023",
-      "relevantSections": ["requires licensed access to determine"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "requires licensed access to determine"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Paid/copyrighted standard; do not reproduce. Use public official vendor documentation for implementation-specific questions.",
@@ -190,8 +256,14 @@
       "publisher": "PostgreSQL Global Development Group",
       "sourceKind": "official_implementation_documentation",
       "version": "PostgreSQL 18; current stable major on 2026-10-29; 19 is release candidate",
-      "relevantSections": ["11.3 Multicolumn Indexes", "13.2 Transaction Isolation", "13.3 Explicit Locking"],
-      "claimTypes": ["implementation_behavior"],
+      "relevantSections": [
+        "11.3 Multicolumn Indexes",
+        "13.2 Transaction Isolation",
+        "13.3 Explicit Locking"
+      ],
+      "claimTypes": [
+        "implementation_behavior"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "PostgreSQL documentation license; attribute and link. Avoid copying large passages.",
@@ -204,8 +276,13 @@
       "publisher": "PostgreSQL Global Development Group",
       "sourceKind": "official_implementation_documentation",
       "version": "PostgreSQL 16; supported release line as of 2026-10-29",
-      "relevantSections": ["11 Indexes", "13 Concurrency Control"],
-      "claimTypes": ["implementation_behavior"],
+      "relevantSections": [
+        "11 Indexes",
+        "13 Concurrency Control"
+      ],
+      "claimTypes": [
+        "implementation_behavior"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-19 (project question-bank citation); current support checked 2026-10-29",
       "licenseAndAccess": "PostgreSQL documentation license; attribute and link.",
@@ -218,12 +295,16 @@
       "publisher": "PostgreSQL Global Development Group",
       "sourceKind": "official_implementation_documentation",
       "version": "PostgreSQL 16",
-      "relevantSections": ["11.3 Multicolumn Indexes"],
-      "claimTypes": ["implementation_behavior"],
-      "inspectionStatus": "discovered_only",
-      "lastChecked": null,
+      "relevantSections": [
+        "11.3 Multicolumn Indexes"
+      ],
+      "claimTypes": [
+        "implementation_behavior"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
       "licenseAndAccess": "PostgreSQL documentation license; attribute and link.",
-      "notes": "The existing composite-index pilot revisions cite the PostgreSQL 16 mvcc.html page, which is not this index-specific section. This exact section URL is a candidate correction and was not independently inspected in this pass."
+      "notes": "Section 11.3 was directly checked. It states that for a multicolumn B-tree, equality constraints on leading columns plus an inequality on the first non-equality column limit the scanned portion; conditions farther right do not further reduce that portion. This is the exact PostgreSQL 16 section for the repaired pilot objective."
     },
     {
       "id": "SEC-OWASP-TOP10-2025",
@@ -232,8 +313,13 @@
       "publisher": "OWASP Foundation",
       "sourceKind": "security_awareness_document",
       "version": "2025 release",
-      "relevantSections": ["A01-A10 risk categories; map exact category before use"],
-      "claimTypes": ["technical_fact", "preparation_recommendation"],
+      "relevantSections": [
+        "A01-A10 risk categories; map exact category before use"
+      ],
+      "claimTypes": [
+        "technical_fact",
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Check the current project license and attribution terms before reproducing; link and summarize.",
@@ -246,8 +332,13 @@
       "publisher": "OWASP Foundation",
       "sourceKind": "security_awareness_document",
       "version": "2021; prior release",
-      "relevantSections": ["historical comparison only"],
-      "claimTypes": ["technical_fact", "preparation_recommendation"],
+      "relevantSections": [
+        "historical comparison only"
+      ],
+      "claimTypes": [
+        "technical_fact",
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "superseded",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Check terms; link and summarize.",
@@ -261,10 +352,15 @@
       "publisher": "OWASP Foundation",
       "sourceKind": "security_verification_standard",
       "version": "rolling; pin release when used",
-      "relevantSections": ["pin version and requirement ID per claim"],
-      "claimTypes": ["technical_fact", "implementation_behavior"],
-      "inspectionStatus": "discovered_only",
-      "lastChecked": null,
+      "relevantSections": [
+        "pin version and requirement ID per claim"
+      ],
+      "claimTypes": [
+        "technical_fact",
+        "implementation_behavior"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
       "licenseAndAccess": "Verify current license and release before storing any derivative material.",
       "notes": "Better suited than Top 10 for testable security requirements; not used in the pilot."
     },
@@ -275,8 +371,13 @@
       "publisher": "Massachusetts Institute of Technology OpenCourseWare",
       "sourceKind": "university_course",
       "version": "Spring 2020",
-      "relevantSections": ["Syllabus: prerequisites and course description", "Calendar: dynamic arrays, sorting, hashing, trees, heaps, BFS/DFS, shortest paths, dynamic programming, complexity"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "Syllabus: prerequisites and course description",
+        "Calendar: dynamic arrays, sorting, hashing, trees, heaps, BFS/DFS, shortest paths, dynamic programming, complexity"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Check the license of each item; course materials may be CC BY-NC-SA. Do not copy or redistribute problem sets/questions.",
@@ -289,8 +390,12 @@
       "publisher": "University of California, Berkeley EECS",
       "sourceKind": "university_course_catalog",
       "version": "catalog page; offering varies by term",
-      "relevantSections": ["verify term-specific syllabus and course materials before mapping exact topics"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "verify term-specific syllabus and course materials before mapping exact topics"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Respect course-material license and assignment restrictions.",
@@ -303,8 +408,12 @@
       "publisher": "University of California, Berkeley EECS",
       "sourceKind": "university_course_catalog",
       "version": "catalog page; offering varies by term",
-      "relevantSections": ["term-specific syllabus required for exact course-to-concept mapping"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "term-specific syllabus required for exact course-to-concept mapping"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Respect course-material license and assignment restrictions.",
@@ -317,8 +426,14 @@
       "publisher": "Carnegie Mellon University School of Computer Science",
       "sourceKind": "university_course_catalog",
       "version": "Spring 2026 catalog page",
-      "relevantSections": ["course description", "required background", "course goals"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "course description",
+        "required background",
+        "course goals"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Respect instructor/site terms; do not copy assignments or lecture material.",
@@ -330,13 +445,113 @@
       "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/",
       "publisher": "Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau, University of Wisconsin-Madison",
       "sourceKind": "open_textbook_candidate",
-      "version": "online edition; check chapter revision/date at use time",
-      "relevantSections": ["processes", "CPU scheduling", "address spaces", "threads and concurrency"],
-      "claimTypes": ["pedagogical_explanation"],
-      "inspectionStatus": "reported_inspected",
-      "lastChecked": "2026-10-28 (input research reports excerpt only)",
+      "version": "online edition; individual chapter PDFs carry different revisions",
+      "relevantSections": [
+        "ch. 4 The Abstraction: The Process",
+        "ch. 26 Concurrency: An Introduction",
+        "ch. 28 Locks",
+        "ch. 32 Common Concurrency Problems"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
       "licenseAndAccess": "Check the book's current license and chapter terms; link/summarize rather than copying.",
-      "notes": "The source-foundation report says it was only seen through course-syllabus excerpts; do not describe it as fully read."
+      "notes": "The four cited chapter excerpts were opened and relevant sections checked in this session; this is not a full-book review. Chapter PDFs are versioned separately below."
+    },
+    {
+      "id": "EDU-OSTEP-CH04",
+      "title": "OSTEP Chapter 4: The Abstraction: The Process",
+      "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/cpu-intro.pdf",
+      "publisher": "Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau",
+      "sourceKind": "open_textbook_chapter",
+      "version": "PDF version 1.10; accessed 2026-10-29",
+      "relevantSections": [
+        "4.1 The Abstraction: A Process; process machine state includes its address space"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Link to the chapter; check current book terms before reproducing content.",
+      "notes": "Relevant lines/pages explain process state and address space. Used with chapter 26 for the process/thread comparison."
+    },
+    {
+      "id": "EDU-OSTEP-CH26",
+      "title": "OSTEP Chapter 26: Concurrency: An Introduction",
+      "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/threads-intro.pdf",
+      "publisher": "Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau",
+      "sourceKind": "open_textbook_chapter",
+      "version": "PDF version 1.10; accessed 2026-10-29",
+      "relevantSections": [
+        "§26.1: threads in one process share an address space; thread execution state includes private registers and stacks"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Link to the chapter; check current book terms before reproducing content.",
+      "notes": "Used with chapter 4 for process isolation context. Exact excerpt inspected."
+    },
+    {
+      "id": "EDU-OSTEP-CH28",
+      "title": "OSTEP Chapter 28: Locks",
+      "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/threads-locks.pdf",
+      "publisher": "Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau",
+      "sourceKind": "open_textbook_chapter",
+      "version": "PDF version 1.10; accessed 2026-10-29",
+      "relevantSections": [
+        "§28.1 Locks: The Basic Idea",
+        "§28.2 Pthread Locks; shared critical sections and consistent locking"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Link to the chapter; check current book terms before reproducing content.",
+      "notes": "Shows a shared-variable update protected by a lock and mutual exclusion around critical sections."
+    },
+    {
+      "id": "EDU-OSTEP-CH32",
+      "title": "OSTEP Chapter 32: Common Concurrency Problems",
+      "url": "https://pages.cs.wisc.edu/~remzi/OSTEP/threads-bugs.pdf",
+      "publisher": "Remzi H. Arpaci-Dusseau and Andrea C. Arpaci-Dusseau",
+      "sourceKind": "open_textbook_chapter",
+      "version": "PDF version 1.20; accessed 2026-10-29",
+      "relevantSections": [
+        "§32.1 Types of Bugs",
+        "§32.2 Atomicity-Violation Bugs"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Link to the chapter; check current book terms before reproducing content.",
+      "notes": "The directly observed PDF is version 1.20; do not assign the whole book a single version based on the landing page. The chapter's atomicity example shows cross-thread check/use interference and fixes it with a common lock."
+    },
+    {
+      "id": "STD-CPP-DRAFT-INTRO-RACES",
+      "title": "C++ Working Draft: [intro.races] Data races",
+      "url": "https://eel.is/c%2B%2Bdraft/intro.races",
+      "publisher": "ISO C++ working draft (rendered at eel.is)",
+      "sourceKind": "standards_working_draft",
+      "version": "rolling working draft, excerpt checked 2026-10-29; not represented as a published ISO edition",
+      "relevantSections": [
+        "[intro.multithread] potentially concurrent actions",
+        "[intro.races] conflicting actions, non-atomic accesses, happens-before, undefined behavior"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
+      "inspectionStatus": "inspected_excerpt",
+      "lastChecked": "2026-10-29",
+      "licenseAndAccess": "Working-draft text; link and summarize only. Confirm the applicable published C++ edition before making edition-specific claims.",
+      "notes": "The excerpt states that potentially concurrent conflicting actions, at least one non-atomic and with neither happening before the other, constitute a data race and result in undefined behavior. Used only for explicitly C++-scoped question language."
     },
     {
       "id": "EDU-XV6-2017",
@@ -345,8 +560,14 @@
       "publisher": "MIT PDOS",
       "sourceKind": "teaching_system_text",
       "version": "2017 revision 9",
-      "relevantSections": ["processes", "scheduling", "locks"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "processes",
+        "scheduling",
+        "locks"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-19 (existing authored-question citation)",
       "licenseAndAccess": "Use as a teaching OS reference; no extensive text reproduction.",
@@ -359,8 +580,12 @@
       "publisher": "University of California, Berkeley",
       "sourceKind": "university_course",
       "version": "rolling term site; pin offering before use",
-      "relevantSections": ["term-specific syllabus required"],
-      "claimTypes": ["pedagogical_explanation"],
+      "relevantSections": [
+        "term-specific syllabus required"
+      ],
+      "claimTypes": [
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Respect course-material license and assignment restrictions.",
@@ -373,8 +598,13 @@
       "publisher": "Python Software Foundation",
       "sourceKind": "official_language_documentation",
       "version": "Python 3; pin minor version for behavior-specific claims",
-      "relevantSections": ["select by language feature"],
-      "claimTypes": ["technical_fact", "implementation_behavior"],
+      "relevantSections": [
+        "select by language feature"
+      ],
+      "claimTypes": [
+        "technical_fact",
+        "implementation_behavior"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Python documentation license; check page terms and attribute.",
@@ -387,8 +617,12 @@
       "publisher": "Oracle",
       "sourceKind": "official_language_specification",
       "version": "rolling; pin Java SE edition",
-      "relevantSections": ["select by language feature"],
-      "claimTypes": ["technical_fact"],
+      "relevantSections": [
+        "select by language feature"
+      ],
+      "claimTypes": [
+        "technical_fact"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Oracle terms; cite and link, do not reproduce.",
@@ -401,8 +635,13 @@
       "publisher": "Go project",
       "sourceKind": "official_language_documentation",
       "version": "rolling; pin release for behavior claims",
-      "relevantSections": ["select by language feature"],
-      "claimTypes": ["technical_fact", "implementation_behavior"],
+      "relevantSections": [
+        "select by language feature"
+      ],
+      "claimTypes": [
+        "technical_fact",
+        "implementation_behavior"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Check the license for the specific document; link and attribute.",
@@ -415,8 +654,12 @@
       "publisher": "Linux kernel community",
       "sourceKind": "official_implementation_documentation",
       "version": "rolling kernel documentation; pin release",
-      "relevantSections": ["select kernel subsystem and release"],
-      "claimTypes": ["implementation_behavior"],
+      "relevantSections": [
+        "select kernel subsystem and release"
+      ],
+      "claimTypes": [
+        "implementation_behavior"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Licensing varies by file; verify the selected document.",
@@ -429,8 +672,13 @@
       "publisher": "Git project",
       "sourceKind": "official_tool_documentation",
       "version": "rolling; pin Git release if behavior-specific",
-      "relevantSections": ["select command and behavior"],
-      "claimTypes": ["implementation_behavior", "pedagogical_explanation"],
+      "relevantSections": [
+        "select command and behavior"
+      ],
+      "claimTypes": [
+        "implementation_behavior",
+        "pedagogical_explanation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Check documentation license before reuse.",
@@ -443,8 +691,13 @@
       "publisher": "Amazon Jobs",
       "sourceKind": "official_employer_guidance",
       "version": "live page checked 2026-10-29",
-      "relevantSections": ["Technical topics", "Online assessment"],
-      "claimTypes": ["employer_expectation"],
+      "relevantSections": [
+        "Technical topics",
+        "Online assessment"
+      ],
+      "claimTypes": [
+        "employer_expectation"
+      ],
       "inspectionStatus": "inspected_excerpt",
       "lastChecked": "2026-10-29",
       "licenseAndAccess": "Public careers page; link and summarize, do not reproduce.",
@@ -457,8 +710,12 @@
       "publisher": "Amazon Jobs",
       "sourceKind": "official_employer_guidance",
       "version": "live page; inspect before making current process claims",
-      "relevantSections": ["online assessment guidance"],
-      "claimTypes": ["employer_expectation"],
+      "relevantSections": [
+        "online assessment guidance"
+      ],
+      "claimTypes": [
+        "employer_expectation"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports); not independently reopened",
       "licenseAndAccess": "Public careers page; link and summarize.",
@@ -471,8 +728,12 @@
       "publisher": "Microsoft Careers",
       "sourceKind": "official_employer_guidance",
       "version": "live page checked 2026-10-29",
-      "relevantSections": ["technical interview guidance; verify page's current statements before use"],
-      "claimTypes": ["employer_expectation"],
+      "relevantSections": [
+        "technical interview guidance; verify page's current statements before use"
+      ],
+      "claimTypes": [
+        "employer_expectation"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports); URL retained from input",
       "licenseAndAccess": "Public careers page; link and summarize.",
@@ -485,8 +746,12 @@
       "publisher": "Meta",
       "sourceKind": "official_employer_career_site",
       "version": "rolling; requisition/process specific",
-      "relevantSections": ["specific role/requisition only"],
-      "claimTypes": ["employer_expectation"],
+      "relevantSections": [
+        "specific role/requisition only"
+      ],
+      "claimTypes": [
+        "employer_expectation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public careers site; job-specific terms apply.",
@@ -499,8 +764,12 @@
       "publisher": "Individual candidate posters; platform attribution varies",
       "sourceKind": "candidate_report_collection",
       "version": "claimed interviews/publications 2025-2026; dates are not independently verified here",
-      "relevantSections": ["input report Deliverable 1; CAND-001 through CAND-010"],
-      "claimTypes": ["candidate_reported_signal"],
+      "relevantSections": [
+        "input report Deliverable 1; CAND-001 through CAND-010"
+      ],
+      "claimTypes": [
+        "candidate_reported_signal"
+      ],
       "inspectionStatus": "blocked_missing_permalink",
       "lastChecked": null,
       "licenseAndAccess": "User-generated content; quote minimally, link to each original post, respect platform terms; do not copy proprietary interview questions.",
@@ -513,8 +782,12 @@
       "publisher": "LeetCode",
       "sourceKind": "commercial_practice_inventory",
       "version": "rolling study plan",
-      "relevantSections": ["study plan inventory only"],
-      "claimTypes": ["preparation_recommendation"],
+      "relevantSections": [
+        "study plan inventory only"
+      ],
+      "claimTypes": [
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports); URL corrected to direct plan candidate",
       "licenseAndAccess": "Commercial platform; no scraping, copying, or redistribution of problems.",
@@ -527,8 +800,12 @@
       "publisher": "takeUforward",
       "sourceKind": "community_preparation_roadmap",
       "version": "rolling; counts in input require recheck",
-      "relevantSections": ["learning sequence only"],
-      "claimTypes": ["preparation_recommendation"],
+      "relevantSections": [
+        "learning sequence only"
+      ],
+      "claimTypes": [
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Respect site's terms; do not reproduce question text.",
@@ -541,8 +818,12 @@
       "publisher": "roadmap.sh community",
       "sourceKind": "community_roadmap",
       "version": "rolling",
-      "relevantSections": ["breadth checklist only"],
-      "claimTypes": ["preparation_recommendation"],
+      "relevantSections": [
+        "breadth checklist only"
+      ],
+      "claimTypes": [
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Check reuse terms; do not redistribute the roadmap.",
@@ -555,8 +836,13 @@
       "publisher": "Dunlosky et al.; Psychological Science in the Public Interest",
       "sourceKind": "peer_reviewed_review",
       "version": "2013; 14(1):4-58",
-      "relevantSections": ["testing practice", "distributed practice"],
-      "claimTypes": ["learning_science"],
+      "relevantSections": [
+        "testing practice",
+        "distributed practice"
+      ],
+      "claimTypes": [
+        "learning_science"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports abstract/excerpt only)",
       "licenseAndAccess": "Publisher access may be restricted; citation/abstract only unless licensed.",
@@ -569,8 +855,12 @@
       "publisher": "Rowland; Psychological Bulletin",
       "sourceKind": "peer_reviewed_meta_analysis",
       "version": "2014",
-      "relevantSections": ["abstract and results require source inspection"],
-      "claimTypes": ["learning_science"],
+      "relevantSections": [
+        "abstract and results require source inspection"
+      ],
+      "claimTypes": [
+        "learning_science"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports excerpt)",
       "licenseAndAccess": "Publisher access may be restricted; cite, do not reproduce.",
@@ -584,7 +874,9 @@
       "sourceKind": "peer_reviewed_meta_analysis_candidate",
       "version": "2017; precise citation must be reconciled",
       "relevantSections": [],
-      "claimTypes": ["learning_science"],
+      "claimTypes": [
+        "learning_science"
+      ],
       "inspectionStatus": "blocked_missing_permalink",
       "lastChecked": null,
       "licenseAndAccess": "Publisher access may be restricted.",
@@ -597,8 +889,13 @@
       "publisher": "Open Spaced Repetition community",
       "sourceKind": "open_source_scheduler_project",
       "version": "rolling; pin commit/release and dataset for reproduction",
-      "relevantSections": ["benchmark methodology must be inspected before claims"],
-      "claimTypes": ["implementation_behavior", "learning_science"],
+      "relevantSections": [
+        "benchmark methodology must be inspected before claims"
+      ],
+      "claimTypes": [
+        "implementation_behavior",
+        "learning_science"
+      ],
       "inspectionStatus": "reported_inspected",
       "lastChecked": "2026-10-28 (input reports excerpt)",
       "licenseAndAccess": "Repository license applies to code; benchmark data/claims require their own provenance.",
@@ -611,8 +908,12 @@
       "publisher": "Named employers",
       "sourceKind": "official_employer_sources_backlog",
       "version": "live requisition/date required",
-      "relevantSections": ["specific role and level only"],
-      "claimTypes": ["employer_expectation"],
+      "relevantSections": [
+        "specific role and level only"
+      ],
+      "claimTypes": [
+        "employer_expectation"
+      ],
       "inspectionStatus": "discovered_only",
       "lastChecked": null,
       "licenseAndAccess": "Public job pages; link to specific requisitions and preserve retrieval dates.",
@@ -625,8 +926,13 @@
       "publisher": "Multiple secondary/community publishers",
       "sourceKind": "secondary_or_user_generated_interview_sources",
       "version": "varies by page/publication date",
-      "relevantSections": ["direct article/report URL required"],
-      "claimTypes": ["candidate_reported_signal", "preparation_recommendation"],
+      "relevantSections": [
+        "direct article/report URL required"
+      ],
+      "claimTypes": [
+        "candidate_reported_signal",
+        "preparation_recommendation"
+      ],
       "inspectionStatus": "blocked_missing_permalink",
       "lastChecked": null,
       "licenseAndAccess": "Link to original pages; do not copy questions or treat a guide as employer policy.",
@@ -638,28 +944,42 @@
       "id": "SRC-CONFLICT-001",
       "topic": "TLS 1.3 standard version",
       "resolution": "RFC 9846 (July 2026) supersedes/obsoletes RFC 8446.",
-      "sourceIds": ["STD-TLS-8446", "STD-TLS-9846"],
+      "sourceIds": [
+        "STD-TLS-8446",
+        "STD-TLS-9846"
+      ],
       "state": "resolved"
     },
     {
       "id": "SRC-CONFLICT-002",
       "topic": "OWASP Top 10 edition",
       "resolution": "OWASP identifies Top 10:2025 as its current released version; Top 10:2021 is historical.",
-      "sourceIds": ["SEC-OWASP-TOP10-2021", "SEC-OWASP-TOP10-2025"],
+      "sourceIds": [
+        "SEC-OWASP-TOP10-2021",
+        "SEC-OWASP-TOP10-2025"
+      ],
       "state": "resolved"
     },
     {
       "id": "SRC-CONFLICT-003",
       "topic": "Candidate-report inspection status",
       "resolution": "The source-foundation report says Reddit was not directly inspected, while Phase 2 labels a handful of reports inspected. Item-level permanent links are missing and inline links are mismatched, so candidate signals remain blocked.",
-      "sourceIds": ["CAND-AMAZON-REPORT-COLLECTION-PHASE2", "SECONDARY-INTERVIEW-GUIDES-BACKLOG"],
+      "sourceIds": [
+        "CAND-AMAZON-REPORT-COLLECTION-PHASE2",
+        "SECONDARY-INTERVIEW-GUIDES-BACKLOG"
+      ],
       "state": "unresolved_requires_permalink_reconciliation"
     },
     {
       "id": "SRC-CONFLICT-004",
       "topic": "Berkeley and MIT course citations",
       "resolution": "Use official university directory/course URLs; several Phase 2 citation links adjacent to Berkeley/CMU rows resolve to unrelated MIT or roadmap pages.",
-      "sourceIds": ["EDU-MIT-6006-S20", "EDU-BERKELEY-CS61B", "EDU-BERKELEY-CS168", "EDU-CMU-15445-S26"],
+      "sourceIds": [
+        "EDU-MIT-6006-S20",
+        "EDU-BERKELEY-CS61B",
+        "EDU-BERKELEY-CS168",
+        "EDU-CMU-15445-S26"
+      ],
       "state": "corrected_links_but_syllabus_depth_incomplete"
     },
     {
@@ -672,9 +992,13 @@
     {
       "id": "SRC-CONFLICT-006",
       "topic": "PostgreSQL composite-index question citation",
-      "resolution": "The existing current composite-index revisions cite PostgreSQL 16 mvcc.html, while the objective concerns multicolumn indexes. The index-specific section is identified as a candidate correction but has not been inspected or applied; immutable revisions are left unchanged.",
-      "sourceIds": ["DOC-POSTGRESQL-16", "DOC-POSTGRESQL-16-INDEXES", "DOC-POSTGRESQL-18"],
-      "state": "unresolved_revision_source_correction_required"
+      "resolution": "PostgreSQL 16 ?11.3 was directly checked; all six affected current candidates were reissued as immutable revision 2, exact-hash automated-reviewed, and published against that section. Revision 1 and its old citation remain historical. Automated structural approval does not replace independent expert review.",
+      "sourceIds": [
+        "DOC-POSTGRESQL-16",
+        "DOC-POSTGRESQL-16-INDEXES",
+        "DOC-POSTGRESQL-18"
+      ],
+      "state": "resolved_new_immutable_revision_automated_reviewed"
     }
   ]
 }

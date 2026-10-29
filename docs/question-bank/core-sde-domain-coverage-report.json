@@ -1,6 +1,6 @@
 {
   "reportVersion": 2,
-  "generatedAt": "2026-10-28T18:15:44.118Z",
+  "generatedAt": "2026-10-28T19:41:01.245Z",
   "scope": "Database-grounded current canonical revisions and active catalog nodes. Counts deduplicate by revision UUID and exclude learner-created questions from canonical-bank coverage.",
   "catalog": {
     "domains": 6,
@@ -8,7 +8,7 @@
     "knowledgePoints": 26
   },
   "bank": {
-    "totalRevisions": 161,
+    "totalRevisions": 179,
     "currentRevisions": 150,
     "currentQuestionIdentityCount": 150,
     "mappedCurrentRevisions": 150,
@@ -1540,7 +1540,7 @@
           ]
         }
       ],
-      "totalQuestionRevisions": 24,
+      "totalQuestionRevisions": 30,
       "currentQuestionRevisions": 24,
       "learnerCreatedQuestions": 0,
       "canonicalCurrentQuestions": 24,
@@ -2150,7 +2150,7 @@
           ]
         }
       ],
-      "totalQuestionRevisions": 24,
+      "totalQuestionRevisions": 36,
       "currentQuestionRevisions": 24,
       "learnerCreatedQuestions": 0,
       "canonicalCurrentQuestions": 24,

@@ -102,7 +102,12 @@ describe("PostgreSQL runtime integration", () => {
       count(*) FILTER(WHERE r.review_status='awaiting_subject_matter_review' AND r.publication_status='draft')::int pending,
       count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published')::int approved_or_published
       FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id WHERE i.slug LIKE 'sde-%' AND i.slug NOT LIKE 'sde-net-http-%'`);
-    expect(candidates.rows[0]).toEqual({total:114,current:114,pending:0,approved_or_published:114});
+    expect(candidates.rows[0]).toEqual({total:132,current:114,pending:0,approved_or_published:114});
+    const immutableRevisions=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.revision=2 AND r.content_hash=ar.content_hash AND ar.decision='approved')::int approved_revision_2
+      FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
+      LEFT JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.policy_version='copilot-automated-quality-v1' AND ar.review_method='copilot_automated_review'
+      WHERE i.slug LIKE 'sde-os-process-thread-isolation-%' OR i.slug LIKE 'sde-os-race-protect-invariant-%' OR i.slug LIKE 'sde-db-composite-index-order-%'`);
+    expect(immutableRevisions.rows[0]).toEqual({total:36,approved_revision_2:18});
     const retiredHttpCandidates=await postgres.query<any>(`SELECT count(*)::int count FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id AND r.revision=i.current_revision WHERE i.slug LIKE 'sde-net-http-%' AND r.publication_status='retired'`);
     expect(retiredHttpCandidates.rows[0].count).toBe(12);
     for(const subject of coreSubjects){

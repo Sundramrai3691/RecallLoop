@@ -8,6 +8,14 @@ const canonicalTargets = new Set([
 const supportedTypes = new Set(["mcq", "rapid_recall", "short_explanation", "scenario", "descriptive", "transfer"]);
 const supportedLevels = new Set(["recognition", "recall", "explanation", "application", "depth", "transfer"]);
 
+function hasAccessDate(question: PilotQuestion): boolean {
+  const noteDate = /Accessed (\d{4}-\d{2}-\d{2})\./.exec(question.source.notes)?.[1];
+  const date = question.source.accessedOn ?? noteDate;
+  if (typeof date !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(date) || noteDate !== date) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date;
+}
+
 function normalizedText(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim().replace(/\s+/g, " ");
 }
@@ -49,7 +57,7 @@ export function validatePilotQuestionBank(questions: readonly PilotQuestion[] = 
     if (!Number.isInteger(question.revision) || question.revision < 1) issues.push(`${prefix}: revision must be a positive integer`);
     if (!Number.isInteger(question.difficulty) || question.difficulty < 1 || question.difficulty > 5) issues.push(`${prefix}: difficulty must be an integer from 1 to 5`);
     if (!question.objective.trim() || !question.prompt.trim() || !question.expectedAnswer.trim()) issues.push(`${prefix}: objective, prompt, and expected answer are required`);
-    if (!/^https:\/\//.test(question.source.url) || !question.source.title.trim() || !question.source.publisher.trim() || !question.source.license.trim() || !question.source.notes.includes("Accessed 2026-10-18")) issues.push(`${prefix}: source provenance is incomplete`);
+    if (!/^https:\/\//.test(question.source.url) || !question.source.title.trim() || !question.source.publisher.trim() || !question.source.license.trim() || !hasAccessDate(question)) issues.push(`${prefix}: source provenance is incomplete`);
     if (!question.rubric.length || new Set(question.rubric.map((dimension) => dimension.id)).size !== question.rubric.length || question.rubric.some((dimension) => !dimension.id || !dimension.label || dimension.weight <= 0 || !dimension.fullCredit || !dimension.partialCredit || !dimension.insufficient)) issues.push(`${prefix}: rubric dimensions are absent or invalid`);
     if (question.hints.length > 3 || question.hints.some((hint) => !hint.trim())) issues.push(`${prefix}: hints must contain at most three non-empty steps`);
     const promptKey = normalizedText(question.prompt);

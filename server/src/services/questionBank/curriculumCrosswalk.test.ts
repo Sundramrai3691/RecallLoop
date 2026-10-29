@@ -74,7 +74,12 @@ describe("consolidated curriculum artifacts", () => {
       expect(point.targetRoles.length).toBeGreaterThan(0);
       expect(point.distinctVerificationCriteria.length).toBeGreaterThan(0);
       expect(point.semanticQuestionAlignment).toMatch(/review .* remains open/i);
-      expect(point.answerRubricStatus).toMatch(/not independently re-evaluated/i);
+      if (["os-process-thread-isolation", "os-race-invariant", "db-composite-index-order"].includes(point.id)) {
+        expect(point.answerRubricStatus).toMatch(/checked/i);
+        expect(point.answerRubricStatus).toMatch(/no independent human\/expert review/i);
+      } else {
+        expect(point.answerRubricStatus).toMatch(/not independently re-evaluated/i);
+      }
       expect(point.verification).toMatch(/not independent human validation/i);
       const revisions = crosswalk.pilot.questionRevisions.filter((revision) => revision.canonicalKnowledgePointId === point.canonicalKnowledgePointId);
       expect(revisions).toHaveLength(6);

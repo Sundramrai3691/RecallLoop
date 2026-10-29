@@ -2,13 +2,14 @@ import { withTransaction } from "./postgres.js";
 import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuestionBank.js";
 import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "../services/questionBank/coreSdeQuestionBank.js";
 import { questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
+import type { PilotQuestion } from "../services/questionBank/pilotQuestionBank.js";
 
-export async function seedCanonicalQuestionBank(): Promise<void> {
+export async function seedCanonicalQuestionBank(questions: readonly PilotQuestion[] = [...canonicalHttpPilotQuestions,...canonicalCoreSdeQuestions]): Promise<void> {
   const issues = validatePilotQuestionBank();
   issues.push(...validateCoreSdeQuestionBank());
   if (issues.length) throw new Error(`Canonical question bank validation failed:\n${issues.join("\n")}`);
   await withTransaction(async (client) => {
-    for (const question of [...canonicalHttpPilotQuestions,...canonicalCoreSdeQuestions]) {
+    for (const question of questions) {
       const canonical = await client.query<{ concept_id: string; point_id: string }>(`SELECT cc.id AS concept_id,kp.id AS point_id
         FROM canonical_concepts cc JOIN knowledge_points kp ON kp.concept_id=cc.id
         WHERE cc.status='active' AND lower(trim(cc.name))=lower(trim($1))
