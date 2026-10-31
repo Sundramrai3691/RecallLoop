@@ -33,4 +33,9 @@ describe("study topic and source identity", () => {
     expect(() => validateStudySessionInput({title:"HTTP",rawMaterial:"notes",canonicalConceptId:"123e4567-e89b-42d3-a456-426614174001"})).toThrow("must include its parent topic");
     expect(() => validateStudySessionInput({title:"HTTP",rawMaterial:"notes",canonicalTopicId:"not-a-uuid"})).toThrow("topic ID is invalid");
   });
+
+  it("rejects malformed imported-source IDs before persistence", () => {
+    expect(() => validateStudySessionInput({ title: "Index selection", rawMaterial: "Extracted index notes", groundingSourceId: "not-a-uuid" }))
+      .toThrow("learning source ID is invalid");
+  });
 });

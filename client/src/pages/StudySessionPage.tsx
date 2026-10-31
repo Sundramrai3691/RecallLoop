@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
-import { ApiError, type Concept, type RecallAttempt, type StudySession } from "../types";
+import { ApiError, type Concept, type GroundingSourceDetail, type RecallAttempt, type StudySession } from "../types";
 import { studySessionDisplayTitle } from "../utils/presentation";
 
 export function StudySessionPage() {
@@ -12,6 +12,7 @@ export function StudySessionPage() {
   const returnTo=rawReturnTo==="/plan/today"||rawReturnTo==="/review"||rawReturnTo==="/knowledge-check"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const learningIntent=searchParams.get("intent")==="apply"?"apply":searchParams.get("intent")==="remember"?"remember":"new";
   const [session, setSession] = useState<StudySession | null>(null);
+  const [groundingSource, setGroundingSource] = useState<GroundingSourceDetail | null>(null);
   const [concepts, setConcepts] = useState<Concept[]>([]);
   const [pendingRecalls, setPendingRecalls] = useState<RecallAttempt[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -25,6 +26,9 @@ export function StudySessionPage() {
         setSession(data.session);
         setConcepts(data.concepts);
         setPendingRecalls(data.pendingRecalls ?? []);
+        if (data.session.groundingSourceId) {
+          void api.getGroundingSource(data.session.groundingSourceId).then(({ source }) => setGroundingSource(source)).catch(() => setError("The study session loaded, but its original source details are unavailable. Your extracted concepts are still available below."));
+        }
       })
       .catch((err) => setError(err instanceof ApiError ? err.message : "Session not found"));
   }, [id]);
@@ -60,6 +64,14 @@ export function StudySessionPage() {
         <p className="muted">{learningIntent === "apply" ? "You chose to practise this material. Choose a supported practice mode for an extracted concept, or finish the review to start recall." : learningIntent === "remember" ? "You chose to strengthen your recall. Review the extracted concepts, then start a recall question." : "Review the extracted concepts, then start recall when you’re ready."}</p>
         {session.sourceUrl ? <p><a href={session.sourceUrl} target="_blank" rel="noreferrer">Open saved source link</a></p> : null}
       </div>
+      {groundingSource ? <section className="card source-study-preview" aria-labelledby="study-source-title">
+        <h2 id="study-source-title">Learning material</h2>
+        <p><strong>{groundingSource.title}</strong> · {groundingSource.sourceType.replaceAll("_", " ")}</p>
+        {groundingSource.reference ? /^https?:\/\//i.test(groundingSource.reference) ? <p><a href={groundingSource.reference} target="_blank" rel="noreferrer">Open original source</a></p> : <p className="metadata">Source reference: {groundingSource.reference}</p> : null}
+        {groundingSource.sourceType === "pdf" ? <p className="metadata">Extracted pages: {((groundingSource.provenance.extraction as { pages?: Array<{pageNumber:number;hasText:boolean}> } | undefined)?.pages ?? []).filter((page) => page.hasText).map((page) => page.pageNumber).join(", ") || "No page text"}</p> : null}
+        {groundingSource.sourceType === "docx" ? <p className="metadata">Sections: {((groundingSource.provenance.extraction as { sections?: string[]; sectionHeadings?: string[] } | undefined)?.sections ?? (groundingSource.provenance.extraction as { sectionHeadings?: string[] } | undefined)?.sectionHeadings ?? []).join(", ") || "No section headings recorded"}</p> : null}
+        <details><summary>Review the extracted source excerpt</summary><p>{groundingSource.content.slice(0, 1200)}{groundingSource.content.length > 1200 ? "…" : ""}</p></details>
+      </section> : null}
       {error ? <p className="error">{error}</p> : null}
       <div className="grid">
         {concepts.map((concept) => (

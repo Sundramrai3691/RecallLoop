@@ -41,8 +41,8 @@ describe("PostgreSQL runtime integration", () => {
     expect(result.rows.length).toBe(16);
     const reviewTables = await postgres.query<any>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('canonical_question_reviewers','canonical_question_reviews')`);
     expect(reviewTables.rows).toHaveLength(2);
-    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id')))`);
-    expect(structured.rows).toHaveLength(9);
+    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id','grounding_source_id')))`);
+    expect(structured.rows).toHaveLength(10);
   });
 
   it("preserves the exact current automated approval when migrations are replayed", async () => {
@@ -639,8 +639,6 @@ describe("PostgreSQL runtime integration", () => {
   it("ingests attributed source text, retrieves a real gap, generates grounded remediation, and verifies improvement",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Grounding Test') RETURNING id`,[`grounding-${randomUUID()}@test.local`])).rows[0].id;
     try{
-      const study=await postgres.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'TCP study') RETURNING id`,[userId]);
-      const concept=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'TCP Congestion Control','Sender-side traffic regulation.',$3) RETURNING id`,[userId,study.rows[0].id,["cwnd grows during slow start"]]);
       const sourceInput={title:"TCP Congestion Control Notes",text:"TCP congestion control uses the congestion window (cwnd) to limit bytes in flight at the sender. Slow start increases cwnd as acknowledgements arrive until the slow-start threshold or a loss event. Receiver flow control uses rwnd to limit data based on receiver capacity.",sourceType:"markdown",reference:"https://example.test/tcp-notes",provenance:{providedBy:"learner",license:"learner-provided"}};
       const source=await ingestGroundingSource(userId,sourceInput);
       expect(source.processingStatus).toBe("processed");
@@ -652,7 +650,15 @@ describe("PostgreSQL runtime integration", () => {
       expect((await postgres.query<any>(`SELECT count(*)::int AS count FROM grounding_chunks WHERE source_id=$1`,[source.id])).rows[0].count).toBe(source.chunkCount);
       await expect(getGroundingSource(userId,randomUUID())).rejects.toThrow("Source not found");
       const outsider=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Other User') RETURNING id`,[`grounding-other-${randomUUID()}@test.local`])).rows[0].id;
-      try{await expect(getGroundingSource(outsider,source.id)).rejects.toThrow("Source not found");}finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[outsider]);}
+      try{await expect(getGroundingSource(outsider,source.id)).rejects.toThrow("Source not found");await expect(createStudySession({userId:outsider,title:source.title,groundingSourceId:source.id})).rejects.toMatchObject({code:"SOURCE_NOT_FOUND"});}finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[outsider]);}
+      await postgres.query(`UPDATE grounding_sources SET processing_status='processing' WHERE id=$1`,[source.id]);
+      await expect(createStudySession({userId,title:source.title,groundingSourceId:source.id})).rejects.toMatchObject({code:"SOURCE_NOT_READY"});
+      await postgres.query(`UPDATE grounding_sources SET processing_status='processed' WHERE id=$1`,[source.id]);
+      const sourceSession=await createSession(userId,{title:source.title,rawMaterial:source.content,sourceType:"notes",sourceUrl:source.reference,groundingSourceId:source.id});
+      expect(sourceSession.groundingSourceId).toBe(source.id);
+      expect(sourceSession.rawMaterial).toBe(source.content);
+      expect(sourceSession.sourceUrl).toBe(source.reference);
+      const concept=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'TCP Congestion Control','Sender-side traffic regulation.',$3) RETURNING id`,[userId,sourceSession.id,["cwnd grows during slow start"]]);
 
       let triggeringAttempt:any;
       for(let index=0;index<3;index++){

@@ -66,8 +66,6 @@ export async function createStudySession(input: { title: string; rawMaterial?: s
   const sourceType = input.sourceType ?? (input.rawMaterial ? "notes" : "manual");
   if (!SOURCE_TYPES.includes(sourceType)) throw new AppError("Invalid sourceType", 400, "VALIDATION_ERROR");
   const preparedConcepts = await prepareConcepts({ title, rawMaterial });
-  const sourceType = input.sourceType ?? (input.rawMaterial ? "notes" : "manual");
-  if (!SOURCE_TYPES.includes(sourceType)) throw new AppError("Invalid sourceType", 400, "VALIDATION_ERROR");
   const session = await createSession(input.userId, { ...input, title, rawMaterial, sourceUrl, canonicalTopicId, canonicalConceptId, sourceType, groundingSourceId: groundedSource?.id ?? null });
   const concepts = await persistPreparedConcepts({ studySessionId: session.id, concepts: preparedConcepts, userId: input.userId });
   await recordLearningEvent({ userId: input.userId, type: "STUDY_STARTED", entityType: "StudySession", entityId: session.id, payload: { title } });

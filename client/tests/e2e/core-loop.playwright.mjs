@@ -248,6 +248,25 @@ try {
   const pageChunks = await pool.query("SELECT metadata->>'pageNumber' AS page_number FROM grounding_chunks WHERE source_id=$1 ORDER BY chunk_order", [pdfSource.id]);
   assert.deepEqual(pageChunks.rows.map((row) => Number(row.page_number)), [1, 3]);
 
+  const pdfSourceRow = page.locator(".source-row").filter({ hasText: "dbms-index-guide.pdf" });
+  await pdfSourceRow.getByRole("link", { name: "Start learning session" }).click();
+  await page.waitForURL(/\/study\/new\?sourceId=[0-9a-f-]+/i, { timeout: 10_000 });
+  await page.getByRole("heading", { name: "Material to learn from" }).waitFor();
+  assert((await page.locator(".source-study-preview").innerText()).includes("PDF page 1 · PDF page 3"), "The source handoff should show only pages with extracted text");
+  await page.getByRole("button", { name: "Start learning session" }).click();
+  await page.waitForURL(/\/study\/[0-9a-f-]+\?/i, { timeout: 20_000 });
+  await page.getByRole("heading", { name: "Learning material" }).waitFor();
+  await page.locator(".grid article").first().waitFor({ timeout: 10_000 });
+  assert((await page.locator(".grid article").count()) > 0, "The source session should render at least one inspectable concept");
+  assert((await page.locator(".source-study-preview").innerText()).includes("Extracted pages: 1, 3"), "The study session should preserve PDF page provenance");
+  const sourceSessionId = new URL(page.url()).pathname.split("/").pop();
+  const sourceSession = await authenticatedApi(token, `${apiUrl}/api/study-sessions/${sourceSessionId}`);
+  assert.equal(sourceSession.session.groundingSourceId, pdfSource.id, "The study session must persist the selected source identity");
+  assert.equal(sourceSession.session.rawMaterial, pdfDetails.content, "The study session must use the server-owned extracted source text");
+  assert(sourceSession.concepts.length > 0, "The source session should extract inspectable concepts");
+  const sourceEvidenceBeforeRecall = await pool.query("SELECT count(*)::int AS count FROM recall_attempts WHERE study_session_id=$1", [sourceSessionId]);
+  assert.equal(sourceEvidenceBeforeRecall.rows[0].count, 0, "Opening extracted material must not create learner evidence");
+
   await page.locator("#material-type").selectOption("docx");
   const docxBuffer = await docxFixture();
   await page.locator("#material-file").setInputFiles({ name: "index-selection-notes.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: docxBuffer });

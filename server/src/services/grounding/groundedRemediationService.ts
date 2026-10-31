@@ -132,7 +132,7 @@ export async function ingestGroundingDocx(userId:string,input:{title?:string;ref
 }
 
 export async function getGroundingSources(userId:string){return listSources(userId);}
-export async function getGroundingSource(userId:string,sourceId:string){const source=await findSource(userId,sourceId);if(!source)throw notFound("Source not found","SOURCE_NOT_FOUND");return source;}
+export async function getGroundingSource(userId:string,sourceId:string){const source=await findSource(userId,sourceId);if(!source)throw notFound("Source not found","SOURCE_NOT_FOUND");return {...source,chunkCount:await countSourceChunks(sourceId)};}
 
 function reasonFromEvidence(point:string,rows:any[],current:any):string {
   if(Number(current.confidence)>=8)return `Your confidence was ${current.confidence}/10, but evaluation marked “${point}” as ${current.status}.`;
@@ -141,11 +141,11 @@ function reasonFromEvidence(point:string,rows:any[],current:any):string {
   return `Your latest evaluated recall marked “${point}” as ${current.status}.`;
 }
 
-export async function retrieveForGap(input:{userId:string;conceptName:string;knowledgePoint:string;misconception?:string|null;limit?:number}) {
+export async function retrieveForGap(input:{userId:string;conceptName:string;knowledgePoint:string;misconception?:string|null;limit?:number;sourceId?:string|null}) {
   const provider=createEmbeddingProvider();
   const searchText=[input.conceptName,input.knowledgePoint,input.misconception].filter(Boolean).join(". ");
   const [embedding]=await provider.embed([searchText]);
-  const candidates=await retrieveChunks(input.userId,embedding,provider.name,40);
+  const candidates=await retrieveChunks(input.userId,embedding,provider.name,40,input.sourceId);
   return rankRetrievedChunks(searchText,embedding,candidates,input.limit??5,MIN_RELEVANCE);
 }
 
@@ -160,8 +160,8 @@ export function rankRetrievedChunks(searchText:string,embedding:number[],candida
 }
 
 export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {
-  const attemptResult=await query<any>(`SELECT a.id,a.user_id AS "userId",a.concept_id AS "conceptId",a.confidence,a.evidence_weight AS "evidenceWeight",a.answer,a.submitted_at AS "submittedAt",c.name AS "conceptName",e.mistakes,json_agg(json_build_object('point',kp.point,'status',kp.status,'feedback',kp.feedback) ORDER BY kp.id) FILTER(WHERE kp.id IS NOT NULL) AS "knowledgePointResults"
-    FROM recall_attempts a JOIN personal_concepts c ON c.id=a.concept_id AND c.user_id=a.user_id JOIN recall_evaluations e ON e.recall_attempt_id=a.id LEFT JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id
+  const attemptResult=await query<any>(`SELECT a.id,a.user_id AS "userId",a.concept_id AS "conceptId",a.confidence,a.evidence_weight AS "evidenceWeight",a.answer,a.submitted_at AS "submittedAt",c.name AS "conceptName",ss.grounding_source_id AS "groundingSourceId",e.mistakes,json_agg(json_build_object('point',kp.point,'status',kp.status,'feedback',kp.feedback) ORDER BY kp.id) FILTER(WHERE kp.id IS NOT NULL) AS "knowledgePointResults"
+    FROM recall_attempts a JOIN personal_concepts c ON c.id=a.concept_id AND c.user_id=a.user_id JOIN study_sessions ss ON ss.id=a.study_session_id AND ss.user_id=a.user_id JOIN recall_evaluations e ON e.recall_attempt_id=a.id LEFT JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id
     WHERE a.id=$1 AND a.user_id=$2 GROUP BY a.id,c.name,e.id`,[attemptId,userId]);
   const attempt=attemptResult.rows[0];
   if(!attempt)throw notFound("Recall attempt not found","RECALL_NOT_FOUND");
@@ -180,7 +180,7 @@ export async function createGroundedRemediation(userId:string,attemptId:string,o
   const existing=await getRemediation(userId,remediationId);
   if(existing&&["ready","verification_created","verified"].includes(existing.status))return await remediationResponse(userId,existing,attempt.conceptId);
   try {
-    const sources=await retrieveForGap({userId,conceptName:attempt.conceptName,knowledgePoint:chosen.point,misconception:attempt.mistakes?.[0]??null});
+    const sources=await retrieveForGap({userId,conceptName:attempt.conceptName,knowledgePoint:chosen.point,misconception:attempt.mistakes?.[0]??null,sourceId:attempt.groundingSourceId??null});
     await storeRemediationRetrieval(remediationId,sources);
     if(!sources.length){await updateRemediation(remediationId,{status:"insufficient_sources"});const saved=await getRemediation(userId,remediationId);return await remediationResponse(userId,saved,attempt.conceptId);}
     const remediator=options.remediator??createGroundedRemediator();

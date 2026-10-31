@@ -4,6 +4,7 @@ import {
   type DashboardData,
   type Goal,
   type GroundedRemediation,
+  type GroundingSourceDetail,
   type LearnerSummary,
   type BaselineQuestion,
   type KnowledgeRole,
@@ -166,6 +167,13 @@ export const api = {
     });
   },
 
+  createStudySessionFromSource(input: { title: string; groundingSourceId: string; canonicalTopicId?: string; canonicalConceptId?: string }) {
+    return request<{ session: StudySession; concepts: Concept[] }>("/api/study-sessions", {
+      method: "POST",
+      body: JSON.stringify(input),
+    });
+  },
+
   getStudySession(id: string) {
     return request<{
       session: StudySession;
@@ -201,6 +209,7 @@ export const api = {
   ingestGroundingPdf(file:File,input:{title:string;reference?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;content?:string;contentHash:string;provenance:Record<string,unknown>;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources/pdf',{method:'POST',headers:{'Content-Type':'application/pdf','X-Resource-Title':input.title,'X-Resource-Reference':input.reference??'','X-Resource-Provenance':JSON.stringify(input.provenance??{})},body:file});},
   ingestGroundingDocx(file:File,input:{title:string;reference?:string;provenance?:Record<string,unknown>}){return request<{source:{id:string;title:string;sourceType:string;reference:string;content?:string;contentHash:string;provenance:Record<string,unknown>;processingStatus:string;processingError:string|null;chunkCount:number;duplicate:boolean}}>('/api/grounding/sources/docx',{method:'POST',headers:{'Content-Type':'application/vnd.openxmlformats-officedocument.wordprocessingml.document','X-Resource-Title':input.title,'X-Resource-Reference':input.reference??'','X-Resource-Provenance':JSON.stringify(input.provenance??{})},body:file});},
   listGroundingSources(){return request<{sources:Array<{id:string;title:string;sourceType:string;reference:string;provenance:Record<string,unknown>;contentHash:string;processingStatus:string;processingError:string|null;createdAt:string;updatedAt:string;chunkCount:number}>}>('/api/grounding/sources');},
+  getGroundingSource(id: string) { return request<{ source: GroundingSourceDetail }>(`/api/grounding/sources/${id}`); },
   createRemediation(attemptId:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/from-attempt/${attemptId}`,{method:'POST'});},
   getRemediation(id:string){return request<{remediation:GroundedRemediation}>(`/api/remediations/${id}`);},
   verifyRemediation(id:string){return request<{remediationId:string;attempt:RecallAttempt}>(`/api/remediations/${id}/verify`,{method:'POST'});},

@@ -286,6 +286,10 @@ a { color: var(--accent); }
 .readiness-outcomes dd { margin: 2px 0 0; font-size: 20px; font-weight: 700; }
 .readiness-actions { align-items: center; }
 .readiness-actions a:last-child { display: inline-flex; align-items: center; gap: 5px; }
+.source-row > span:first-child { min-width: 0; overflow-wrap: anywhere; }
+.source-row > .actions { display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+.source-row > .actions .btn { white-space: nowrap; }
+.source-study-preview { min-width: 0; overflow-wrap: anywhere; }
 select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible,summary:focus-visible { outline: 3px solid color-mix(in srgb,var(--accent) 50%,transparent); outline-offset: 2px; }
 
 @media (max-width: 900px) {
@@ -306,6 +310,8 @@ select:focus-visible,input:focus-visible,textarea:focus-visible,button:focus-vis
   .readiness-actions .btn { flex: 1 1 auto; }
   .baseline-actions { align-items: stretch; flex-direction: column; }
   .baseline-actions .btn { justify-content: center; width: 100%; }
+  .source-row { align-items: flex-start; flex-direction: column; }
+  .source-row > .actions { justify-content: flex-start; width: 100%; }
 }
 @media (max-width:560px) {
   .study-next-steps { grid-template-columns: 1fr; gap: 7px; }

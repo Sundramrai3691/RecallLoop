@@ -201,6 +201,20 @@ export interface StudySession {
   updatedAt: string;
 }
 
+export interface GroundingSourceDetail {
+  id: string;
+  title: string;
+  sourceType: string;
+  reference: string;
+  provenance: Record<string, unknown>;
+  content: string;
+  contentHash: string;
+  processingStatus: string;
+  processingError: string | null;
+  chunkCount: number;
+  duplicate?: boolean;
+}
+
 export interface Concept {
   id: string;
   studySessionId: string;

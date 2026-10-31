@@ -50,11 +50,11 @@ export async function listSources(userId:string) {
   return result.rows;
 }
 
-export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=40):Promise<Array<GroundingSource & {embedding:number[]}>> {
+export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=40,sourceId?:string|null):Promise<Array<GroundingSource & {embedding:number[]}>> {
   const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.metadata->>'section' AS section,c.metadata->>'paragraphStart' AS "paragraphStart",c.metadata->>'paragraphEnd' AS "paragraphEnd",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
     FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
-    WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3
-    ORDER BY s.created_at DESC,c.chunk_order LIMIT $4`,[userId,providerName,queryEmbedding.length,5000]);
+    WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3 AND ($4::uuid IS NULL OR s.id=$4)
+    ORDER BY s.created_at DESC,c.chunk_order LIMIT $5`,[userId,providerName,queryEmbedding.length,sourceId??null,5000]);
   return result.rows.slice(0,limit).map((row)=>({...row,embedding:row.embedding}));
 }
 
