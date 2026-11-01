@@ -3,14 +3,18 @@ export class AppError extends Error {
   code: string;
   retryable?: boolean;
   retryAfterSeconds?: number;
+  upstreamStatus?: number;
+  diagnosticCode?: string;
 
-  constructor(message: string, status = 400, code = "BAD_REQUEST", options: { retryable?: boolean; retryAfterSeconds?: number } = {}) {
+  constructor(message: string, status = 400, code = "BAD_REQUEST", options: { retryable?: boolean; retryAfterSeconds?: number; upstreamStatus?: number; diagnosticCode?: string } = {}) {
     super(message);
     this.name = "AppError";
     this.status = status;
     this.code = code;
     this.retryable = options.retryable;
     this.retryAfterSeconds = options.retryAfterSeconds;
+    this.upstreamStatus = options.upstreamStatus;
+    this.diagnosticCode = options.diagnosticCode;
   }
 }
 

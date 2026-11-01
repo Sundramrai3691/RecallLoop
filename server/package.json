@@ -23,6 +23,7 @@
     "question-bank:automated-review": "tsx src/scripts/automatedQuestionReview.ts",
     "question-bank:seed:dbms": "tsx src/scripts/seedDbmsCoreQuestions.ts",
     "question-bank:coverage": "tsx src/scripts/coreSdeCoverage.ts",
+    "benchmark:evaluator:live": "tsx src/scripts/runEvaluatorBenchmark.ts",
     "db:import-legacy": "tsx ../scripts/migrate-mongo-to-postgres.ts",
     "config:check": "tsx src/scripts/checkConfig.ts",
     "test:providers:live": "vitest run src/services/providers/providerSmoke.live.test.ts --reporter=verbose",

@@ -33,12 +33,12 @@ export function providerHttpError(provider: Provider, status: number, body?: unk
   const upstreamCode = errorCode(body);
   const message = errorMessage(body);
   const quota = status === 429 && (/quota|billing|payment/.test(`${upstreamCode ?? ""} ${message}`));
-  if (status === 401) return new AppError(`${provider} provider authentication failed (HTTP 401). Check the configured API key.`, 503, `${prefix}_AUTHENTICATION_FAILED`);
-  if (status === 403) return new AppError(`${provider} provider denied access (HTTP 403). Check model access and project permissions.`, 503, `${prefix}_ACCESS_DENIED`);
-  if (quota) return new AppError(`${provider} provider quota or billing limit is exhausted. The operation was not completed.`, 503, `${prefix}_QUOTA_EXHAUSTED`);
-  if (status === 429) return new AppError(`${provider} provider is temporarily rate-limited. Retry after the indicated delay.`, 429, `${prefix}_RATE_LIMITED`, { retryable: true, retryAfterSeconds });
-  if (status >= 500) return new AppError(`${provider} provider failed (HTTP ${status}). Retry after the provider recovers.`, 503, `${prefix}_PROVIDER_FAILURE`, { retryable: true, retryAfterSeconds });
-  return new AppError(`${provider} provider rejected the request (HTTP ${status}). Check the model and request configuration.`, 503, `${prefix}_REQUEST_REJECTED`);
+  if (status === 401) return new AppError(`${provider} provider authentication failed (HTTP 401). Check the configured API key.`, 503, `${prefix}_AUTHENTICATION_FAILED`, { upstreamStatus: status });
+  if (status === 403) return new AppError(`${provider} provider denied access (HTTP 403). Check model access and project permissions.`, 503, `${prefix}_ACCESS_DENIED`, { upstreamStatus: status });
+  if (quota) return new AppError(`${provider} provider quota or billing limit is exhausted. The operation was not completed.`, 503, `${prefix}_QUOTA_EXHAUSTED`, { upstreamStatus: status });
+  if (status === 429) return new AppError(`${provider} provider is temporarily rate-limited. Retry after the indicated delay.`, 429, `${prefix}_RATE_LIMITED`, { retryable: true, retryAfterSeconds, upstreamStatus: status });
+  if (status >= 500) return new AppError(`${provider} provider failed (HTTP ${status}). Retry after the provider recovers.`, 503, `${prefix}_PROVIDER_FAILURE`, { retryable: true, retryAfterSeconds, upstreamStatus: status });
+  return new AppError(`${provider} provider rejected the request (HTTP ${status}). Check the model and request configuration.`, 503, `${prefix}_REQUEST_REJECTED`, { upstreamStatus: status });
 }
 
 /** Provider bodies are parsed only for bounded, allowlisted classification fields; never log/return raw bodies. */

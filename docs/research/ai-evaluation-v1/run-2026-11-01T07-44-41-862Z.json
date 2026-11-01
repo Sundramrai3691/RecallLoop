@@ -1,0 +1,115 @@
+{
+  "benchmarkVersion": "recallloop-ai-evaluation-v1",
+  "runId": "2026-11-01T07-44-41-862Z",
+  "status": "stopped_early",
+  "startedAt": "2026-11-01T07:44:41.864Z",
+  "completedAt": "2026-11-01T07:44:41.983Z",
+  "provider": "openai-compatible",
+  "model": "gemini-3.8-flash",
+  "evaluatorVersion": "recallloop-llm-eval-1.0.0",
+  "promptVersion": "recallloop-llm-eval-prompt-1.0.0",
+  "schemaVersion": "recallloop-recall-evaluation-zod-1.0.0",
+  "datasetGeneratedAt": "2026-11-01T07:40:19.315Z",
+  "labelStatus": "provisional_pending_human_review",
+  "independentHumanLabels": 0,
+  "stopReason": "Stopped after the configured provider returned the sanitized LLM_UNAVAILABLE/503 connectivity failure; remaining cases were not sent.",
+  "requestCount": 1,
+  "maxRequestCount": 35,
+  "agreement": {
+    "provisionalAgreement": null,
+    "independentReviewedAgreement": null,
+    "note": "Provisional engineering labels are not ground truth; do not report this as model accuracy."
+  },
+  "metrics": {
+    "evaluatedCases": 1,
+    "scoredCases": 0,
+    "unscoredCases": 1,
+    "classLabels": [
+      "correct",
+      "partial",
+      "incorrect"
+    ],
+    "confusionMatrix": {
+      "correct": {
+        "correct": 0,
+        "partial": 0,
+        "incorrect": 0
+      },
+      "partial": {
+        "correct": 0,
+        "partial": 0,
+        "incorrect": 0
+      },
+      "incorrect": {
+        "correct": 0,
+        "partial": 0,
+        "incorrect": 0
+      }
+    },
+    "perClass": {
+      "correct": {
+        "support": 1,
+        "predicted": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "partial": {
+        "support": 0,
+        "predicted": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      },
+      "incorrect": {
+        "support": 0,
+        "predicted": 0,
+        "precision": null,
+        "recall": null,
+        "f1": null
+      }
+    },
+    "macroF1": null,
+    "falseCorrect": {
+      "count": 0,
+      "denominator": 0,
+      "rate": null,
+      "partialClassifiedCorrect": 0,
+      "incorrectClassifiedCorrect": 0
+    },
+    "medianLatencyMs": 117,
+    "p95LatencyMs": 117,
+    "providerErrorCount": 1,
+    "usage": null,
+    "cost": null
+  },
+  "sourceInventory": {
+    "database": "recallloop",
+    "role": "recallloop",
+    "serverAddress": "172.18.0.2/32",
+    "port": 5432,
+    "selectionRule": "Current revision; non-MCQ; published; valid; automated- or authorized-human-approved; approval content hash equals revision content hash; revision is mapped to canonical knowledge points.",
+    "eligibleCurrentNonMcqRevisionRows": 122,
+    "eligibleUniqueRevisionCounts": {
+      "Database Management Systems": 48,
+      "Operating Systems": 16,
+      "Computer Networks": 22,
+      "Data Structures and Algorithms": 16,
+      "System Design": 20
+    }
+  },
+  "records": [
+    {
+      "caseId": "eval-v1-dbms-01",
+      "domain": "Database Management Systems",
+      "expected": "correct",
+      "predicted": null,
+      "providerErrorCategory": "timeout_or_connection",
+      "safeError": "LLM_UNAVAILABLE HTTP 503: LLM provider is unreachable",
+      "modelOutputValidation": [
+        "timeout_or_connection"
+      ],
+      "latencyMs": 117
+    }
+  ]
+}

@@ -2,6 +2,8 @@ import type { QuestionType, RecallEvaluation } from "../../domain/recallTypes.js
 
 export const MOCK_EVALUATOR_VERSION = "recallloop-mock-eval-1.0.0";
 export const LLM_EVALUATOR_VERSION = "recallloop-llm-eval-1.0.0";
+export const LLM_EVALUATOR_PROMPT_VERSION = "recallloop-llm-eval-prompt-1.0.0";
+export const LLM_EVALUATOR_SCHEMA_VERSION = "recallloop-recall-evaluation-zod-1.0.0";
 
 export interface EvaluateAnswerInput {
   conceptName: string;

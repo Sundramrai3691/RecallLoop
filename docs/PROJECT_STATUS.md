@@ -1,5 +1,20 @@
 # Project status
 
+## 2026-11-01 Live evaluator connectivity diagnosis
+
+- Safe configuration inspection confirmed OpenAI-compatible Gemini `gemini-3.8-flash`, configured base path `/v1beta/openai/`, a present key (not displayed), and the expected `chat/completions` request construction. Google's current [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) supports this endpoint/model shape. No repository endpoint, model, request, key-resolution, or proxy configuration defect was demonstrated.
+- DNS resolved `generativelanguage.googleapis.com`. A bounded direct TCP/TLS check failed before HTTP with `EACCES`; `Test-NetConnection` failed, and no proxy environment was configured. This supports outbound socket access being denied by the execution environment. It does not test provider authentication, quota, access or request validity. No repeat model request was sent.
+- Improved OpenAI-compatible adapter diagnostics to retain safe low-level classifications (DNS, refused, timeout, TLS, proxy, outbound blocked, unknown), and preserve upstream HTTP status separately from app status. Learner-facing errors and report text remain sanitized. The benchmark records case counts, attempts/retries, upstream status, and valid/invalid/unattempted outputs.
+- The prior live benchmark made 1 request for the first case; 0 valid outputs, 0 schema-invalid outputs, and 34 unattempted. No model quality metrics are available. See [latest connectivity report](research/ai-evaluation-v1/latest.md).
+- Validation: after the diagnostic changes, focused provider/benchmark suites passed (32/32), `npm.cmd test` passed (33 files / 175 passed / 4 skipped), `npm.cmd run build` passed for server and client (576.03 kB Vite advisory), and `npm.cmd run config:check -w server` passed with the narrowly scoped Node `os.userInfo()` workaround. `git diff --check` passed. No database integration was needed.
+
+## 2026-11-01 AI evaluation benchmark v1
+
+- Added a 35-case synthetic evaluator benchmark: seven free-response cases per DBMS, OS, Computer Networks, DSA, and System Design. Each maps to a distinct current non-MCQ revision with exact content hash and an eligibility snapshot. All proposed labels remain `provisional_pending_human_review`; no human labels or approvals were created.
+- Added an explicit opt-in serial live runner using the production `LlmEvaluator` and configured provider, with a hard 35 outbound-request cap including retries, sanitized results, validation/error categories, confusion metrics, per-class precision/recall/F1, macro F1, false-correct counts, latency, provider-reported token usage only, and no cost estimate. It does not connect to the database or learner records and does not mock-fallback.
+- Live run result: after the narrowly scoped Node `os.userInfo()` workaround, the runner sent one synthetic request and stopped on sanitized `LLM_UNAVAILABLE`/503 connectivity failure. It sent no other cases and received no model output. Provisional agreement is unavailable; evaluator quality remains unmeasured. See [AI evaluation benchmark](AI_EVALUATION_BENCHMARK.md) and latest JSON/Markdown report under `docs/research/ai-evaluation-v1/`.
+- Focused benchmark and existing evaluator contract tests passed (14 tests); server TypeScript build passed. Full unit suite, root build, final diff check and documentation review remain pending.
+
 ## 2026-11-01 Reliability and cross-domain closure
 
 - Closed the remaining local closure-brief gaps with real Edge/Playwright and PostgreSQL evidence: source-session response loss after server commit recovers through a safely reusable owner-scoped idempotency key; deleting an imported source before study creates no session/concepts; eligible DSA and System Design assessments update readiness and survive reload; incorrect and partial due reviews persist the expected scheduler transition while preserving prior attempts.

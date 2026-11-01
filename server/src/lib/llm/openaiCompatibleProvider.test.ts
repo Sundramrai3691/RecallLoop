@@ -57,6 +57,7 @@ describe("OpenAI-compatible chat provider", () => {
     expect((error as AppError).code).toBe(code);
     expect((error as Error).message).toMatch(message);
     expect((error as Error).message).not.toContain(env.llmApiKey);
+    expect((error as AppError).upstreamStatus).toBe(Number(status));
   });
 
   it("rejects malformed and unexpected chat response bodies without exposing them", async () => {

@@ -2,6 +2,7 @@ import { AppError, unavailable } from "../../utils/errors.js";
 import { env } from "../../config/env.js";
 import type { LlmCompleteOptions, LlmMessage, LlmProvider } from "./types.js";
 import { readProviderError } from "./providerErrors.js";
+import { providerConnectionAppError } from "./connectionFailure.js";
 
 const MAX_INLINE_RETRY_MS = 1_000;
 const REQUEST_TIMEOUT_MS = 30_000;
@@ -45,7 +46,7 @@ export class OpenAiCompatibleProvider implements LlmProvider {
         if (error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError")) {
           throw unavailable("LLM provider request exceeded its 30-second total time limit", "LLM_TIMEOUT");
         }
-        throw unavailable("LLM provider is unreachable", "LLM_UNAVAILABLE");
+        throw providerConnectionAppError(error);
       }
       if (response.ok) break;
       const providerError = await readProviderError(response, "LLM");
