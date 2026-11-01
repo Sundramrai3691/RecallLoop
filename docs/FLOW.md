@@ -106,3 +106,7 @@ For single-answer MCQ, recall, and structured questions, `POST /api/recalls/:id/
 ## Goal readiness evidence sources
 
 `GET /api/goals/:goalId/readiness` combines submitted recall point results with submitted assessed-baseline question results. Recall rows use their persisted canonical point UUID; baseline rows use the question's `knowledge_point_id` and rubric result. Self-declared/skipped baselines are excluded. Both are ranked together by submission timestamp, parent creation timestamp, source rank, and UUID tie-breakers, so newer evidence wins without rewriting prior attempts. Only the goal's exact-name mapped canonical skills and their points enter its counts; custom/unmapped skills return an explicit unmapped state.
+
+## 2026-11-01 study-session retry behavior
+
+The authenticated study-session POST accepts an idempotency key generated for one client creation intent. `study_sessions` stores the key and request hash; a partial unique index scopes key uniqueness to the authenticated owner. A matching retry returns the original session, while a changed request using that key returns `IDEMPOTENCY_KEY_REUSED`. Processed source ownership/status validation and insertion are coordinated in one transaction so deletion before start fails without partial session or concept writes.
