@@ -45,6 +45,15 @@ export function NewStudyPage() {
   const [authError, setAuthError] = useState(false);
   const [busy, setBusy] = useState(false);
   const [retryBlocked, setRetryBlocked] = useState(false);
+  const [ambiguousOutcome, setAmbiguousOutcome] = useState(false);
+  const intentStorageKey = `recallloop.study-session-intent:${groundingSourceId || "manual"}`;
+  const [idempotencyKey,setIdempotencyKey] = useState(() => {
+    const existing = window.sessionStorage.getItem(intentStorageKey);
+    if (existing) return existing;
+    const key = window.crypto.randomUUID();
+    window.sessionStorage.setItem(intentStorageKey,key);
+    return key;
+  });
   const inputRef = useRef<HTMLInputElement>(null);
   const submitLock = useRef(false);
   const sourceReferences = groundingSource ? learningSourceReferences(groundingSource) : [];
@@ -87,11 +96,15 @@ export function NewStudyPage() {
     if (groundingSourceId && (!groundingSource || groundingSource.processingStatus !== "processed" || !groundingSource.content.trim())) { setError("This material is not ready to study. Return to your library and refresh its status."); return; }
     if (!groundingSourceId && (!rawMaterial.trim() || /^https?:\/\/\S+$/i.test(rawMaterial.trim()))) { setError("Add notes or source text. RecallLoop saves links as provenance but does not fetch webpage or video contents."); return; }
     submitLock.current = true;
-    setBusy(true); setError(null); setAuthError(false);
+    setBusy(true); setError(null); setAuthError(false); setAmbiguousOutcome(false);
     try {
       const result = groundingSourceId
-        ? await api.createStudySessionFromSource({ title: title.trim(), groundingSourceId, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined })
-        : await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined });
+        ? await api.createStudySessionFromSource({ title: title.trim(), groundingSourceId, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined, idempotencyKey })
+        : await api.createStudySession({ title: title.trim(), rawMaterial, sourceType, sourceUrl: sourceUrl.trim() || undefined, canonicalTopicId: canonicalTopicId || undefined, canonicalConceptId: canonicalConceptId || undefined, idempotencyKey });
+      window.sessionStorage.removeItem(intentStorageKey);
+      const nextIntentKey = window.crypto.randomUUID();
+      window.sessionStorage.setItem(intentStorageKey,nextIntentKey);
+      setIdempotencyKey(nextIntentKey);
       const query = new URLSearchParams(); query.set("intent", learningIntent); if (returnTo) query.set("returnTo", returnTo);
       navigate(`/study/${result.session.id}?${query.toString()}`);
     } catch (err) {
@@ -107,6 +120,9 @@ export function NewStudyPage() {
       } else if (err instanceof ApiError && err.code === "SOURCE_NOT_FOUND") {
         setRetryBlocked(true);
         setError("This learning material is no longer available in your library.");
+      } else if (err instanceof ApiError && err.code === "IDEMPOTENCY_KEY_REUSED") {
+        setRetryBlocked(true);
+        setError("This study request changed after an uncertain result. Return to your library and start a new learning session.");
       } else if (err instanceof ApiError && err.code === "LLM_RATE_LIMITED") {
         setRetryBlocked(false);
         const delay = err.retryAfterSeconds !== undefined ? ` Retry after ${err.retryAfterSeconds} seconds.` : " Please retry in a moment.";
@@ -118,8 +134,9 @@ export function NewStudyPage() {
         setRetryBlocked(true);
         setError("The AI provider credentials or permissions are invalid. No study session was created; your form is preserved. Contact the application administrator.");
       } else {
-        setRetryBlocked(true);
-        setError("We couldn’t confirm whether the study session was created. Your topic, source link, and notes are preserved. Check your study sessions before retrying.");
+        setRetryBlocked(false);
+        setAmbiguousOutcome(true);
+        setError("We couldn’t confirm whether the study session was created. Your request is saved safely; retrying will reopen it if it already exists and will not create a duplicate.");
       }
     }
     finally { submitLock.current = false; setBusy(false); }
@@ -165,7 +182,7 @@ export function NewStudyPage() {
       </div>
       {!groundingSourceId ? <><label htmlFor="material">Notes or source text</label>
       <textarea id="material" name="material" autoComplete="off" rows={6} required value={rawMaterial} onChange={(event) => setRawMaterial(event.target.value)} placeholder="Paste notes or a short source excerpt. Concepts and recall questions are based on this text." /></> : null}
-      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> {groundingSourceId ? "Imported source is preserved with this session." : "Local mock extraction is deterministic; it is not semantic LLM extraction."}</span><button className="btn btn-primary" disabled={busy || sourceLoading || retryBlocked || !title.trim() || (groundingSourceId ? !groundingSource || groundingSource.processingStatus !== "processed" : !rawMaterial.trim())} type="submit">{busy ? "Creating session…" : retryBlocked ? "Retry unavailable" : groundingSourceId ? "Start learning session" : "Create study session"}</button></div>
+      <div className="study-form-footer"><span className="metadata"><BookOpen size={14}/> {groundingSourceId ? "Imported source is preserved with this session." : "Local mock extraction is deterministic; it is not semantic LLM extraction."}</span><button className="btn btn-primary" disabled={busy || sourceLoading || retryBlocked || !title.trim() || (groundingSourceId ? !groundingSource || groundingSource.processingStatus !== "processed" : !rawMaterial.trim())} type="submit">{busy ? "Creating session…" : retryBlocked ? "Retry unavailable" : ambiguousOutcome ? "Retry safely" : groundingSourceId ? "Start learning session" : "Create study session"}</button></div>
     </form>
   </div>;
 }

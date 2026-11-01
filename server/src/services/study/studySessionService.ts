@@ -1,10 +1,11 @@
 import { AppError, notFound } from "../../utils/errors.js";
-import { createSession, getSession, listConceptsForSession, listPending } from "../../repositories/legacyPostgresRepositories.js";
+import { createSession, getSession, getSessionByIdempotencyKey, listConceptsForSession, listPending } from "../../repositories/legacyPostgresRepositories.js";
 import { completeStudyWrites } from "../../repositories/postgresRepositories.js";
 import { createConceptsForSession, persistPreparedConcepts, prepareConcepts } from "../concept/conceptService.js";
 import { recordLearningEvent } from "../events/learningEventService.js";
 import { query } from "../../db/postgres.js";
 import { findSource } from "../../repositories/groundingRepository.js";
+import { createHash } from "node:crypto";
 
 const SOURCE_TYPES = ["manual", "notes", "url", "file"];
 
@@ -38,7 +39,28 @@ export function validateStudySessionInput(input: { title: string; rawMaterial?: 
   return { title, sourceUrl, rawMaterial, canonicalTopicId: input.canonicalTopicId?.trim() || null, canonicalConceptId: input.canonicalConceptId?.trim() || null };
 }
 
-export async function createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string; groundingSourceId?: string; userId: string }) {
+export async function createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string; groundingSourceId?: string; idempotencyKey?: string; userId: string }) {
+  const recoverPersistedSession = async (session: Awaited<ReturnType<typeof getSessionByIdempotencyKey>>) => {
+    if (!session) return null;
+    let concepts = await listConceptsForSession(session.id,input.userId);
+    if (!concepts.length) {
+      const prepared = await prepareConcepts({ title: session.title, rawMaterial: session.rawMaterial });
+      concepts = await persistPreparedConcepts({ studySessionId: session.id, concepts: prepared, userId: input.userId });
+    }
+    return { session, concepts };
+  };
+  if (input.idempotencyKey && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.idempotencyKey)) throw new AppError("Invalid study request key",400,"INVALID_IDEMPOTENCY_KEY");
+  if (input.idempotencyKey && input.groundingSourceId) {
+    const prior = await getSessionByIdempotencyKey(input.userId,input.idempotencyKey);
+    if (prior) {
+      const sameIntent = prior.groundingSourceId === input.groundingSourceId
+        && prior.title === input.title?.trim()
+        && prior.canonicalTopicId === (input.canonicalTopicId ?? null)
+        && prior.canonicalConceptId === (input.canonicalConceptId ?? null);
+      if (!sameIntent) throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED");
+      return (await recoverPersistedSession(prior))!;
+    }
+  }
   let groundedSource: Awaited<ReturnType<typeof findSource>> = null;
   if (input.groundingSourceId) {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.groundingSourceId)) {
@@ -65,8 +87,29 @@ export async function createStudySession(input: { title: string; rawMaterial?: s
   }
   const sourceType = input.sourceType ?? (input.rawMaterial ? "notes" : "manual");
   if (!SOURCE_TYPES.includes(sourceType)) throw new AppError("Invalid sourceType", 400, "VALIDATION_ERROR");
+  if (input.idempotencyKey && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(input.idempotencyKey)) throw new AppError("Invalid study request key",400,"INVALID_IDEMPOTENCY_KEY");
+  const request = { ...input, title, rawMaterial, sourceUrl, canonicalTopicId, canonicalConceptId, sourceType, groundingSourceId: groundedSource?.id ?? null };
+  const requestHash = createHash("sha256").update(JSON.stringify({ title, rawMaterial, sourceUrl, canonicalTopicId, canonicalConceptId, sourceType, groundingSourceId: request.groundingSourceId })).digest("hex");
+  if (input.idempotencyKey) {
+    const existing = await getSessionByIdempotencyKey(input.userId,input.idempotencyKey);
+    if (existing) {
+      const match = await query<{ id: string }>(`SELECT id FROM study_sessions WHERE id=$1 AND user_id=$2 AND idempotency_request_hash=$3`,[existing.id,input.userId,requestHash]);
+      if (!match.rows[0]) throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED");
+      return (await recoverPersistedSession(existing))!;
+    }
+  }
   const preparedConcepts = await prepareConcepts({ title, rawMaterial });
-  const session = await createSession(input.userId, { ...input, title, rawMaterial, sourceUrl, canonicalTopicId, canonicalConceptId, sourceType, groundingSourceId: groundedSource?.id ?? null });
+  let session: any;
+  let isNew = true;
+  if (input.idempotencyKey) {
+    const created: any = await createSession(input.userId, request, input.idempotencyKey, requestHash);
+    session = created.session;
+    isNew = created.created;
+  } else {
+    session = await createSession(input.userId, request);
+  }
+  if (!session) throw notFound("Learning material is no longer available", "SOURCE_NOT_FOUND");
+  if (!isNew) return (await recoverPersistedSession(session))!;
   const concepts = await persistPreparedConcepts({ studySessionId: session.id, concepts: preparedConcepts, userId: input.userId });
   await recordLearningEvent({ userId: input.userId, type: "STUDY_STARTED", entityType: "StudySession", entityId: session.id, payload: { title } });
   return { session, concepts };

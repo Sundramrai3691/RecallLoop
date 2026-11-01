@@ -164,14 +164,14 @@ export const api = {
     return request<DashboardData>("/api/dashboard");
   },
 
-  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string }) {
+  createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string; idempotencyKey: string }) {
     return request<{ session: StudySession; concepts: Concept[] }>("/api/study-sessions", {
       method: "POST",
       body: JSON.stringify(input),
     });
   },
 
-  createStudySessionFromSource(input: { title: string; groundingSourceId: string; canonicalTopicId?: string; canonicalConceptId?: string }) {
+  createStudySessionFromSource(input: { title: string; groundingSourceId: string; canonicalTopicId?: string; canonicalConceptId?: string; idempotencyKey: string }) {
     return request<{ session: StudySession; concepts: Concept[] }>("/api/study-sessions", {
       method: "POST",
       body: JSON.stringify(input),

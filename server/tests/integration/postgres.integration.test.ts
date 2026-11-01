@@ -41,8 +41,8 @@ describe("PostgreSQL runtime integration", () => {
     expect(result.rows.length).toBe(16);
     const reviewTables = await postgres.query<any>(`SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_name IN ('canonical_question_reviewers','canonical_question_reviews')`);
     expect(reviewTables.rows).toHaveLength(2);
-    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id','grounding_source_id')))`);
-    expect(structured.rows).toHaveLength(10);
+    const structured=await postgres.query<any>(`SELECT table_name,column_name FROM information_schema.columns WHERE table_schema='public' AND ((table_name='questions' AND column_name='question_parts') OR (table_name='recall_attempts' AND column_name='structured_answers') OR (table_name='recall_knowledge_point_results' AND column_name IN ('part_id','canonical_knowledge_point_id')) OR (table_name='learner_knowledge_point_states' AND column_name='canonical_knowledge_point_id') OR (table_name='personal_concepts' AND column_name='canonical_concept_id') OR (table_name='study_sessions' AND column_name IN ('source_url','canonical_topic_id','canonical_concept_id','grounding_source_id','idempotency_key','idempotency_request_hash')))`);
+    expect(structured.rows).toHaveLength(12);
   });
 
   it("preserves the exact current automated approval when migrations are replayed", async () => {
@@ -334,6 +334,44 @@ describe("PostgreSQL runtime integration", () => {
       await expect(createStudySession({userId,title:"Unrelated free-text title",rawMaterial:"Valid study notes.",canonicalTopicId:node.topic_id,canonicalConceptId:node.concept_id})).rejects.toMatchObject({code:"CANONICAL_NODE_NOT_FOUND"});
       const counts=await postgres.query<any>(`SELECT count(*)::int AS count FROM canonical_concepts WHERE id=$1`,[node.concept_id]);
       expect(counts.rows[0].count).toBe(1);
+    }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("reconciles repeated study-session requests by owner and idempotency key",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Idempotency Test') RETURNING id`,[`study-idem-${randomUUID()}@test.local`])).rows[0].id;
+    const otherUser=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Other Idempotency Test') RETURNING id`,[`study-idem-other-${randomUUID()}@test.local`])).rows[0].id;
+    const idempotencyKey=randomUUID();
+    const request={userId,idempotencyKey,title:"Retry-safe study",rawMaterial:"A serializable transaction commits all of its work atomically.",sourceType:"notes"};
+    try{
+      const first=await createStudySession(request);
+      const repeated=await createStudySession(request);
+      expect(repeated.session.id).toBe(first.session.id);
+      expect(repeated.concepts.map((item:any)=>item.id)).toEqual(first.concepts.map((item:any)=>item.id));
+      const concurrentKey=randomUUID();
+      const [concurrentA,concurrentB]=await Promise.all([createStudySession({...request,idempotencyKey:concurrentKey}),createStudySession({...request,idempotencyKey:concurrentKey})]);
+      expect(concurrentA.session.id).toBe(concurrentB.session.id);
+      expect(concurrentA.concepts.map((item:any)=>item.id)).toEqual(concurrentB.concepts.map((item:any)=>item.id));
+      expect((await postgres.query<any>(`SELECT count(*)::int sessions FROM study_sessions WHERE user_id=$1 AND idempotency_key=$2`,[userId,concurrentKey])).rows[0].sessions).toBe(1);
+      expect((await postgres.query<any>(`SELECT count(*)::int sessions FROM study_sessions WHERE user_id=$1 AND idempotency_key=$2`,[userId,idempotencyKey])).rows[0].sessions).toBe(1);
+      expect((await postgres.query<any>(`SELECT count(*)::int concepts FROM personal_concepts WHERE user_id=$1 AND study_session_id=$2`,[userId,first.session.id])).rows[0].concepts).toBe(first.concepts.length);
+      await expect(createStudySession({...request,rawMaterial:"A different request must not reuse this recovery key."})).rejects.toMatchObject({code:"IDEMPOTENCY_KEY_REUSED",status:409});
+      await expect(createStudySession({...request,userId:otherUser})).resolves.not.toMatchObject({session:{id:first.session.id}});
+      const intentional=await createStudySession({...request,idempotencyKey:randomUUID()});
+      expect(intentional.session.id).not.toBe(first.session.id);
+    }finally{
+      await postgres.query(`DELETE FROM app_users WHERE id=ANY($1::uuid[])`,[[userId,otherUser]]);
+    }
+  });
+
+  it("rejects study creation when its owned grounding source disappears before insert",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Deleted Source Test') RETURNING id`,[`study-deleted-source-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const source=await ingestGroundingSource(userId,{title:"Delete before study",text:"Processed source text for a lifecycle race regression.",sourceType:"text"});
+      expect(source.processingStatus).toBe("processed");
+      await postgres.query(`DELETE FROM grounding_sources WHERE id=$1 AND user_id=$2`,[source.id,userId]);
+      await expect(createStudySession({userId,title:source.title,groundingSourceId:source.id,idempotencyKey:randomUUID()})).rejects.toMatchObject({code:"SOURCE_NOT_FOUND",status:404});
+      expect((await postgres.query<any>(`SELECT count(*)::int count FROM study_sessions WHERE user_id=$1`,[userId])).rows[0].count).toBe(0);
+      expect((await postgres.query<any>(`SELECT count(*)::int count FROM personal_concepts WHERE user_id=$1`,[userId])).rows[0].count).toBe(0);
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 

@@ -31,6 +31,8 @@ let userInfoPreload;
 let browserJavaScriptErrors = [];
 let unexpectedFailedRequests = [];
 let expectedCanceledRequests = [];
+let expectedLostStudyResponses = [];
+let studyResponseDropArmed = false;
 let traceStarted = false;
 const browserName = process.argv.includes("--browser=firefox") ? "firefox" : process.argv.includes("--browser=edge") ? "edge" : process.env.RECALLLOOP_E2E_BROWSER ?? "edge";
 assert(["edge", "firefox"].includes(browserName), `Unsupported E2E browser: ${browserName}`);
@@ -57,6 +59,10 @@ function isExpectedCanceledRequest(method, requestUrl, failureText, appOrigin) {
     && parsedUrl.pathname === "/api/knowledge/roles"
     && failureText === "NS_BINDING_ABORTED"
     && parsedUrl.origin === appOrigin;
+}
+function isExpectedInjectedStudyResponseDrop(method, requestUrl, failureText, appOrigin) {
+  const parsedUrl = new URL(requestUrl);
+  return method === "POST" && parsedUrl.pathname === "/api/study-sessions" && failureText === "net::ERR_FAILED" && parsedUrl.origin === appOrigin;
 }
 function partialBaselineAnswer(point) {
   const stopwords = new Set(["the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "is", "are", "was", "be", "as", "by", "from", "that", "this", "it", "into", "then"]);
@@ -736,6 +742,103 @@ try {
   assert.equal((await authenticatedApi(reviewToken, `${apiUrl}/api/dashboard`)).todayDue.some((item) => item.recallId === pendingDueId), false, "Due-review completion should survive page reload");
   await reviewContext.close();
 
+  async function runNonCorrectDueReview(expectedOutcome) {
+    const dueEmail = `e2e-core-review-${expectedOutcome}-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+    const duePassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+    ownedEmails.push(dueEmail);
+    const context = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+    const duePage = await context.newPage();
+    duePage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+    duePage.on("requestfailed", (request) => {
+      const failureText = request.failure()?.errorText ?? "request failed";
+      if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+      else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    });
+    await duePage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+    await duePage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+    try {
+      await duePage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+      await duePage.locator("#name").fill(`RecallLoop ${expectedOutcome} due review`);
+      await duePage.locator("#email").fill(dueEmail);
+      await duePage.locator("#password").fill(duePassword);
+      await duePage.getByRole("button", { name: "Create account" }).click();
+      await duePage.waitForURL("**/onboarding", { timeout: 10_000 });
+      await duePage.locator("#start-topic").selectOption({ label: "Databases" });
+      await duePage.getByRole("button", { name: "Start studying" }).click();
+      await duePage.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+      const token = await duePage.evaluate(() => localStorage.getItem("recallloop_token"));
+      const owner = (await pool.query("SELECT id FROM app_users WHERE email=$1", [dueEmail])).rows[0];
+      assert(token && owner, `${expectedOutcome} due-review learner should be authenticated and persisted`);
+      const coverage = await authenticatedApi(token, `${apiUrl}/api/assessments/coverage`);
+      const subject = coverage.subjects.find((item) => item.domainName === "Database Management Systems");
+      const topic = subject?.topics.find((item) => item.name === "Indexes");
+      const concept = topic?.concepts.find((item) => item.name === "Index selection" && item.supportedModes.includes("rapid_fire"));
+      assert(subject && topic && concept, "Due-review fixture must use an eligible real blueprint");
+      await duePage.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
+      await duePage.locator("#knowledge-subject").selectOption(subject.id);
+      await duePage.locator("#knowledge-topic").selectOption(topic.id);
+      await duePage.locator("label.concept-choice").filter({ hasText: concept.name }).locator("input").check();
+      await duePage.locator("label.mode-choice").filter({ hasText: "Quick knowledge check" }).locator("input").check();
+      await duePage.getByRole("button", { name: /Start knowledge check/ }).click();
+      await duePage.waitForURL(/\/assessments\/[0-9a-f-]+\?/i, { timeout: 10_000 });
+      const assessmentId = new URL(duePage.url()).pathname.split("/").pop();
+      await duePage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+      let assessment = await authenticatedApi(token, `${apiUrl}/api/assessments/${assessmentId}`);
+      const setupAttempt = assessment.questions[0];
+      await duePage.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), setupAttempt.questionData?.prompt ?? setupAttempt.question, { timeout: 10_000 });
+      if (setupAttempt.questionType === "mcq") {
+        const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [setupAttempt.canonicalQuestionRevisionId])).rows[0].correct_option_id;
+        const answerOption = setupAttempt.questionData.options.find((option) => option.id === key);
+        await duePage.locator("label.option").filter({ hasText: answerOption.text }).locator("input").check();
+      } else {
+        const expected = (await pool.query("SELECT expected_answer FROM canonical_question_revisions WHERE id=$1", [setupAttempt.canonicalQuestionRevisionId])).rows[0].expected_answer;
+        await duePage.locator("#assessment-answer").fill(expected);
+      }
+      await duePage.getByRole("button", { name: /Submit answer/ }).click();
+      assessment = await waitForAssessment(token, apiUrl, assessmentId, (value) => value.questions.find((item) => item.id === setupAttempt.id)?.submittedAt);
+      const pendingFreeRecall = assessment.questions.find((item) => item.questionType !== "mcq" && !item.submittedAt);
+      assert(pendingFreeRecall, "The supported blueprint must supply a pending free-response due-review task");
+      const historicalSnapshot = (await pool.query("SELECT answer,submitted_at,canonical_question_revision_id FROM recall_attempts WHERE id=$1 AND user_id=$2", [setupAttempt.id,owner.id])).rows[0];
+      const previousState = (await pool.query("SELECT concept_id,due_at,interval_days FROM review_states WHERE user_id=$1 AND concept_id=(SELECT concept_id FROM recall_attempts WHERE id=$2)", [owner.id,setupAttempt.id])).rows[0];
+      assert(previousState, "The submitted setup answer must establish the learner's scheduler state");
+      const dueAt = (await pool.query("UPDATE review_states SET due_at=now()-interval '1 minute',updated_at=now() WHERE user_id=$1 AND concept_id=$2 RETURNING due_at,interval_days", [owner.id,previousState.concept_id])).rows[0];
+      assert(dueAt, "Only the isolated learner's review should be moved into the due window");
+      await duePage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+      await duePage.getByRole("link", { name: "Choose what to strengthen" }).click();
+      await duePage.waitForURL("**/review", { timeout: 10_000 });
+      const dueLink = duePage.locator(`a[href^="/recall/${pendingFreeRecall.id}"]`);
+      await dueLink.click();
+      await duePage.waitForURL(new RegExp(`/recall/${pendingFreeRecall.id}(?:\\?|$)`), { timeout: 10_000 });
+      const beforeSubmission = (await authenticatedApi(token, `${apiUrl}/api/recalls/${pendingFreeRecall.id}`)).recall;
+      assert.equal(beforeSubmission.submittedAt,null,"Due review must remain pending until the real form is submitted");
+      const answerPoint = expectedOutcome === "partial" ? (await pool.query(`SELECT kp.statement FROM canonical_question_revision_points rp JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id WHERE rp.question_revision_id=$1 ORDER BY kp.id LIMIT 1`,[beforeSubmission.canonicalQuestionRevisionId])).rows[0]?.statement : null;
+      assert(expectedOutcome !== "partial" || answerPoint, "A partial due-review response needs an exact mapped point fixture");
+      const answer = expectedOutcome === "incorrect" ? "zebra telescope orbit" : partialBaselineAnswer(answerPoint);
+      await duePage.locator("#answer").fill(answer);
+      await duePage.getByRole("button", { name: /Submit recall/ }).click();
+      await duePage.waitForURL(new RegExp(`/recall/${pendingFreeRecall.id}/result`), { timeout: 10_000 });
+      const result = (await authenticatedApi(token, `${apiUrl}/api/recalls/${pendingFreeRecall.id}`)).recall;
+      assert(result.submittedAt && result.evaluation, `${expectedOutcome} due review should be evaluated and persisted`);
+      const pointRows = await pool.query("SELECT status FROM recall_knowledge_point_results WHERE evaluation_id=(SELECT id FROM recall_evaluations WHERE recall_attempt_id=$1)", [pendingFreeRecall.id]);
+      assert(pointRows.rows.some((row) => row.status === (expectedOutcome === "incorrect" ? "missing" : "partial")), `The actual grading should persist an ${expectedOutcome} outcome: ${JSON.stringify(pointRows.rows)}`);
+      const nextState = (await pool.query("SELECT due_at,interval_days,last_outcome FROM review_states WHERE user_id=$1 AND concept_id=$2", [owner.id,previousState.concept_id])).rows[0];
+      assert(nextState.last_outcome === (expectedOutcome === "incorrect" ? "again" : "hard"), `Scheduler must apply the configured ${expectedOutcome} outcome: ${JSON.stringify(nextState)}`);
+      const expectedInterval = expectedOutcome === "incorrect" ? 1 : Math.max(1,Math.round(Number(previousState.interval_days)*1.5));
+      assert(Number(nextState.interval_days) === expectedInterval, `Scheduler interval should follow the actual MVP policy from prior interval ${previousState.interval_days}: ${JSON.stringify(nextState)}`);
+      assert(new Date(nextState.due_at).getTime() > new Date(dueAt.due_at).getTime(), "The persisted review timestamp should advance after submission");
+      assert.deepEqual((await pool.query("SELECT answer,submitted_at,canonical_question_revision_id FROM recall_attempts WHERE id=$1 AND user_id=$2", [setupAttempt.id,owner.id])).rows[0],historicalSnapshot,"A due-review submission must preserve the prior attempt");
+      await duePage.reload({ waitUntil: "domcontentloaded" });
+      await duePage.locator(".review-next").waitFor({ timeout: 10_000 });
+      const reloadedResultText = (await duePage.locator("body").innerText()).replace(/\s+/g," ");
+      assert(reloadedResultText.includes(result.evaluation.feedback.replace(/\s+/g," ")), `The persisted evaluated result should render after reload: ${JSON.stringify({ feedback: result.evaluation.feedback, body: reloadedResultText.slice(-1200) })}`);
+      await duePage.goto(`${clientUrl}/review`,{waitUntil:"domcontentloaded"});
+      await duePage.reload({waitUntil:"domcontentloaded"});
+      assert.equal(await duePage.locator(`a[href^="/recall/${pendingFreeRecall.id}"]`).count(),0,"A submitted incorrect or partial review must no longer be listed as due");
+    } finally { await context.close(); }
+  }
+  await runNonCorrectDueReview("incorrect");
+  await runNonCorrectDueReview("partial");
+
   // Full source-linked learning uses a separate account and starts from the
   // real Resources action. The PDF contains the exact canonical concept and
   // one mapped point so banked verification is eligible without copying text.
@@ -747,6 +850,7 @@ try {
   sourcePage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
   sourcePage.on("requestfailed", (request) => {
     const failureText = request.failure()?.errorText ?? "request failed";
+    if (studyResponseDropArmed && isExpectedInjectedStudyResponseDrop(request.method(), request.url(), failureText, new URL(clientUrl).origin)) { expectedLostStudyResponses.push(`${request.method()} ${request.url()}: ${failureText}`); return; }
     if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
     else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
   });
@@ -776,10 +880,31 @@ try {
   await sourcePage.getByRole("link", { name: "Start learning session" }).click();
   await sourcePage.waitForURL(/\/study\/new\?sourceId=[0-9a-f-]+/i, { timeout: 10_000 });
   await sourcePage.locator("#study-topic").fill("Index selection");
+  await sourcePage.locator("#topic-suggestions button").first().waitFor({ timeout: 15_000 });
   await sourcePage.locator("#topic-suggestions button").filter({ hasText: "Index selection" }).click();
+  let committedStudyResponse;
+  let droppedStudyKey;
+  await sourcePage.route(`${clientUrl}/api/study-sessions`, async (route) => {
+    const response = await route.fetch();
+    assert.equal(response.status(), 201, "Fault injection must first allow the real server request to finish successfully");
+    committedStudyResponse = await response.json();
+    droppedStudyKey = route.request().postDataJSON().idempotencyKey;
+    await route.abort("failed");
+  });
+  studyResponseDropArmed = true;
   await sourcePage.getByRole("button", { name: "Start learning session" }).click();
+  await sourcePage.getByRole("alert").filter({ hasText: "retrying will reopen it" }).waitFor({ timeout: 10_000 });
+  await sourcePage.unroute(`${clientUrl}/api/study-sessions`);
+  studyResponseDropArmed = false;
+  assert.equal(expectedLostStudyResponses.length,1,"The intended committed POST response must be the only specifically classified injected network loss");
+  assert(committedStudyResponse?.session?.id && droppedStudyKey, "The fault injection must capture the committed session and request key");
+  const committedSessionCount = await pool.query("SELECT count(*)::int count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1) AND idempotency_key=$2", [sourceEmail,droppedStudyKey]);
+  assert.equal(committedSessionCount.rows[0].count, 1, "The response is dropped only after PostgreSQL committed exactly one session");
+  await sourcePage.getByRole("button", { name: "Retry safely" }).click();
   await sourcePage.waitForURL(/\/study\/[0-9a-f-]+\?/i, { timeout: 20_000 });
   const linkedSourceSessionId = new URL(sourcePage.url()).pathname.split("/").pop();
+  assert.equal(linkedSourceSessionId, committedStudyResponse.session.id, "Recovery must open the original committed session");
+  assert.equal((await pool.query("SELECT count(*)::int count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1) AND idempotency_key=$2", [sourceEmail,droppedStudyKey])).rows[0].count, 1, "Retrying the same request must not duplicate the session");
   const linkedSession = await authenticatedApi(sourceToken, `${apiUrl}/api/study-sessions/${linkedSourceSessionId}`);
   const linkedConcept = linkedSession.concepts.find((concept) => concept.name === "Index selection");
   assert(linkedConcept && linkedSession.session.status === "in_progress", `Imported content should create an inspectable linked study session; observed ${JSON.stringify({ status: linkedSession.session.status, concepts: linkedSession.concepts.map((concept) => ({ name: concept.name, canonicalConceptId: concept.canonicalConceptId, points: concept.requiredKnowledgePoints })) })}`);
@@ -870,6 +995,34 @@ try {
   await sourcePage.reload({ waitUntil: "domcontentloaded" });
   assert((await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`)).skills.some((skill) => skill.assessedPoints > 0), "Source-linked readiness should survive page reload");
 
+  // Delete a second test-owned source while it remains visible in Resources,
+  // then use its real study action and verify no partial session is written.
+  await sourcePage.goto(`${clientUrl}/resources`, { waitUntil: "domcontentloaded" });
+  await sourcePage.getByText("Have material to study from?", { exact: true }).click();
+  const deletedSourceTitle = `Deleted before study ${Date.now()}`;
+  await sourcePage.locator("#material-title").fill(deletedSourceTitle);
+  await sourcePage.locator("#material-text").fill("A resource deleted before study must not create a session.");
+  await sourcePage.getByRole("button", { name: "Save learning material" }).click();
+  const deletedSourceRow = sourcePage.locator(".source-row").filter({ hasText: deletedSourceTitle });
+  const deletedSourceLink = deletedSourceRow.getByRole("link", { name: "Start learning session" });
+  await deletedSourceLink.waitFor({ timeout: 10_000 });
+  const deletedSourceHref = await deletedSourceLink.getAttribute("href");
+  const deletedSourceId = new URL(deletedSourceHref, clientUrl).searchParams.get("sourceId");
+  assert(deletedSourceId, "The imported source row should link to its source study setup");
+  const studyCountBeforeDeletion = (await pool.query("SELECT count(*)::int count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1)", [sourceEmail])).rows[0].count;
+  const deletedRows = await pool.query("DELETE FROM grounding_sources WHERE id=$1 AND user_id=(SELECT id FROM app_users WHERE email=$2) RETURNING id", [deletedSourceId,sourceEmail]);
+  assert.equal(deletedRows.rowCount, 1, "Lifecycle setup must remove only the isolated learner's source");
+  await deletedSourceLink.click();
+  await sourcePage.waitForURL(`**/study/new?sourceId=${deletedSourceId}`, { timeout: 10_000 });
+  await sourcePage.getByRole("alert").filter({ hasText: "unavailable" }).waitFor({ timeout: 10_000 });
+  const missingSourceResponse = await fetch(`${apiUrl}/api/grounding/sources/${deletedSourceId}`, { headers: { Authorization: `Bearer ${sourceToken}` } });
+  assert.equal(missingSourceResponse.status, 404, "A deleted source must remain unavailable through the owner-scoped API");
+  assert.equal((await pool.query("SELECT count(*)::int count FROM study_sessions WHERE user_id=(SELECT id FROM app_users WHERE email=$1)", [sourceEmail])).rows[0].count, studyCountBeforeDeletion, "Starting from a deleted source must not create a study session");
+  await sourcePage.goto(`${clientUrl}/resources`, { waitUntil: "domcontentloaded" });
+  await sourcePage.reload({ waitUntil: "domcontentloaded" });
+  await sourcePage.locator("details.source-contribution summary").click();
+  await sourcePage.locator(".source-row").filter({ hasText: "index-selection-learning.pdf" }).waitFor({ timeout: 10_000 });
+
   async function createReadinessAssessment(conceptName, domainName = "Database Management Systems") {
     const coverage = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/coverage`);
     const subject = coverage.subjects.find((item) => item.domainName === domainName);
@@ -952,7 +1105,7 @@ try {
   for (const [label, count] of [["Demonstrated", matrixSkill.strengths], ["Partial", matrixSkill.partial], ["Incorrect", matrixSkill.incorrect], ["Unanswered", matrixSkill.unanswered], ["No submitted evidence", matrixSkill.unassessedPoints]]) assert(reloadedMatrixText.includes(`${label}\n${count}`), `Reload must preserve ${label}=${count}`);
 
   const coverageForOtherDomains = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/coverage`);
-  const additionalDomains = ["Operating Systems", "Computer Networks"];
+  const additionalDomains = ["Operating Systems", "Computer Networks", "Data Structures and Algorithms", "System Design"];
   for (const domainName of additionalDomains) {
     const domainSubject = coverageForOtherDomains.subjects.find((item) => item.domainName === domainName && item.topics.some((topic) => topic.concepts.some((concept) => concept.supportedModes.includes("rapid_fire"))));
     assert(domainSubject, `${domainName} needs at least one currently eligible Rapid Fire concept for cross-domain readiness verification`);
@@ -988,7 +1141,7 @@ try {
     assert(domainAssessment.questions.every((question) => question.evaluation), `${domainName} assessment evidence must persist for every submitted question`);
     const domainReadiness = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
     const mapped = domainReadiness.skills.find((skill) => skill.name === domainSubject.name);
-    assert(mapped?.canonicalSkill && mapped.totalPoints > 0 && mapped.assessedPoints > 0 && mapped.unassessedPoints > 0, `${domainName} should contribute correctly mapped assessed and remaining unassessed points: ${JSON.stringify(mapped)}`);
+    assert(mapped?.canonicalSkill && mapped.totalPoints > 0 && mapped.assessedPoints > 0 && mapped.assessedPoints + mapped.unassessedPoints === mapped.totalPoints, `${domainName} should partition its canonical points into submitted and unassessed evidence without inventing mastery: ${JSON.stringify(mapped)}`);
     await sourcePage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
     const readinessCard = sourcePage.locator(".readiness-skill").filter({ hasText: domainSubject.name });
     await readinessCard.getByText(new RegExp(`${mapped.assessedPoints} of ${mapped.totalPoints} knowledge points`)).waitFor({ timeout: 10_000 });
@@ -1137,6 +1290,7 @@ try {
     console.error(`Uncaught browser JavaScript exceptions: ${JSON.stringify(browserJavaScriptErrors)}`);
     console.error(`Unexpected failed network requests: ${JSON.stringify(unexpectedFailedRequests)}`);
     console.error(`Known canceled requests: ${JSON.stringify(expectedCanceledRequests)}`);
+    console.error(`Intentionally dropped committed study responses: ${JSON.stringify(expectedLostStudyResponses)}`);
     const artifactsDirectory = process.env.E2E_ARTIFACT_DIR ?? path.join(root, "test-results");
     await mkdir(artifactsDirectory, { recursive: true }).catch(() => {});
     await page.screenshot({ path: path.join(artifactsDirectory, `${browserName}-failure.png`), fullPage: true }).catch((captureError) => console.error(`Could not capture failure screenshot: ${captureError.message}`));
