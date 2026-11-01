@@ -35,3 +35,18 @@ Latest report: [latest Markdown report](research/ai-evaluation-v1/latest.md) and
 - Verification after diagnostic changes: focused provider/benchmark suites passed (32/32); the full unit suite passed (33 files, 175 passed, 4 skipped); root build passed (576.03 kB Vite advisory); config check passed using the local Node `os.userInfo()` workaround; `git diff --check` passed. No database integration was run because this change is independent of PostgreSQL.
 
 Even a complete run is a small synthetic engineering check. The expected labels need independent review; the authored expected answers/rubrics can themselves be wrong. This does not establish evaluator accuracy, fairness, adversarial robustness, educational effectiveness, durable learning, or production reliability. Review the pack and adjudicate labels before using the metrics as quality evidence.
+
+## Independent human validation v2 (2026-11-01)
+
+The original [v1 dataset](../server/src/services/evaluator/benchmarkDataset.v1.json) and its label-inclusive review pack are preserved unchanged. A separate [v2 dataset](research/ai-evaluation-v2/dataset.json) carries each original proposal under `originalProvisionalLabel`; top-level expected labels are null until real review. Five blinded domain packs are in [DBMS](research/ai-evaluation-v2/reviewers/dbms.md), [Operating Systems](research/ai-evaluation-v2/reviewers/operating-systems.md), [Computer Networks](research/ai-evaluation-v2/reviewers/computer-networks.md), [DSA](research/ai-evaluation-v2/reviewers/dsa.md), and [System Design](research/ai-evaluation-v2/reviewers/system-design.md). They omit proposed class/rationale, synthetic category, and model output.
+
+The [annotation protocol](research/ai-evaluation-v2/ANNOTATION_PROTOCOL.md), [JSON schema](research/ai-evaluation-v2/annotation-schema.json), and [adjudication guide](research/ai-evaluation-v2/ADJUDICATION_GUIDE.md) require two independent domain reviewers, quality judgments, an explanation, confidence, and immutable versioned correction. The validation CLI is dry-run by default; append an actual reviewer submission only with `--apply`:
+
+```powershell
+npm.cmd run benchmark:annotations -w server -- --in docs/research/ai-evaluation-v2/submission.json
+npm.cmd run benchmark:annotations -w server -- --in docs/research/ai-evaluation-v2/submission.json --apply
+```
+
+Use `--kind adjudications` for a third qualified, independent adjudicator. Reviewer codes must be pseudonymous; the identity mapping remains outside the repository. The tool does not connect to PostgreSQL, call a provider, or read learner data.
+
+Read-only live inventory verified all 35 case revision IDs, exact hashes, canonical mappings, current status, publication/quality state, and exact-hash automated-review eligibility; discrepancies: zero. The content screen established zero confirmed technical defects, while recording 37 case-level risk flags (26 generic single-criterion rubrics, five exact reference-answer controls, two contradictory-answer labels, one blank answer outside the production LLM route, and three terminology/relevance cases). These are review prompts, not defect findings. The [case audit](research/ai-evaluation-v2/case-audit.json) has per-case identity and flags. Actual human annotations/adjudications: zero; scoring-eligible cases: zero. The blank-answer case is explicitly excluded from production-route scoring. Provider connectivity remains outbound-blocked; no provider request or model metric was produced in this milestone. See [current review status](research/ai-evaluation-v2/REVIEW_STATUS.md).

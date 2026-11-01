@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recallloop.invalid/schemas/evaluator-annotation-v2.json",
+  "title": "RecallLoop independent evaluator annotation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["annotationId", "caseId", "sourceRevisionId", "sourceContentHash", "reviewerCode", "domainExpertise", "annotationVersion", "questionValidity", "canonicalMappingValidity", "referenceAnswerValidity", "rubricCompleteness", "classification", "technicalExplanation", "essentialMissingConcepts", "confidence", "reviewedAt"],
+  "properties": {
+    "annotationId": {"type":"string","format":"uuid"}, "caseId":{"type":"string","minLength":1},
+    "sourceRevisionId":{"type":"string","format":"uuid"}, "sourceContentHash":{"type":"string","pattern":"^[a-f0-9]{64}$"},
+    "reviewerCode":{"type":"string","pattern":"^[A-Z0-9][A-Z0-9_-]{2,31}$"}, "domainExpertise":{"type":"string","minLength":3},
+    "annotationVersion":{"type":"integer","minimum":1}, "supersedesAnnotationId":{"type":"string","format":"uuid"},
+    "questionValidity":{"enum":["valid","ambiguous","incorrect"]}, "canonicalMappingValidity":{"enum":["valid","invalid"]},
+    "referenceAnswerValidity":{"enum":["valid","incomplete","incorrect"]}, "rubricCompleteness":{"enum":["complete","incomplete","incorrect"]},
+    "classification":{"enum":["correct","partial","incorrect","unscorable"]}, "technicalExplanation":{"type":"string","minLength":1},
+    "essentialMissingConcepts":{"type":"array","items":{"type":"string"}}, "confidence":{"enum":["high","medium","low"]},
+    "reviewedAt":{"type":"string","format":"date-time"}, "suggestedCorrection":{"type":"string"}
+  }
+}

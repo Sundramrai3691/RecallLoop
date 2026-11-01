@@ -1,5 +1,12 @@
 # Project status
 
+## 2026-11-01 Independent evaluator benchmark review preparation
+
+- Preserved the v1 benchmark and its proposed labels unchanged. Inspected all 35 cases against a bounded read-only query of the configured local `recallloop` question-bank/taxonomy records: 35 distinct current eligible revisions, exact hashes and mappings matched; zero discrepancies. No learner tables or write operations were involved.
+- Created a separate v2 dataset, five label-blind domain packs, annotation schema/protocol, append-only validation/import CLI, and initial adjudication report. Cases retain the original proposal separately; no human labels or adjudications were submitted or fabricated.
+- Static audit: zero confirmed technical defects; 37 review-risk flags (26 generic rubric reuse, five exact-answer controls, two contradictory-answer cases, one blank response not evaluated through the production LLM route, and three terminology/relevance risks). All 35 remain awaiting independent review; zero scoring-eligible cases. Live provider connectivity remains outbound-blocked and no request was made.
+- Validation: final focused annotation/metrics tests passed (2 files / 22 tests); full `npm.cmd test` passed (34 files, 184 passed, 4 skipped); root `npm.cmd run build` passed (existing 576.03 kB Vite advisory); generated artifact consistency check passed (35 cases / 5 domains / 0 human labels / 0 eligible); importer dry-run accepted an empty submission without writing; `git diff --check` passed. Runtime import validation now rejects malformed timestamps, unexpected fields, duplicate reviewer versions, invalid correction chains, and malformed adjudication fields as validation errors rather than throwing.
+
 ## 2026-11-01 Live evaluator connectivity diagnosis
 
 - Safe configuration inspection confirmed OpenAI-compatible Gemini `gemini-3.8-flash`, configured base path `/v1beta/openai/`, a present key (not displayed), and the expected `chat/completions` request construction. Google's current [OpenAI compatibility guide](https://ai.google.dev/gemini-api/docs/openai) supports this endpoint/model shape. No repository endpoint, model, request, key-resolution, or proxy configuration defect was demonstrated.

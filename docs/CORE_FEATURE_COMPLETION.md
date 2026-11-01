@@ -18,6 +18,13 @@ This is the current acceptance contract for the core learner journeys. `WORKING`
 - **Connectivity diagnosis:** provider/model/base path and constructed chat-completions endpoint match Google's OpenAI-compatible Gemini documentation. DNS resolves; bounded TCP/TLS access to the configured host fails with `EACCES`, and no proxy environment is configured. Evidence indicates outbound socket access is denied by this execution environment. No upstream HTTP response was received, so credentials, quota, and model request acceptance remain untested. No repeat model request was made.
 - **Reliability and scope:** runner is serial, synthetic-only, hard-limited to 35 outbound attempts including retries, emits sanitized JSON/Markdown reports, and does not access PostgreSQL or learner records. It does not fall back to mocks. The empty-answer stress case is below the ordinary recall route, which handles blanks without an LLM call.
 
+### Independent validation v2 status (2026-11-01)
+
+- v1 remains unchanged. A separate v2 dataset and five blinded domain reviewer packs now exist, backed by an annotation schema, two-reviewer protocol, adjudication guide, dry-run-first append-only import utility, and initial status report.
+- All 35 exact question revisions/mappings/hashes/eligibility predicates matched the configured local database in a read-only query. Static content screen: 0 confirmed technical defects and 37 risk flags requiring human scrutiny; these are not error findings.
+- Actual human annotations: 0; adjudications: 0; human-validated scoring cases: 0. All await two independent domain reviewers. Blank-answer case is excluded from production-route scoring. No model output or model metric exists; provider remains outbound-blocked and no request was made.
+- The generated workflow has focused automated tests. Final full suite/build outcomes and exact limits are recorded in the latest session entry. Automated workflow validity does not establish reviewer identity/expertise or content truth until real independent submissions are received.
+
 ## Reliability and cross-domain closure update (2026-11-01)
 
 | Gap | Verified behavior | Limits |
