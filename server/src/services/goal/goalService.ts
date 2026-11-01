@@ -139,9 +139,8 @@ export async function getGoalPlan(userId: string, goalId: string) {
 }
 export async function getGoalReadiness(userId: string, goalId: string) {
   const goal = await ownedGoal(userId, goalId);
-  const result = await query<any>(`WITH evidence AS (
-      SELECT DISTINCT ON (r.canonical_knowledge_point_id)
-        r.canonical_knowledge_point_id,
+  const result = await query<any>(`WITH evidence_candidates AS (
+      SELECT r.canonical_knowledge_point_id AS point_id,
         CASE
           WHEN r.status='correct' THEN 'correct'
           WHEN r.status='partial' THEN 'partial'
@@ -155,31 +154,55 @@ export async function getGoalReadiness(userId: string, goalId: string) {
           ) THEN 'incorrect'
           ELSE 'unanswered'
         END AS outcome,
-        a.submitted_at
+        a.submitted_at, a.created_at AS created_at, a.id AS evidence_id, r.id AS result_id, 1 AS source_rank
       FROM recall_attempts a
       JOIN recall_evaluations ev ON ev.recall_attempt_id=a.id
       JOIN recall_knowledge_point_results r ON r.evaluation_id=ev.id
       WHERE a.user_id=$1 AND a.submitted_at IS NOT NULL AND r.canonical_knowledge_point_id IS NOT NULL
-      ORDER BY r.canonical_knowledge_point_id,a.submitted_at DESC,a.created_at DESC,a.id DESC,r.id DESC
+      UNION ALL
+      SELECT bq.knowledge_point_id AS point_id,
+        CASE
+          WHEN point_result.status='correct' THEN 'correct'
+          WHEN point_result.status='partial' THEN 'partial'
+          WHEN NULLIF(trim(bq.answer),'') IS NOT NULL THEN 'incorrect'
+          ELSE 'unanswered'
+        END AS outcome,
+        bq.submitted_at, ba.created_at AS created_at, bq.id AS evidence_id, bq.id AS result_id, 2 AS source_rank
+      FROM baseline_questions bq
+      JOIN baseline_assessments ba ON ba.id=bq.assessment_id
+      JOIN knowledge_points kp ON kp.id=bq.knowledge_point_id
+      CROSS JOIN LATERAL (
+        SELECT result.value->>'status' AS status
+        FROM jsonb_array_elements(CASE WHEN jsonb_typeof(bq.knowledge_point_results)='array' THEN bq.knowledge_point_results ELSE '[]'::jsonb END) AS result(value)
+        WHERE result.value->>'point'=kp.statement AND result.value->>'status' IN ('correct','partial','missing')
+        ORDER BY CASE result.value->>'status' WHEN 'correct' THEN 1 WHEN 'partial' THEN 2 ELSE 3 END
+        LIMIT 1
+      ) point_result
+      WHERE ba.user_id=$1 AND ba.baseline_source='assessed' AND bq.submitted_at IS NOT NULL
+        AND bq.knowledge_point_id IS NOT NULL
+    ), evidence AS (
+      SELECT DISTINCT ON (point_id) point_id, outcome, submitted_at
+      FROM evidence_candidates
+      ORDER BY point_id,submitted_at DESC,created_at DESC,source_rank DESC,evidence_id DESC,result_id DESC
     )
     SELECT ls.id AS "skillId",ls.name,ls.priority,cs.id AS "canonicalSkillId",cs.name AS "canonicalSkillName",
       count(DISTINCT kp.id)::int AS "totalPoints",
-      count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NOT NULL)::int AS "assessedPoints",
+      count(DISTINCT kp.id) FILTER (WHERE e.point_id IS NOT NULL)::int AS "assessedPoints",
       count(DISTINCT kp.id) FILTER (WHERE e.outcome='correct')::int AS strengths,
       count(DISTINCT kp.id) FILTER (WHERE e.outcome='partial')::int AS partial,
       count(DISTINCT kp.id) FILTER (WHERE e.outcome='incorrect')::int AS incorrect,
       count(DISTINCT kp.id) FILTER (WHERE e.outcome='unanswered')::int AS unanswered,
-      count(DISTINCT kp.id) FILTER (WHERE e.canonical_knowledge_point_id IS NULL)::int AS "unassessedPoints",
+      count(DISTINCT kp.id) FILTER (WHERE e.point_id IS NULL)::int AS "unassessedPoints",
       max(e.submitted_at) AS "latestEvidenceAt"
     FROM learner_skills ls
     LEFT JOIN canonical_skills cs ON lower(trim(cs.name))=lower(trim(ls.name))
     LEFT JOIN topics t ON t.skill_id=cs.id
     LEFT JOIN canonical_concepts cc ON cc.topic_id=t.id AND cc.status='active'
     LEFT JOIN knowledge_points kp ON kp.concept_id=cc.id
-    LEFT JOIN evidence e ON e.canonical_knowledge_point_id=kp.id
+    LEFT JOIN evidence e ON e.point_id=kp.id
     WHERE ls.user_id=$1 AND ls.goal_id=$2
     GROUP BY ls.id,ls.name,ls.priority,cs.id,cs.name ORDER BY ls.priority DESC,ls.name`, [userId,goalId]);
-  return { goal: { id: goal.id, title: goal.title }, evidenceSource: "Latest submitted result for each canonical knowledge point.", skills: result.rows.map((row) => ({
+  return { goal: { id: goal.id, title: goal.title }, evidenceSource: "Latest submitted recall or assessed-baseline result for each canonical knowledge point; self-declared and skipped starting points are not demonstrated evidence.", skills: result.rows.map((row) => ({
     skillId: row.skillId, name: row.name, priority: row.priority,
     relevance: "learner_priority",
     canonicalSkill: row.canonicalSkillId ? { id: row.canonicalSkillId, name: row.canonicalSkillName } : null,

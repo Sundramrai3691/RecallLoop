@@ -56,7 +56,7 @@ export function ReadinessPage() {
     {!goalsLoaded ? <p className="muted" role="status">Loading your goals…</p> : goals.length === 0 ? <EmptyState title="Readiness starts with a goal" to="/goals/new" action="Create a learning goal">You can open this page any time. Add a goal and choose its focus skills to see relevant evidence here.</EmptyState> : <>
       <div className="readiness-goal-picker"><label htmlFor="readiness-goal">Goal</label><select id="readiness-goal" value={selectedGoalId} onChange={(event) => chooseGoal(event.target.value)}>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></div>
       {error ? <section className="error" role="alert">{error}</section> : !data ? <p className="muted" role="status">Loading submitted evidence…</p> : <>
-        <p className="muted">Goal relevance follows the saved focus skills. Evidence includes only submitted recall points mapped to the canonical knowledge map. Counts show the latest submitted outcome for each point.</p>
+        <p className="muted">Goal relevance follows the saved focus skills. Evidence includes submitted recall and assessed-baseline answers mapped to the canonical knowledge map. Self-declared and skipped starting points are not demonstrated evidence. Counts show the latest submitted outcome for each point.</p>
         <section className="grid grid-2 readiness-grid" aria-label={`Readiness evidence for ${data.goal.title}`}>
           {data.skills.map((skill) => <article className="card readiness-skill" key={skill.skillId}>
             <div className="section-heading"><h2>{skill.name}</h2><span className="status-chip recommended">Priority {skill.priority}</span></div>
@@ -69,7 +69,7 @@ export function ReadinessPage() {
                 <div><dt>Unanswered</dt><dd>{skill.unanswered}</dd></div>
                 <div><dt>No submitted evidence</dt><dd>{skill.unassessedPoints}</dd></div>
               </dl>
-              {skill.latestEvidenceAt ? <p className="metadata">Latest submitted evidence {new Date(skill.latestEvidenceAt).toLocaleString()}</p> : <p className="muted">No submitted recall evidence yet. All {skill.totalPoints} mapped points remain unassessed.</p>}
+              {skill.latestEvidenceAt ? <p className="metadata">Latest submitted evidence {new Date(skill.latestEvidenceAt).toLocaleString()}</p> : <p className="muted">No submitted mapped evidence yet. All {skill.totalPoints} mapped points remain unassessed.</p>}
             </>}
             <div className="actions readiness-actions">
               <Link className="btn btn-primary" to={`/study/new?topic=${encodeURIComponent(skill.name)}`}><BookOpen size={15}/> Study this focus area</Link>

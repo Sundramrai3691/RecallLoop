@@ -537,6 +537,14 @@ try {
   await baselinePage.reload({ waitUntil: "domcontentloaded" });
   await baselinePage.getByRole("heading", { name: "Your learning starts here" }).waitFor();
   assert.equal((await authenticatedApi(baselineToken, `${apiUrl}/api/baseline/${baselineId}`)).baseline.assessment.status, "completed", "Completed starting-point evidence should survive reload");
+  const baselineGoal = (await pool.query("SELECT goal_id FROM baseline_assessments WHERE id=$1", [baselineId])).rows[0];
+  const baselineReadiness = await authenticatedApi(baselineToken, `${apiUrl}/api/goals/${baselineGoal.goal_id}/readiness`);
+  const baselineSkillReadiness = baselineReadiness.skills.find((skill) => skill.name === "Databases");
+  assert(baselineSkillReadiness?.assessedPoints > 0, "Submitted baseline point evidence must contribute to canonical goal readiness");
+  await baselinePage.goto(`${clientUrl}/readiness?goalId=${baselineGoal.goal_id}`, { waitUntil: "domcontentloaded" });
+  await baselinePage.locator(".readiness-skill").filter({ hasText: "Databases" }).getByText(/knowledge points have submitted evidence/).waitFor({ timeout: 10_000 });
+  await baselinePage.reload({ waitUntil: "domcontentloaded" });
+  await baselinePage.locator(".readiness-skill").filter({ hasText: "Databases" }).getByText(/knowledge points have submitted evidence/).waitFor({ timeout: 10_000 });
   await baselineContext.close();
 
   // Authentication lifecycle and dashboard destinations use a separate account.
@@ -862,12 +870,12 @@ try {
   await sourcePage.reload({ waitUntil: "domcontentloaded" });
   assert((await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`)).skills.some((skill) => skill.assessedPoints > 0), "Source-linked readiness should survive page reload");
 
-  async function createReadinessAssessment(conceptName) {
+  async function createReadinessAssessment(conceptName, domainName = "Database Management Systems") {
     const coverage = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/coverage`);
-    const subject = coverage.subjects.find((item) => item.name === "Databases");
+    const subject = coverage.subjects.find((item) => item.domainName === domainName);
     const topic = subject?.topics.find((item) => item.concepts.some((concept) => concept.name === conceptName));
     const concept = topic?.concepts.find((item) => item.name === conceptName && item.supportedModes.includes("rapid_fire"));
-    assert(subject && topic && concept, `${conceptName} needs an eligible supported blueprint`);
+    assert(subject && topic && concept, `${conceptName} in ${domainName} needs an eligible supported blueprint`);
     await sourcePage.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
     await sourcePage.locator("#knowledge-subject").selectOption(subject.id);
     await sourcePage.locator("#knowledge-topic").selectOption(topic.id);
@@ -943,6 +951,85 @@ try {
   const reloadedMatrixText = await sourcePage.locator(".readiness-skill").filter({ hasText: "Databases" }).innerText();
   for (const [label, count] of [["Demonstrated", matrixSkill.strengths], ["Partial", matrixSkill.partial], ["Incorrect", matrixSkill.incorrect], ["Unanswered", matrixSkill.unanswered], ["No submitted evidence", matrixSkill.unassessedPoints]]) assert(reloadedMatrixText.includes(`${label}\n${count}`), `Reload must preserve ${label}=${count}`);
 
+  const coverageForOtherDomains = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/coverage`);
+  const additionalDomains = ["Operating Systems", "Computer Networks"];
+  for (const domainName of additionalDomains) {
+    const domainSubject = coverageForOtherDomains.subjects.find((item) => item.domainName === domainName && item.topics.some((topic) => topic.concepts.some((concept) => concept.supportedModes.includes("rapid_fire"))));
+    assert(domainSubject, `${domainName} needs at least one currently eligible Rapid Fire concept for cross-domain readiness verification`);
+    await sourcePage.goto(`${clientUrl}/goals/${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+    const skillCard = sourcePage.locator(".goal-skill-evidence").filter({ has: sourcePage.getByRole("heading", { name: domainSubject.name, exact: true }) });
+    if (!(await skillCard.count())) {
+      await sourcePage.locator("#skill-name").fill(domainSubject.name);
+      await sourcePage.locator("#skill-description").fill(`E2E mapped readiness focus for ${domainName}`);
+      await sourcePage.getByRole("button", { name: "Add skill" }).click();
+      await sourcePage.locator(".goal-skill-evidence").filter({ has: sourcePage.getByRole("heading", { name: domainSubject.name, exact: true }) }).waitFor({ timeout: 10_000 });
+    }
+    const domainConcept = domainSubject.topics.flatMap((topic) => topic.concepts).find((concept) => concept.supportedModes.includes("rapid_fire"));
+    const run = await createReadinessAssessment(domainConcept.name, domainName);
+    await sourcePage.goto(`${clientUrl}/assessments/${run.assessmentId}`, { waitUntil: "domcontentloaded" });
+    await sourcePage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+    let domainAssessment = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/${run.assessmentId}`);
+    while (domainAssessment.questions.some((question) => !question.submittedAt)) {
+      const question = domainAssessment.questions.find((item) => !item.submittedAt);
+      await sourcePage.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), question.questionData?.prompt ?? question.question, { timeout: 10_000 });
+      if (question.questionType === "mcq") {
+        const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [question.canonicalQuestionRevisionId])).rows[0]?.correct_option_id;
+        const answer = question.questionData.options.find((option) => option.id === key);
+        assert(answer, `A valid answer key must exist for ${domainName} question ${question.id}`);
+        await sourcePage.locator("label.option").filter({ hasText: answer.text }).locator("input").check();
+      } else {
+        const key = (await pool.query("SELECT expected_answer FROM canonical_question_revisions WHERE id=$1", [question.canonicalQuestionRevisionId])).rows[0]?.expected_answer;
+        assert(key?.trim(), `A supported answer contract must exist for ${domainName} question ${question.id}`);
+        await sourcePage.locator("#assessment-answer").fill(key);
+      }
+      await sourcePage.getByRole("button", { name: /Submit answer/ }).click();
+      domainAssessment = await waitForAssessment(sourceToken, apiUrl, run.assessmentId, (value) => value.questions.find((item) => item.id === question.id)?.submittedAt);
+    }
+    assert(domainAssessment.questions.every((question) => question.evaluation), `${domainName} assessment evidence must persist for every submitted question`);
+    const domainReadiness = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
+    const mapped = domainReadiness.skills.find((skill) => skill.name === domainSubject.name);
+    assert(mapped?.canonicalSkill && mapped.totalPoints > 0 && mapped.assessedPoints > 0 && mapped.unassessedPoints > 0, `${domainName} should contribute correctly mapped assessed and remaining unassessed points: ${JSON.stringify(mapped)}`);
+    await sourcePage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+    const readinessCard = sourcePage.locator(".readiness-skill").filter({ hasText: domainSubject.name });
+    await readinessCard.getByText(new RegExp(`${mapped.assessedPoints} of ${mapped.totalPoints} knowledge points`)).waitFor({ timeout: 10_000 });
+    await sourcePage.reload({ waitUntil: "domcontentloaded" });
+    await sourcePage.locator(".readiness-skill").filter({ hasText: domainSubject.name }).getByText(new RegExp(`${mapped.assessedPoints} of ${mapped.totalPoints} knowledge points`)).waitFor({ timeout: 10_000 });
+    await sourcePage.goto(`${clientUrl}/goals/${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+    const goalCard = sourcePage.locator(".goal-skill-evidence").filter({ hasText: domainSubject.name });
+    await goalCard.getByText(`${mapped.assessedPoints} of ${mapped.totalPoints} canonical points have submitted evidence`).waitFor({ timeout: 10_000 });
+  }
+
+  await sourcePage.goto(`${clientUrl}/goals/new`, { waitUntil: "domcontentloaded" });
+  const secondGoalTitle = `Cross-domain scope ${Date.now()}`;
+  await sourcePage.locator("#goal-title").fill(secondGoalTitle);
+  await sourcePage.getByRole("button", { name: "Create goal" }).click();
+  await sourcePage.waitForURL(/\/goals\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const secondGoalId = new URL(sourcePage.url()).pathname.split("/").pop();
+  async function addGoalFocus(name) {
+    await sourcePage.locator("#skill-name").fill(name);
+    await sourcePage.locator("#skill-description").fill(`E2E goal-scope focus: ${name}`);
+    await sourcePage.getByRole("button", { name: "Add skill" }).click();
+    await sourcePage.locator(".goal-skill-evidence").filter({ has: sourcePage.getByRole("heading", { name, exact: true }) }).waitFor({ timeout: 10_000 });
+  }
+  const osSubject = coverageForOtherDomains.subjects.find((item) => item.domainName === "Operating Systems");
+  assert(osSubject, "The shared canonical Operating Systems skill should exist");
+  await addGoalFocus(osSubject.name);
+  const unmappedFocus = `Personal scope ${Date.now()}`;
+  await addGoalFocus(unmappedFocus);
+  const secondGoalReadiness = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${secondGoalId}/readiness`);
+  const sharedOsEvidence = secondGoalReadiness.skills.find((skill) => skill.name === osSubject.name);
+  assert(sharedOsEvidence?.assessedPoints > 0, "A shared canonical skill should consistently reuse the learner's point evidence across goals");
+  assert.equal(secondGoalReadiness.skills.find((skill) => skill.name === unmappedFocus)?.status, "unmapped", "A custom skill without an exact canonical mapping must remain unmapped");
+  assert(!secondGoalReadiness.skills.some((skill) => ["Databases", "Computer Networks"].includes(skill.name)), "Canonical skills omitted from this goal must not leak into its readiness scope");
+  await sourcePage.goto(`${clientUrl}/readiness?goalId=${secondGoalId}`, { waitUntil: "domcontentloaded" });
+  const sharedCard = sourcePage.locator(".readiness-skill").filter({ hasText: osSubject.name });
+  await sharedCard.getByText(new RegExp(`${sharedOsEvidence.assessedPoints} of ${sharedOsEvidence.totalPoints} knowledge points`)).waitFor({ timeout: 10_000 });
+  await sourcePage.getByText(/No exact canonical skill mapping is available yet/).waitFor({ timeout: 10_000 });
+  await sourcePage.reload({ waitUntil: "domcontentloaded" });
+  await sourcePage.locator(".readiness-skill").filter({ hasText: osSubject.name }).getByText(new RegExp(`${sharedOsEvidence.assessedPoints} of ${sharedOsEvidence.totalPoints} knowledge points`)).waitFor({ timeout: 10_000 });
+  await sourcePage.goto(`${clientUrl}/goals/${secondGoalId}`, { waitUntil: "domcontentloaded" });
+  await sourcePage.locator(".goal-skill-evidence").filter({ hasText: osSubject.name }).getByText(`${sharedOsEvidence.assessedPoints} of ${sharedOsEvidence.totalPoints} canonical points have submitted evidence`).waitFor({ timeout: 10_000 });
+
   const isolationEmail = `e2e-readiness-isolation-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
   const isolationPassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
   ownedEmails.push(isolationEmail);
@@ -976,7 +1063,7 @@ try {
   assert.equal(learnerBDatabase.unassessedPoints, learnerBDatabase.totalPoints, "Learner A evidence must not appear in Learner B's identical canonical skill");
   await isolationPage.goto(`${clientUrl}/readiness?goalId=${isolationGoalId}`, { waitUntil: "domcontentloaded" });
   const learnerBReadinessText = await isolationPage.locator(".readiness-skill").filter({ hasText: "Databases" }).innerText();
-  assert(learnerBReadinessText.includes("No submitted recall evidence yet"));
+  assert(learnerBReadinessText.includes("No submitted mapped evidence yet"));
   assert(learnerBReadinessText.includes(`No submitted evidence\n${learnerBDatabase.totalPoints}`));
   for (const [url, label] of [
     [`${apiUrl}/api/assessments/${readinessRuns[0].assessmentId}`, "Learner A assessment"],

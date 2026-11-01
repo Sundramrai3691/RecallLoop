@@ -8,6 +8,7 @@ export function GoalDetailPage() {
   const navigate = useNavigate();
   const [goal, setGoal] = useState<Goal | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
+  const [readiness, setReadiness] = useState<Awaited<ReturnType<typeof api.goalReadiness>> | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState(50);
@@ -22,12 +23,14 @@ export function GoalDetailPage() {
   async function load() {
     if (!id) return;
     try {
-      const [goalResult, skillResult] = await Promise.all([
+      const [goalResult, skillResult, readinessResult] = await Promise.all([
         api.getGoal(id),
         api.listSkills(id),
+        api.goalReadiness(id),
       ]);
       setGoal(goalResult.goal);
       setSkills(skillResult.skills);
+      setReadiness(readinessResult);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Could not load goal");
     }
@@ -168,16 +171,17 @@ export function GoalDetailPage() {
         </button>
       </form>
       <section className="grid grid-2" style={{ marginTop: 16 }}>
-        {skills.map((skill) => (
-          <article className="card" key={skill.id}>
+        {skills.map((skill) => {
+          const evidence = readiness?.skills.find((item) => item.skillId === skill.id);
+          return <article className="card goal-skill-evidence" key={skill.id}>
             <h2>{skill.name}</h2>
             <p>{skill.description || "No description yet."}</p>
-            <p className="muted">
-              Priority {skill.priority} ·{" "}
-              {skill.currentMastery === null ? "Not assessed yet" : `${Math.round(skill.currentMastery * 100)}% demonstrated mastery`}
-            </p>
+            <p className="muted">Priority {skill.priority} · {evidence?.status === "unmapped"
+              ? "Unmapped from the canonical knowledge map"
+              : evidence ? `${evidence.assessedPoints} of ${evidence.totalPoints} canonical points have submitted evidence`
+                : "Loading evidence-backed readiness"}</p>
           </article>
-        ))}
+        })}
       </section>
       <p className="actions">
         <Link className="btn" to={`/goals/${goal.id}/readiness`}>My Readiness</Link>

@@ -464,7 +464,7 @@ describe("PostgreSQL runtime integration", () => {
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
   });
 
-  it("builds readiness from latest submitted point evidence with distinct incorrect, partial, unanswered, and unassessed states",async()=>{
+  it("builds readiness from latest submitted recall and baseline point evidence with distinct outcomes",async()=>{
     const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Readiness evidence test') RETURNING id`,[`readiness-${randomUUID()}@test.local`])).rows[0].id;
     try{
       const selected=(await postgres.query<any>(`WITH ranked_skills AS (
@@ -508,6 +508,9 @@ describe("PostgreSQL runtime integration", () => {
       await evidence(selected[4],{status:'correct',submittedAt:null,createdAt:baseTime+604800000});
       await postgres.query(`INSERT INTO learner_knowledge_point_states(user_id,concept_id,point,mastery,attempt_count,last_status,canonical_knowledge_point_id,updated_at)
         VALUES($1,$2,$3,1,9,'correct',$4,'2099-01-01T00:00:00Z')`,[userId,sessions.get(selected[0].canonical_concept_id)!.conceptId,selected[0].statement,selected[0].point_id]);
+      const baseline=(await postgres.query<any>(`INSERT INTO baseline_assessments(user_id,goal_id,skill_id,selected_level,baseline_source,status) VALUES($1,$2,$3,'familiar','assessed','completed') RETURNING id`,[userId,goal.id,selected[4].skill_id])).rows[0];
+      await postgres.query(`INSERT INTO baseline_questions(assessment_id,concept_id,knowledge_point_id,level,question,answer,coverage,confidence,knowledge_point_results,submitted_at)
+        VALUES($1,$2,$3,'L1','Baseline readiness fixture',$4,1,8,$5::jsonb,now())`,[baseline.id,selected[4].canonical_concept_id,selected[4].point_id,'Submitted baseline evidence',JSON.stringify([{point:selected[4].statement,status:'correct'}])]);
 
       const readiness=await getGoalReadiness(userId,goal.id);
       const outcomes=[
@@ -515,12 +518,14 @@ describe("PostgreSQL runtime integration", () => {
         {assessedPoints:1,strengths:0,partial:1,incorrect:0,unanswered:0},
         {assessedPoints:1,strengths:0,partial:0,incorrect:0,unanswered:1},
         {assessedPoints:1,strengths:1,partial:0,incorrect:0,unanswered:0},
-        {assessedPoints:0,strengths:0,partial:0,incorrect:0,unanswered:0},
+        {assessedPoints:1,strengths:1,partial:0,incorrect:0,unanswered:0},
       ];
       const latestEvidenceOffsets=[86400000,172800000,259200000,345600000,null];
       for(const [index,item] of selected.entries()){
         const mapped=readiness.skills.find((skill:any)=>skill.name===item.skill_name);
-        expect(mapped).toMatchObject({totalPoints:item.total_points,...outcomes[index],unassessedPoints:item.total_points-outcomes[index].assessedPoints,latestEvidenceAt:latestEvidenceOffsets[index]===null?null:new Date(baseTime+latestEvidenceOffsets[index]!)});
+        expect(mapped).toMatchObject({totalPoints:item.total_points,...outcomes[index],unassessedPoints:item.total_points-outcomes[index].assessedPoints});
+        if(index<4)expect(mapped.latestEvidenceAt).toEqual(new Date(baseTime+latestEvidenceOffsets[index]!));
+        else expect(mapped.latestEvidenceAt).toBeInstanceOf(Date);
       }
       expect(readiness.skills.find((skill:any)=>skill.name==='Unmapped custom focus')).toMatchObject({status:'unmapped',totalPoints:0,assessedPoints:0,latestEvidenceAt:null});
       const otherUser=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Readiness foreign owner') RETURNING id`,[`readiness-foreign-${randomUUID()}@test.local`])).rows[0].id;
