@@ -90,3 +90,7 @@ Migration `024_grounding_web_article_sources.sql` extends the existing `groundin
 ## Imported source study provenance
 
 `study_sessions.grounding_source_id` optionally references `grounding_sources(id)` (`ON DELETE SET NULL`). Existing sessions remain null. The authenticated study-session service checks that the source belongs to the same user and is processed with non-empty extracted text before using it; the source text is loaded server-side and stored as the session's `raw_material`. This relation identifies material provenance and scopes later grounded remediation retrieval; it does not itself update mastery or learner evidence. The database FK does not encode ownership equality, so the service enforces owner scope. Migration `027_study_session_grounding_source.sql` adds the nullable relation and partial lookup index idempotently.
+
+## Explicit unanswered recall evidence (migration 028)
+
+`028_submitted_unanswered_recall.sql` additively permits `unanswered` in the recall-attempt result-status constraint. A learner can submit an explicit skip for a single-answer MCQ, recall, or structured prompt only with blank content; the attempt receives a submission timestamp and missing point evidence. This differs from a pending attempt, which has no submission timestamp/result. Ordinary blank submissions remain rejected. My Readiness classifies the persisted blank submitted outcome as unanswered, distinct from incorrect nonblank answers and from points with no result. The migration does not rewrite historical attempts or learner state.

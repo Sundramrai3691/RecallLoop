@@ -84,6 +84,15 @@ describe("PostgreSQL runtime integration", () => {
       expect(selectedRevisions.every(Boolean)).toBe(true);
       const selectedState=await postgres.query<any>(`SELECT count(*)::int total,count(*) FILTER(WHERE r.review_status='automated_reviewed' AND r.publication_status='published' AND r.content_hash=ar.content_hash AND ar.decision='approved')::int eligible FROM recall_attempts a JOIN canonical_question_revisions r ON r.id=a.canonical_question_revision_id JOIN canonical_question_automated_reviews ar ON ar.question_revision_id=r.id AND ar.content_hash=r.content_hash WHERE a.id=ANY($1::uuid[])`,[rapidFire.questions.map((question:any)=>question.id)]);
       expect(selectedState.rows[0]).toEqual({total:5,eligible:5});
+      const nextCanonicalRun=await createCanonicalKnowledgeCheck(userId,catalog.concept_id,"rapid_fire");
+      const nextRevisionIds=nextCanonicalRun.questions.map((question:any)=>question.canonicalQuestionRevisionId);
+      for(const type of new Set(nextCanonicalRun.questions.map((question:any)=>question.questionType))){
+        const previousOfType=rapidFire.questions.filter((question:any)=>question.questionType===type).map((question:any)=>question.canonicalQuestionRevisionId);
+        const nextOfType=nextCanonicalRun.questions.filter((question:any)=>question.questionType===type).map((question:any)=>question.canonicalQuestionRevisionId);
+        const availableUnseen=Math.max(0,Number(coveredConcept.coverage[type]??0)-previousOfType.length);
+        const expectedFresh=Math.min(nextOfType.length,availableUnseen);
+        expect(nextOfType.filter((id:string)=>!previousOfType.includes(id)).length,`A new canonical assessment should use all remaining unseen ${type} revisions when available`).toBe(expectedFresh);
+      }
       const mastery=await createAssessment(userId,rapidFire.questions[0].conceptId,"mastery_check");
       expect(mastery.assessment.total).toBe(6);
       expect(mastery.questions.every((question:any)=>question.canonicalQuestionRevisionId)).toBe(true);
@@ -443,6 +452,13 @@ describe("PostgreSQL runtime integration", () => {
       const storedResults=await postgres.query<any>(`SELECT k.part_id,k.point,k.status FROM recall_knowledge_point_results k JOIN recall_evaluations e ON e.id=k.evaluation_id WHERE e.recall_attempt_id=$1 ORDER BY k.point`,[structured.id]);
       expect(storedResults.rows.map((row:any)=>[row.part_id,row.point,row.status])).toEqual([[atomicity.id,points[0],"correct"],[isolation.id,points[1],"missing"]]);
       await expect(submitRecall(structured.id,{userId,confidence:8,answers:[{partId:atomicity.id,answer:points[0]},{partId:isolation.id,answer:points[1]}]})).rejects.toThrow("already been submitted");
+      const skippedQuestion=assessment.questions.find((item:any)=>item.questionType==="rapid_recall");
+      expect(skippedQuestion,"mastery_check should include a recall question that can be skipped").toBeDefined();
+      const skipped=await submitRecall(skippedQuestion.id,{userId,confidence:5,skip:true});
+      expect(skipped.attempt).toMatchObject({answer:"",resultStatus:"unanswered",submittedAt:expect.anything()});
+      expect(skipped.attempt.evaluation.knowledgePointResults).toEqual(expect.arrayContaining([expect.objectContaining({status:"missing",evidence:""})]));
+      const storedSkip=await postgres.query<any>(`SELECT answer,result_status,submitted_at FROM recall_attempts WHERE id=$1`,[skippedQuestion.id]);
+      expect(storedSkip.rows[0]).toMatchObject({answer:"",result_status:"unanswered"});
       const counts=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[structured.id,userId,concept.id]);
       expect(counts.rows[0]).toMatchObject({evaluations:1,states:2});
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}

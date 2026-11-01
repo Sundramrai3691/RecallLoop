@@ -200,7 +200,7 @@ export const api = {
     }>(`/api/recalls/${id}`);
   },
 
-  submitRecall(id: string, input: { answer?: string; answers?: Array<{partId:string;answer:string}>; selectedOptionId?: string; confidence: number }) {
+  submitRecall(id: string, input: { answer?: string; answers?: Array<{partId:string;answer:string}>; selectedOptionId?: string; confidence: number; skip?: boolean }) {
     return request<{ recall: RecallAttempt; concept: Concept; review: ReviewState }>(
       `/api/recalls/${id}/submit`,
       { method: "POST", body: JSON.stringify(input) },
@@ -245,6 +245,7 @@ export const api = {
         partial: number;
         incorrect: number;
         unanswered: number;
+        pending: number;
         total: number;
         uniqueAssessedPoints: number;
         totalConceptPoints: number;

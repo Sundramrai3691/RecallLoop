@@ -63,6 +63,7 @@ export async function submitRecallHandler(
       answers: req.body?.answers,
       selectedOptionId: req.body?.selectedOptionId,
       confidence: req.body?.confidence,
+      skip: req.body?.skip === true,
       userId: req.user!.id,
     });
     res.json({

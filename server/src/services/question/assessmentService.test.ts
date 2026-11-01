@@ -49,10 +49,20 @@ describe("summarizeAssessmentEvidence", () => {
     expect(summary.correct).toBe(1);
     expect(summary.partial).toBe(1);
     expect(summary.incorrect).toBe(1);
-    expect(summary.unanswered).toBe(1);
+    expect(summary.unanswered).toBe(0);
+    expect(summary.pending).toBe(1);
     expect(summary.conceptMastery).toBe(0.45);
     expect(summary.totalConceptPoints).toBe(4);
     expect(summary.uniqueAssessedPoints).toBe(3);
+  });
+
+  it("counts an intentionally skipped submitted question separately from pending work", () => {
+    const summary = summarizeAssessmentEvidence([
+      { id: "skipped", submittedAt: "2026-10-14T01:00:00Z", resultStatus: "unanswered", evaluation: { knowledgePointResults: [{ point: "Point A", status: "missing" }] } },
+      { id: "pending", submittedAt: null, resultStatus: null, evaluation: null },
+    ], ["Point A", "Point B"]);
+    expect(summary.unanswered).toBe(1);
+    expect(summary.pending).toBe(1);
   });
 
   it("rolls up duplicate knowledge points across attempts conservatively", () => {

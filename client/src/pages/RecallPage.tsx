@@ -36,15 +36,14 @@ export function RecallPage() {
       .catch((err) => setError(err instanceof ApiError ? err.message : "Recall not found"));
   }, [attemptId, navigate, returnTo]);
 
-  async function onSubmit(event: FormEvent) {
-    event.preventDefault();
+  async function submit(skipped = false) {
     if (!attemptId || submitLock.current) return;
     submitLock.current = true;
     setBusy(true);
     setError(null);
     try {
       const parts=recall?.questionData?.parts;
-      await api.submitRecall(attemptId, { answer:parts?undefined:answer, answers:parts?.map((part)=>({partId:part.id,answer:partAnswers[part.id]??""})), selectedOptionId: selectedOptionId || undefined, confidence });
+      await api.submitRecall(attemptId, { answer:skipped?undefined:parts?undefined:answer, answers:skipped?undefined:parts?.map((part)=>({partId:part.id,answer:partAnswers[part.id]??""})), selectedOptionId: skipped?undefined:selectedOptionId || undefined, confidence, skip:skipped });
       navigate(`/recall/${attemptId}/result${returnTo ? `?returnTo=${encodeURIComponent(returnTo)}` : ""}`);
     } catch (err) {
       let submissionState: "pending" | "submitted" | "unknown" = "unknown";
@@ -77,6 +76,8 @@ export function RecallPage() {
       setBusy(false);
     }
   }
+
+  function onSubmit(event: FormEvent) { event.preventDefault(); void submit(); }
 
   async function revealHint() {
     if (!attemptId || !recall) return;
@@ -124,10 +125,12 @@ export function RecallPage() {
         />
         <span className="muted">Certain</span>
       </div>
+      <p className="muted">Skipping submits a blank answer, records this as unanswered evidence, and cannot be undone.</p>
       <div className="actions">
         <button className="btn btn-primary" disabled={busy||retryBlocked||(recall.questionData?.parts?.length?!Object.values(partAnswers).some((value)=>value.trim()):false)} type="submit">
           {busy ? "Evaluating…" : retryBlocked ? "Retry unavailable" : "Submit recall"}
         </button>
+        <button className="btn" type="button" disabled={busy||retryBlocked} onClick={() => void submit(true)}>Skip / I don’t know</button>
       </div>
     </form>
   );

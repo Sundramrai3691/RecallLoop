@@ -841,19 +841,181 @@ try {
     await sourcePage.locator("label.option").filter({ hasText: sourceVerification.questionData.options.find((option) => option.id === key).text }).locator("input").check();
   } else {
     const expected = (await pool.query("SELECT expected_answer FROM canonical_question_revisions WHERE id=$1", [sourceVerification.canonicalQuestionRevisionId])).rows[0]?.expected_answer;
-    await sourcePage.locator("#answer").fill(expected ?? canonicalPoint);
+    await sourcePage.locator("#answer").fill([expected, sourceRemediation.knowledgePoint].filter(Boolean).join("\n"));
   }
   await sourcePage.getByRole("button", { name: /Submit recall/ }).click();
   await sourcePage.waitForURL(new RegExp(`/recall/${sourceVerificationId}/result`), { timeout: 10_000 });
   const verifiedSourceRemediation = (await authenticatedApi(sourceToken, `${apiUrl}/api/remediations/${sourceRemediationId}`)).remediation;
   assert.equal(verifiedSourceRemediation.status, "verified");
   assert.equal(verifiedSourceRemediation.improved, true, "Only the persisted distinct source-linked answer can verify improvement");
+  const verifiedCanonicalPoint = (await pool.query(`SELECT kp.id FROM canonical_question_revision_points rp JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id WHERE rp.question_revision_id=$1 AND kp.statement=$2`, [sourceVerification.canonicalQuestionRevisionId, verifiedSourceRemediation.knowledgePoint])).rows[0];
+  assert(verifiedCanonicalPoint, "The later verification revision must retain the exact canonical point mapping");
+  const verifiedPointHistory = await pool.query(`SELECT a.id,a.canonical_question_revision_id,r.status,a.answer,a.selected_option_id FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id WHERE a.user_id=(SELECT id FROM app_users WHERE email=$1) AND r.canonical_knowledge_point_id=$2 ORDER BY a.submitted_at DESC,a.created_at DESC,a.id DESC,r.id DESC`, [sourceEmail, verifiedCanonicalPoint.id]);
+  assert(verifiedPointHistory.rows.some((row) => row.status === "missing" && (row.selected_option_id || row.answer?.trim())), "The same point should retain its earlier wrong nonblank evidence in history");
+  assert.equal(verifiedPointHistory.rows[0]?.id, sourceVerificationId, "The later successful verification must be the authoritative latest point evidence");
+  assert.equal(verifiedPointHistory.rows[0]?.status, "correct");
+  assert(!verifiedPointHistory.rows.slice(1).some((row) => row.canonical_question_revision_id === sourceVerification.canonicalQuestionRevisionId), "The successful verification must use a revision not already attempted for that point");
   const sourceReadiness = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
   assert(sourceReadiness.skills.some((skill) => skill.name === "Databases" && skill.assessedPoints > 0), "Source-linked recall and verification should update goal readiness evidence");
   await sourcePage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
   await sourcePage.getByRole("heading", { name: "My Readiness" }).waitFor();
   await sourcePage.reload({ waitUntil: "domcontentloaded" });
   assert((await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`)).skills.some((skill) => skill.assessedPoints > 0), "Source-linked readiness should survive page reload");
+
+  async function createReadinessAssessment(conceptName) {
+    const coverage = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/coverage`);
+    const subject = coverage.subjects.find((item) => item.name === "Databases");
+    const topic = subject?.topics.find((item) => item.concepts.some((concept) => concept.name === conceptName));
+    const concept = topic?.concepts.find((item) => item.name === conceptName && item.supportedModes.includes("rapid_fire"));
+    assert(subject && topic && concept, `${conceptName} needs an eligible supported blueprint`);
+    await sourcePage.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
+    await sourcePage.locator("#knowledge-subject").selectOption(subject.id);
+    await sourcePage.locator("#knowledge-topic").selectOption(topic.id);
+    await sourcePage.locator("label.concept-choice").filter({ hasText: conceptName }).locator("input").check();
+    await sourcePage.locator("label.mode-choice").filter({ hasText: "Quick knowledge check" }).locator("input").check();
+    await sourcePage.getByRole("button", { name: /Start knowledge check/ }).click();
+    await sourcePage.waitForURL(/\/assessments\/[0-9a-f-]+\?/, { timeout: 10_000 });
+    const assessmentId = new URL(sourcePage.url()).pathname.split("/").pop();
+    await sourcePage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+    const assessment = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/${assessmentId}`);
+    const mappings = await pool.query(`SELECT a.id attempt_id, a.question_type, kp.id point_id, kp.statement FROM recall_attempts a JOIN canonical_question_revision_points rp ON rp.question_revision_id=a.canonical_question_revision_id JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id WHERE a.id=ANY($1::uuid[])`, [assessment.questions.map((question) => question.id)]);
+    assert.equal(mappings.rowCount, 5, "Every selected immutable revision must map to one canonical point");
+    return { assessmentId, assessment, mappings: new Map(mappings.rows.map((row) => [row.attempt_id, row])) };
+  }
+  const readinessRuns = [await createReadinessAssessment("Read replication"), await createReadinessAssessment("Isolation and atomicity")];
+  const lastByPoint = new Map();
+  for (const run of readinessRuns) for (const question of run.assessment.questions) lastByPoint.set(run.mappings.get(question.id).point_id, { question, mapping: run.mappings.get(question.id) });
+  const outcomesByPoint = new Map();
+  const availablePoints = [...lastByPoint.entries()];
+  function planOutcome(outcome, canApply = () => true) {
+    const found = availablePoints.find(([, value]) => canApply(value.question));
+    assert(found, `The real assessment blueprint needs an independent point whose final question supports ${outcome}`);
+    outcomesByPoint.set(found[0], outcome);
+    availablePoints.splice(availablePoints.indexOf(found), 1);
+  }
+  planOutcome("partial", (question) => question.questionType !== "mcq");
+  planOutcome("unanswered");
+  planOutcome("incorrect");
+  planOutcome("correct");
+  for (const run of readinessRuns) {
+    await sourcePage.goto(`${clientUrl}/assessments/${run.assessmentId}`, { waitUntil: "domcontentloaded" });
+    await sourcePage.getByRole("button", { name: /Start Rapid Fire/ }).waitFor({ state: "visible", timeout: 10_000 });
+    await sourcePage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+    let assessment = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/${run.assessmentId}`);
+    while (assessment.questions.some((question) => !question.submittedAt)) {
+      const question = assessment.questions.find((item) => !item.submittedAt);
+      const mapping = run.mappings.get(question.id);
+      const isLast = lastByPoint.get(mapping.point_id).question.id === question.id;
+      const outcome = isLast ? outcomesByPoint.get(mapping.point_id) : "correct";
+      try {
+        await sourcePage.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), question.questionData?.prompt ?? question.question, { timeout: 10_000 });
+      } catch {
+        throw new Error(`Readiness assessment question did not render (assessment=${run.assessmentId}, attempt=${question.id}, expected=${JSON.stringify(question.questionData?.prompt ?? question.question)}, url=${sourcePage.url()}, body=${JSON.stringify((await sourcePage.locator("body").innerText()).slice(-1200))})`);
+      }
+      if (outcome === "unanswered") await sourcePage.getByRole("button", { name: /Skip \/ I/ }).click();
+      else if (question.questionType === "mcq") {
+        const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [question.canonicalQuestionRevisionId])).rows[0]?.correct_option_id;
+        const answer = question.questionData.options.find((option) => outcome === "incorrect" ? option.id !== key : option.id === key);
+        await sourcePage.locator("label.option").filter({ hasText: answer.text }).locator("input").check();
+        await sourcePage.getByRole("button", { name: /Submit answer/ }).click();
+      } else {
+        const response = outcome === "partial" ? partialBaselineAnswer(mapping.statement) : outcome === "incorrect" ? "zebra telescope orbit" : mapping.statement;
+        await sourcePage.locator("#assessment-answer").fill(response);
+        await sourcePage.getByRole("button", { name: /Submit answer/ }).click();
+      }
+      assessment = await waitForAssessment(sourceToken, apiUrl, run.assessmentId, (data) => data.questions.find((item) => item.id === question.id)?.submittedAt);
+    }
+    assert(assessment.result, "Real submitted answers should produce an assessment report");
+  }
+  const readinessMatrix = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
+  const matrixSkill = readinessMatrix.skills.find((skill) => skill.name === "Databases");
+  assert(matrixSkill.strengths > 0 && matrixSkill.partial > 0 && matrixSkill.incorrect > 0 && matrixSkill.unanswered > 0 && matrixSkill.unassessedPoints > 0, `The canonical readiness projection must retain five states; got ${JSON.stringify(matrixSkill)}`);
+  const plannedPointOutcomes = await pool.query(`WITH latest AS (SELECT DISTINCT ON (r.canonical_knowledge_point_id) r.canonical_knowledge_point_id,r.status,a.answer,a.selected_option_id FROM recall_attempts a JOIN recall_evaluations e ON e.recall_attempt_id=a.id JOIN recall_knowledge_point_results r ON r.evaluation_id=e.id WHERE a.user_id=(SELECT id FROM app_users WHERE email=$1) AND r.canonical_knowledge_point_id=ANY($2::uuid[]) AND a.submitted_at IS NOT NULL ORDER BY r.canonical_knowledge_point_id,a.submitted_at DESC,a.created_at DESC,a.id DESC,r.id DESC) SELECT canonical_knowledge_point_id,CASE WHEN status='correct' THEN 'correct' WHEN status='partial' THEN 'partial' WHEN status='missing' AND (selected_option_id IS NOT NULL OR NULLIF(trim(answer),'') IS NOT NULL) THEN 'incorrect' WHEN status='missing' THEN 'unanswered' END outcome FROM latest`, [sourceEmail, [...outcomesByPoint.keys()]]);
+  const persistedOutcomes = new Map(plannedPointOutcomes.rows.map((row) => [row.canonical_knowledge_point_id, row.outcome]));
+  for (const [pointId, expected] of outcomesByPoint) assert.equal(persistedOutcomes.get(pointId), expected, `Point ${pointId} should persist its evaluated ${expected} outcome`);
+  assert.equal(matrixSkill.assessedPoints, matrixSkill.strengths + matrixSkill.partial + matrixSkill.incorrect + matrixSkill.unanswered, "Assessed counts must equal the mutually exclusive submitted outcomes");
+  await sourcePage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+  await sourcePage.getByRole("heading", { name: "My Readiness" }).waitFor();
+  const readinessSkillCard = sourcePage.locator(".readiness-skill").filter({ hasText: "Databases" });
+  const matrixText = await readinessSkillCard.innerText();
+  for (const [label, count] of [["Demonstrated", matrixSkill.strengths], ["Partial", matrixSkill.partial], ["Incorrect", matrixSkill.incorrect], ["Unanswered", matrixSkill.unanswered], ["No submitted evidence", matrixSkill.unassessedPoints]]) assert(matrixText.includes(`${label}\n${count}`), `The page must display ${label}=${count}; got ${matrixText}`);
+  await sourcePage.reload({ waitUntil: "domcontentloaded" });
+  const reloadedMatrixText = await sourcePage.locator(".readiness-skill").filter({ hasText: "Databases" }).innerText();
+  for (const [label, count] of [["Demonstrated", matrixSkill.strengths], ["Partial", matrixSkill.partial], ["Incorrect", matrixSkill.incorrect], ["Unanswered", matrixSkill.unanswered], ["No submitted evidence", matrixSkill.unassessedPoints]]) assert(reloadedMatrixText.includes(`${label}\n${count}`), `Reload must preserve ${label}=${count}`);
+
+  const isolationEmail = `e2e-readiness-isolation-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+  const isolationPassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  ownedEmails.push(isolationEmail);
+  const isolationContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const isolationPage = await isolationContext.newPage();
+  isolationPage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  isolationPage.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
+  await isolationPage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await isolationPage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+  await isolationPage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+  await isolationPage.locator("#name").fill("RecallLoop Readiness Isolation Pilot");
+  await isolationPage.locator("#email").fill(isolationEmail);
+  await isolationPage.locator("#password").fill(isolationPassword);
+  await isolationPage.getByRole("button", { name: "Create account" }).click();
+  await isolationPage.waitForURL("**/onboarding", { timeout: 10_000 });
+  await isolationPage.locator("#start-topic").selectOption({ label: "Databases" });
+  await isolationPage.getByRole("button", { name: "Start studying" }).click();
+  await isolationPage.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+  const isolationToken = await isolationPage.evaluate(() => localStorage.getItem("recallloop_token"));
+  const isolationGoalId = new URL(isolationPage.url()).searchParams.get("goalId");
+  const isolationUser = (await pool.query("SELECT id FROM app_users WHERE email=$1", [isolationEmail])).rows[0];
+  assert(isolationToken && isolationGoalId && isolationUser, "Learner B must register and persist an independent account and goal");
+  const learnerBReadiness = await authenticatedApi(isolationToken, `${apiUrl}/api/goals/${isolationGoalId}/readiness`);
+  const learnerBDatabase = learnerBReadiness.skills.find((skill) => skill.name === "Databases");
+  assert(learnerBDatabase?.canonicalSkill && learnerBDatabase.totalPoints > 0);
+  assert.equal(learnerBDatabase.assessedPoints, 0);
+  assert.equal(learnerBDatabase.unassessedPoints, learnerBDatabase.totalPoints, "Learner A evidence must not appear in Learner B's identical canonical skill");
+  await isolationPage.goto(`${clientUrl}/readiness?goalId=${isolationGoalId}`, { waitUntil: "domcontentloaded" });
+  const learnerBReadinessText = await isolationPage.locator(".readiness-skill").filter({ hasText: "Databases" }).innerText();
+  assert(learnerBReadinessText.includes("No submitted recall evidence yet"));
+  assert(learnerBReadinessText.includes(`No submitted evidence\n${learnerBDatabase.totalPoints}`));
+  for (const [url, label] of [
+    [`${apiUrl}/api/assessments/${readinessRuns[0].assessmentId}`, "Learner A assessment"],
+    [`${apiUrl}/api/recalls/${readinessRuns[0].assessment.questions[0].id}`, "Learner A recall"],
+    [`${apiUrl}/api/grounding/sources/${linkedSession.session.groundingSourceId}`, "Learner A resource"],
+    [`${apiUrl}/api/remediations/${sourceRemediationId}`, "Learner A remediation"],
+  ]) {
+    const response = await fetch(url, { headers: { Authorization: `Bearer ${isolationToken}` } });
+    assert.equal(response.status, 404, `${label} must remain owner-scoped`);
+  }
+  const learnerBDashboard = await authenticatedApi(isolationToken, `${apiUrl}/api/dashboard`);
+  const learnerBWeakConcepts = await authenticatedApi(isolationToken, `${apiUrl}/api/learner/weak-concepts`);
+  assert(!JSON.stringify([learnerBDashboard, learnerBWeakConcepts]).includes(sourceEmail), "Learner B dashboard and weakness projection must not contain Learner A data");
+  await isolationPage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+  await isolationPage.getByRole("button", { name: /Sign out/i }).click();
+  await isolationPage.waitForURL("**/login", { timeout: 10_000 });
+  await isolationPage.locator("#email").fill(sourceEmail);
+  await isolationPage.locator("#password").fill(sourcePassword);
+  await isolationPage.getByRole("button", { name: "Sign in" }).click();
+  await isolationPage.waitForURL("**/dashboard", { timeout: 10_000 });
+  const restoredAToken = await isolationPage.evaluate(() => localStorage.getItem("recallloop_token"));
+  assert(restoredAToken && restoredAToken !== isolationToken);
+  await isolationPage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+  const restoredA = await authenticatedApi(restoredAToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
+  assert(restoredA.skills.find((skill) => skill.name === "Databases").incorrect > 0, "Signing back into Learner A must restore persisted readiness evidence");
+  const restoredAText = await isolationPage.locator(".readiness-skill").filter({ hasText: "Databases" }).innerText();
+  assert(restoredAText.includes(`Incorrect\n${restoredA.skills.find((skill) => skill.name === "Databases").incorrect}`));
+  await isolationPage.getByRole("button", { name: /Sign out/i }).click();
+  await isolationPage.waitForURL("**/login", { timeout: 10_000 });
+  await isolationPage.locator("#email").fill(isolationEmail);
+  await isolationPage.locator("#password").fill(isolationPassword);
+  await isolationPage.getByRole("button", { name: "Sign in" }).click();
+  await isolationPage.waitForURL("**/dashboard", { timeout: 10_000 });
+  const restoredBToken = await isolationPage.evaluate(() => localStorage.getItem("recallloop_token"));
+  assert(restoredBToken && restoredBToken !== restoredAToken, "Logging Learner B back in should establish a fresh authenticated session");
+  const restoredBUser = await authenticatedApi(restoredBToken, `${apiUrl}/api/auth/me`);
+  assert.equal(restoredBUser.user.email, isolationEmail, "The client should restore Learner B rather than retain Learner A's identity");
+  assert.equal((await authenticatedApi(restoredBToken, `${apiUrl}/api/goals/${isolationGoalId}/readiness`)).skills.find((skill) => skill.name === "Databases").assessedPoints, 0);
+  await isolationContext.close();
   await sourceContext.close();
 
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
@@ -881,7 +1043,7 @@ try {
     await browserContext.tracing.stop();
     traceStarted = false;
   }
-  console.log(`PASS ${browserName} Playwright core loop: source-linked study/recall/remediation/distinct verification, due review/scheduler/reload, positive baseline, authentication logout/login, dashboard destinations, ingestion/provenance, canonical DBMS assessment/improvement, readiness, responsive and keyboard checks (${originalAttemptIds.length} main assessment attempts, ${evidence.rows[0].revisions} revisions)`);
+  console.log(`PASS ${browserName} Playwright core loop: source-linked study/recall/remediation/distinct verification, due review/scheduler/reload, positive baseline, authentication logout/login, dashboard destinations, ingestion/provenance, canonical DBMS assessment/improvement, readiness matrix/isolation, responsive and keyboard checks (${originalAttemptIds.length} main assessment attempts, ${evidence.rows[0].revisions} revisions; learner A DBMS latest outcomes correct=${matrixSkill.strengths}, partial=${matrixSkill.partial}, incorrect=${matrixSkill.incorrect}, unanswered=${matrixSkill.unanswered}, unassessed=${matrixSkill.unassessedPoints}; learner B assessed=${learnerBDatabase.assessedPoints}, unassessed=${learnerBDatabase.unassessedPoints}; matrix point outcomes=${JSON.stringify([...outcomesByPoint.entries()])})`);
 } catch (error) {
   if (page) {
     console.error(`Browser state at failure (${page.url()}):\n${(await page.locator("body").innerText().catch(() => "unavailable")).slice(-3000)}`);

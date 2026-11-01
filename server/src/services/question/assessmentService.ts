@@ -132,7 +132,9 @@ async function createAssessmentForSource(userId: string, ownedConceptId: string 
     if (!conceptId) throw new AppError("Assessment concept could not be resolved.",500,"ASSESSMENT_CONCEPT_MISSING");
     const attemptIds: string[] = [];
     const blueprint = assessmentBlueprint(mode);
-    const history=await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,conceptId]);
+    const history=concept.canonical_concept_id
+      ? await client.query<any>(`SELECT r.question_id,r.canonical_question_revision_id FROM recall_attempts r JOIN personal_concepts pc ON pc.id=r.concept_id WHERE r.user_id=$1 AND pc.canonical_concept_id=$2 ORDER BY r.created_at DESC,r.id DESC LIMIT 100`,[userId,concept.canonical_concept_id])
+      : await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,conceptId]);
     const recentIds=new Set<string>(history.rows.map((row)=>row.question_id).filter(Boolean));
     const recentRevisionIds=new Set<string>(history.rows.map((row)=>row.canonical_question_revision_id).filter(Boolean));
     const review=await client.query<any>(`SELECT due_at<=now() AS due FROM review_states WHERE user_id=$1 AND concept_id=$2`,[userId,conceptId]);
@@ -182,7 +184,9 @@ export async function createTargetedVerification(userId:string,remediationId:str
     if(!remediation)throw notFound("Remediation not found","REMEDIATION_NOT_FOUND");
     if(remediation.verification_attempt_id)return remediation.verification_attempt_id as string;
     if(remediation.status!=="ready")throw new AppError("Remediation is not ready for verification",409,"REMEDIATION_NOT_READY");
-    const history=await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,remediation.concept_id]);
+    const history=remediation.canonical_concept_id
+      ? await client.query<any>(`SELECT a.question_id,a.canonical_question_revision_id FROM recall_attempts a JOIN personal_concepts pc ON pc.id=a.concept_id WHERE a.user_id=$1 AND pc.canonical_concept_id=$2 ORDER BY a.created_at DESC,a.id DESC LIMIT 100`,[userId,remediation.canonical_concept_id])
+      : await client.query<any>(`SELECT question_id,canonical_question_revision_id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 ORDER BY created_at DESC LIMIT 20`,[userId,remediation.concept_id]);
     const recentIds=new Set<string>(history.rows.map((row)=>row.question_id));
     const recentRevisionIds=new Set<string>(history.rows.map((row)=>row.canonical_question_revision_id).filter(Boolean));
     let bankCandidate: Awaited<ReturnType<typeof listEligibleCanonicalQuestions>>[number] | null=null;
@@ -221,6 +225,7 @@ export interface AssessmentEvidenceSummary {
   partial: number;
   incorrect: number;
   unanswered: number;
+  pending: number;
   total: number;
   uniqueAssessedPoints: number;
   totalConceptPoints: number;
@@ -244,7 +249,8 @@ export function summarizeAssessmentEvidence(
   const correct = submitted.filter((q) => q.resultStatus === "correct").length;
   const partial = submitted.filter((q) => q.resultStatus === "partial").length;
   const incorrect = submitted.filter((q) => q.resultStatus === "incorrect").length;
-  const unanswered = total - submitted.length;
+  const unanswered = submitted.filter((q) => q.resultStatus === "unanswered").length;
+  const pending = total - submitted.length;
 
   const unique = new Map<string, { point: string; status: "correct" | "partial" | "missing"; feedback: string }>();
   for (const q of submitted) {
@@ -293,6 +299,7 @@ export function summarizeAssessmentEvidence(
     partial,
     incorrect,
     unanswered,
+    pending,
     total,
     uniqueAssessedPoints,
     totalConceptPoints,

@@ -25,28 +25,32 @@ export async function revealRecallHint(id: string, userId: string) {
   return result;
 }
 
-export async function submitRecall(id: string, input: { answer?: string; answers?: Array<{partId:string;answer:string}>; selectedOptionId?: string; confidence: number; userId: string }) {
+export async function submitRecall(id: string, input: { answer?: string; answers?: Array<{partId:string;answer:string}>; selectedOptionId?: string; confidence: number; skip?: boolean; userId: string }) {
   const answer = input.answer?.trim();
+  const skipped = input.skip === true;
   const { attempt, concept } = await getRecall(id, input.userId);
   const mcq = attempt.questionType === "mcq" && attempt.question;
   const parts=attempt.question?validateQuestionParts(attempt.question.parts,attempt.question.knowledgePoints):null;
   if(mcq&&parts)throw new AppError("A multiple-choice question cannot contain structured answer parts.",500,"INVALID_QUESTION_PARTS");
   let structuredAnswers: Array<{partId:string;answer:string}> | null=null;
   if(parts){
-    if(!Array.isArray(input.answers))throw new AppError("Submit an answer for each question part.",400,"STRUCTURED_ANSWERS_REQUIRED");
-    structuredAnswers=mapStructuredAnswers(parts,input.answers);
-    if(!structuredAnswers.some((part)=>part.answer.length>0))throw new AppError("At least one part needs an answer.",400,"EMPTY_ANSWER");
+    if(!Array.isArray(input.answers) && !skipped)throw new AppError("Submit an answer for each question part.",400,"STRUCTURED_ANSWERS_REQUIRED");
+    structuredAnswers=mapStructuredAnswers(parts,input.answers ?? []);
+    if(!structuredAnswers.some((part)=>part.answer.length>0) && !skipped)throw new AppError("At least one part needs an answer.",400,"EMPTY_ANSWER");
   } else if(input.answers!==undefined){
     throw new AppError("This question does not accept part-based answers.",400,"UNEXPECTED_STRUCTURED_ANSWERS");
   }
-  if (mcq ? !input.selectedOptionId : !parts && !answer) throw new AppError(mcq ? "Select an option" : "Answer cannot be empty", 400, "EMPTY_ANSWER");
+  if (skipped && (answer || input.selectedOptionId || structuredAnswers?.some((part)=>part.answer.length>0))) throw new AppError("A skipped question must be submitted without an answer.",400,"INVALID_SKIP_ANSWER");
+  if (mcq ? !input.selectedOptionId && !skipped : !parts && !answer && !skipped) throw new AppError(mcq ? "Select an option" : "Answer cannot be empty", 400, "EMPTY_ANSWER");
   const confidence = Number(input.confidence);
   if (!Number.isFinite(confidence) || confidence < 1 || confidence > 10) throw new AppError("Confidence must be a number from 1 to 10", 400, "VALIDATION_ERROR");
   if (attempt.submittedAt) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   const evaluator = mcq ? null : getEvaluator();
   let evaluationBody;
   if (mcq) {
-    const graded = evaluateMcq({ selectedOptionId: input.selectedOptionId!, correctOptionId: attempt.question.correctOptionId, knowledgePoints: attempt.question.knowledgePoints });
+    const graded = skipped
+      ? { correct: false, overallCoverage: 0, knowledgePointResults: attempt.question.knowledgePoints.map((point: string) => ({ point, status: "missing" as const, evidence: "", feedback: "Skipped. This point remains unanswered." })), missingConcepts: attempt.question.knowledgePoints, mistakes: ["Question skipped"], strengths: [] }
+      : evaluateMcq({ selectedOptionId: input.selectedOptionId!, correctOptionId: attempt.question.correctOptionId, knowledgePoints: attempt.question.knowledgePoints });
     evaluationBody = { ...graded, feedback: graded.correct ? "Correct. This matches the question's answer key." : attempt.question.explanation, suggestedRecallType: "short_explanation" as QuestionType };
   } else if(parts && structuredAnswers) {
     const structuredEvaluation=await evaluateStructuredParts(parts,structuredAnswers,(part,partAnswer)=>evaluator!.evaluate({conceptName:concept.name,conceptDescription:concept.description,requiredKnowledgePoints:part.knowledgePoints,answer:partAnswer,questionType:attempt.questionType as QuestionType,rubric:part.rubric,strictKnowledgePoints:true}));
@@ -54,7 +58,7 @@ export async function submitRecall(id: string, input: { answer?: string; answers
     evaluationBody={knowledgePointResults,overallCoverage,missingConcepts:knowledgePointResults.filter((point)=>point.status==="missing").map((point)=>point.point),mistakes:knowledgePointResults.filter((point)=>point.status!=="correct").map((point)=>point.feedback),strengths:knowledgePointResults.filter((point)=>point.status==="correct").map((point)=>point.point),feedback:structuredEvaluation.feedback,suggestedRecallType:overallCoverage>=.75?"application" as QuestionType:"explain" as QuestionType};
   } else {
     const rubric = attempt.question?.rubric?.map((dimension: any) => `${dimension.label}: Full credit: ${dimension.fullCredit} Partial credit: ${dimension.partialCredit} Insufficient: ${dimension.insufficient}`);
-    evaluationBody = await evaluator!.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: attempt.question?.knowledgePoints ?? concept.requiredKnowledgePoints, answer: answer!, questionType: attempt.questionType as QuestionType, rubric: rubric?.length ? rubric : undefined });
+    evaluationBody = await evaluator!.evaluate({ conceptName: concept.name, conceptDescription: concept.description, requiredKnowledgePoints: attempt.question?.knowledgePoints ?? concept.requiredKnowledgePoints, answer: answer ?? "", questionType: attempt.questionType as QuestionType, rubric: rubric?.length ? rubric : undefined });
   }
   const evaluation = { ...evaluationBody, evaluatorVersion: mcq ? "deterministic-mcq-1.0" : evaluator!.version };
   const hintWeight = evidenceWeight(attempt.hintsUsed ?? 0);
@@ -64,7 +68,7 @@ export async function submitRecall(id: string, input: { answer?: string; answers
   const evidenceCoverage = evaluation.overallCoverage * hintWeight;
   const mastery = Number((Number(concept.mastery) * 0.4 + evidenceCoverage * 0.6).toFixed(4));
   const scheduled = getScheduler().scheduleNextReview({ conceptId: concept.id, coverage: evidenceCoverage, now: new Date(), previous: previousSnapshot, conceptDifficulty: concept.difficulty });
-  const status = evaluation.overallCoverage >= 0.75 ? "correct" : evaluation.overallCoverage >= 0.4 ? "partial" : "incorrect";
+  const status = skipped ? "unanswered" : evaluation.overallCoverage >= 0.75 ? "correct" : evaluation.overallCoverage >= 0.4 ? "partial" : "incorrect";
   const [dimensionHistory,recentAttempts,requiredResult] = await Promise.all([
     query<any>(`SELECT dimension,AVG(score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.user_id=$1 AND r.concept_id=$2 GROUP BY dimension`,[input.userId,concept.id]),
     query<any>(`SELECT e.overall_coverage,e.missing_concepts FROM recall_attempts r JOIN recall_evaluations e ON e.recall_attempt_id=r.id WHERE r.user_id=$1 AND r.concept_id=$2 ORDER BY r.submitted_at DESC LIMIT 20`,[input.userId,concept.id]),
