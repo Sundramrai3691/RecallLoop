@@ -20,6 +20,7 @@ assert(databaseUrl.pathname === "/recallloop", "Browser pilot requires the confi
 
 const email = `e2e-core-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
 const password = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+const ownedEmails = [email];
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const processes = [];
 let browser;
@@ -57,6 +58,12 @@ function isExpectedCanceledRequest(method, requestUrl, failureText, appOrigin) {
     && failureText === "NS_BINDING_ABORTED"
     && parsedUrl.origin === appOrigin;
 }
+function partialBaselineAnswer(point) {
+  const stopwords = new Set(["the", "a", "an", "and", "or", "of", "to", "in", "on", "for", "with", "is", "are", "was", "be", "as", "by", "from", "that", "this", "it", "into", "then"]);
+  const tokens = point.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((token) => token.length > 2 && !stopwords.has(token));
+  assert(tokens.length >= 3, `A partial baseline fixture needs at least 3 significant tokens: ${point}`);
+  return tokens.slice(0, Math.max(1, Math.floor(tokens.length * 0.4))).join(" ");
+}
 function start(name, args, cwd, env) {
   const child = spawn(process.execPath, args, { cwd, env, windowsHide: true, stdio: ["ignore", "pipe", "pipe"] });
   let output = ""; const save = (chunk) => { output = `${output}${chunk}`.slice(-5000); };
@@ -92,8 +99,7 @@ function pdfFixture(pageTexts) {
   pageTexts.forEach((text, index) => {
     const pageId = pageIds[index]; const contentId = pageId + 1;
     objects[pageId] = `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${pageIds.length * 2 + 3} 0 R >> >> /Contents ${contentId} 0 R >>`;
-    const escaped = text.replace(/([\\()])/g, "\\$1");
-    const stream = text ? `BT /F1 12 Tf 72 720 Td (${escaped}) Tj ET` : "";
+    const stream = text ? `BT /F1 12 Tf 72 720 Td ${text.split(/\r?\n/).map((line) => line ? `(${line.replace(/([\\()])/g, "\\$1")}) Tj T*` : "T*").join(" ")} ET` : "";
     objects[contentId] = `<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`;
   });
   objects[pageIds.length * 2 + 3] = "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";
@@ -213,7 +219,7 @@ try {
   await page.unroute("**/api/study-sessions");
   await page.getByRole("button", { name: "Create study session" }).click();
   await page.waitForURL("**/study/*", { timeout: 10_000 });
-  await page.getByRole("heading", { name: "Authentication", exact: true }).waitFor();
+  await page.locator("h1").filter({ hasText: "Authentication" }).waitFor();
 
   const goal = await authenticatedApi(token, `${apiUrl}/api/goals`, { method: "POST", body: JSON.stringify({ title: `Core DBMS pilot ${Date.now()}`, description: "Evidence-backed database learning check", goalType: "interview", weeklyTimeBudgetMinutes: 60 }) });
   const goalId = goal.goal?.id ?? goal.id;
@@ -345,6 +351,8 @@ try {
     const current = assessment.questions.find((question) => !question.submittedAt);
     assert(current, "An unanswered question should be available");
     originalAttemptIds.push(current.id);
+    const expectedPrompt = current.questionData?.prompt ?? current.question;
+    await page.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), expectedPrompt, { timeout: 10_000 });
     const serializedQuestion = JSON.stringify(current.questionData ?? {});
     assert(!/correctOptionId|expectedAnswer|correctAnswer/i.test(serializedQuestion), "The browser-facing assessment must not expose answer keys before submission");
     if (current.questionType === "mcq") {
@@ -448,6 +456,7 @@ try {
   await page.reload({ waitUntil: "domcontentloaded" });
   const restoredTaskCard = page.locator(`.journey-card[data-task-id="${firstTaskId}"]`);
   await restoredTaskCard.getByRole("button", { name: "Put back in today’s plan" }).click();
+  await restoredTaskCard.getByRole("button", { name: "Mark complete" }).waitFor({ timeout: 10_000 });
   plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
   assert.equal(plan.tasks.find((task) => task.id === firstTaskId)?.status, "planned", "Restoring a skipped task should persist across reload");
   if (plan.tasks.length > 1) {
@@ -463,6 +472,389 @@ try {
   await page.getByRole("heading", { name: "Concepts to improve" }).waitFor({ timeout: 10_000 });
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "Choose what to strengthen" }).waitFor();
+
+  // Baseline uses its own disposable learner so this branch cannot inherit the
+  // main journey's question history or make question availability look exhausted.
+  const baselineEmail = `e2e-core-baseline-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+  const baselinePassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  ownedEmails.push(baselineEmail);
+  const baselineContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const baselinePage = await baselineContext.newPage();
+  baselinePage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  baselinePage.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
+  await baselinePage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await baselinePage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+  await baselinePage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+  await baselinePage.locator("#name").fill("RecallLoop Baseline Pilot");
+  await baselinePage.locator("#email").fill(baselineEmail);
+  await baselinePage.locator("#password").fill(baselinePassword);
+  await baselinePage.getByRole("button", { name: "Create account" }).click();
+  await baselinePage.waitForURL("**/onboarding", { timeout: 10_000 });
+  await baselinePage.getByRole("button", { name: "Studied before" }).click();
+  await baselinePage.locator("#start-topic").selectOption({ label: "Databases" });
+  await baselinePage.getByRole("button", { name: "Continue to starting check" }).click();
+  await baselinePage.waitForURL(/\/baseline\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const baselineId = new URL(baselinePage.url()).pathname.split("/").pop();
+  const baselineToken = await baselinePage.evaluate(() => localStorage.getItem("recallloop_token"));
+  assert(baselineToken, "Baseline learner registration should establish an authenticated session");
+  const baselineUser = (await pool.query("SELECT id FROM app_users WHERE email=$1", [baselineEmail])).rows[0];
+  assert(baselineUser, "The baseline learner must be an isolated persisted test account");
+  const startingAssessment = await authenticatedApi(baselineToken, `${apiUrl}/api/baseline/${baselineId}`);
+  assert.equal(startingAssessment.baseline.assessment.status, "pending");
+  assert.equal(startingAssessment.baseline.questions.length, 4, "Familiar starting level should use the supported four-question baseline");
+  const baselineQuestionPoints = await pool.query("SELECT bq.id, kp.statement FROM baseline_questions bq JOIN knowledge_points kp ON kp.id=bq.knowledge_point_id WHERE bq.assessment_id=$1 ORDER BY bq.id", [baselineId]);
+  assert.equal(baselineQuestionPoints.rowCount, 4);
+  const baselineOutcomes = [];
+  for (let index = 0; index < baselineQuestionPoints.rows.length; index += 1) {
+    const item = baselineQuestionPoints.rows[index];
+    const baselineAnswer = index === 1 ? partialBaselineAnswer(item.statement) : index === 2 ? "I cannot recall this concept yet." : item.statement;
+    assert(baselineAnswer.trim(), `Baseline question ${item.id} must have a non-empty point statement`);
+    await baselinePage.locator("#baseline-answer").click();
+    await baselinePage.locator("#baseline-answer").press("Control+A");
+    await baselinePage.locator("#baseline-answer").pressSequentially(baselineAnswer, { delay: 1 });
+    await baselinePage.waitForFunction(() => document.querySelector("#baseline-answer")?.value.trim().length > 0 && document.querySelector("form.question-card button")?.disabled === false, null, { timeout: 5_000 }).catch(async (error) => {
+      console.error(`Baseline form did not enable submit: ${JSON.stringify({ url: baselinePage.url(), answer: await baselinePage.locator("#baseline-answer").inputValue().catch(() => null), disabled: await baselinePage.locator("form.question-card button").isDisabled().catch(() => null), prompt: await baselinePage.locator(".question-prompt").innerText().catch(() => null), body: (await baselinePage.locator("body").innerText().catch(() => "")).slice(-1200), expectedAnswerLength: baselineAnswer.length })}`);
+      throw error;
+    });
+    await baselinePage.getByRole("button", { name: "Continue" }).click();
+    if (index < baselineQuestionPoints.rows.length - 1) await baselinePage.locator("#baseline-answer").waitFor({ timeout: 10_000 });
+  }
+  await baselinePage.waitForURL(new RegExp(`/baseline/${baselineId}/result$`), { timeout: 10_000 });
+  await baselinePage.getByRole("heading", { name: "Your learning starts here" }).waitFor();
+  const baselineResult = await authenticatedApi(baselineToken, `${apiUrl}/api/baseline/${baselineId}`);
+  assert.equal(baselineResult.baseline.assessment.status, "completed");
+  assert(baselineResult.baseline.questions.every((question) => question.submittedAt && question.answer), "Every baseline answer should be evaluated and persisted");
+  const persistedBaselineStates = await pool.query("SELECT DISTINCT result->>'status' AS status FROM baseline_questions bq CROSS JOIN LATERAL jsonb_array_elements(bq.knowledge_point_results) result WHERE bq.assessment_id=$1 ORDER BY status", [baselineId]);
+  const observedBaselineStatuses = persistedBaselineStates.rows.map((row) => row.status);
+  assert(observedBaselineStatuses.includes("correct") && observedBaselineStatuses.includes("partial") && observedBaselineStatuses.includes("missing"), `Baseline should persist correct, partial and incorrect evidence; got ${observedBaselineStatuses.join(", ")}`);
+  assert(baselineResult.baseline.assessment.observedMastery !== null, "A completed answered baseline should persist an observed starting point");
+  assert.equal((await pool.query("SELECT count(*)::int AS count FROM learner_knowledge_states WHERE user_id=$1 AND baseline_source='assessed'", [baselineUser.id])).rows[0].count, 4, "Baseline learner state should contain the four assessed concepts");
+  await baselinePage.getByRole("link", { name: "Start a study session" }).waitFor();
+  await baselinePage.reload({ waitUntil: "domcontentloaded" });
+  await baselinePage.getByRole("heading", { name: "Your learning starts here" }).waitFor();
+  assert.equal((await authenticatedApi(baselineToken, `${apiUrl}/api/baseline/${baselineId}`)).baseline.assessment.status, "completed", "Completed starting-point evidence should survive reload");
+  await baselineContext.close();
+
+  // Authentication lifecycle and dashboard destinations use a separate account.
+  const authEmail = `e2e-core-auth-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+  const authPassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  ownedEmails.push(authEmail);
+  const authContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const authPage = await authContext.newPage();
+  authPage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  authPage.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
+  await authPage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await authPage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+  await authPage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+  await authPage.locator("#name").fill("RecallLoop Authentication Pilot");
+  await authPage.locator("#email").fill(authEmail);
+  await authPage.locator("#password").fill(authPassword);
+  await authPage.getByRole("button", { name: "Create account" }).click();
+  await authPage.waitForURL("**/onboarding", { timeout: 10_000 });
+  await authPage.locator("#start-topic").selectOption({ label: "Databases" });
+  await authPage.getByRole("button", { name: "Start studying" }).click();
+  await authPage.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+  const authGoalId = new URL(authPage.url()).searchParams.get("goalId");
+  assert(authGoalId, "The authentication account should retain its onboarding goal");
+  await authPage.getByRole("button", { name: "Sign out" }).click();
+  await authPage.waitForURL("**/login", { timeout: 10_000 });
+  assert.equal(await authPage.evaluate(() => localStorage.getItem("recallloop_token")), null, "Sign out must remove the local token");
+  await authPage.goto(`${clientUrl}/readiness`, { waitUntil: "domcontentloaded" });
+  await authPage.waitForURL("**/login", { timeout: 10_000 });
+  await authPage.locator("#email").fill(authEmail);
+  await authPage.locator("#password").fill("Incorrect-password-123");
+  await authPage.getByRole("button", { name: "Sign in" }).click();
+  await authPage.getByText(/invalid email or password/i).waitFor({ timeout: 5000 });
+  assert.equal(await authPage.evaluate(() => localStorage.getItem("recallloop_token")), null, "Invalid credentials must not establish a session");
+  await authPage.locator("#password").fill(authPassword);
+  await authPage.getByRole("button", { name: "Sign in" }).click();
+  await authPage.waitForURL("**/dashboard", { timeout: 10_000 });
+  const restoredAuthToken = await authPage.evaluate(() => localStorage.getItem("recallloop_token"));
+  assert(restoredAuthToken && (await authenticatedApi(restoredAuthToken, `${apiUrl}/api/goals`)).goals.some((item) => item.id === authGoalId), "Login should restore the same learner and existing goal");
+  await authPage.reload({ waitUntil: "domcontentloaded" });
+  await authPage.getByRole("heading", { name: /Choose your next learning step|What would you like to do/ }).waitFor();
+  assert.equal(await authPage.evaluate(() => localStorage.getItem("recallloop_token")), restoredAuthToken, "Authenticated session should restore after reload");
+
+  await authPage.getByRole("link", { name: "Choose a knowledge check" }).click();
+  await authPage.waitForURL("**/knowledge-check", { timeout: 10_000 });
+  await authPage.getByRole("heading", { name: "What would you like to check?" }).waitFor();
+  await authPage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+  await authPage.getByRole("link", { name: "Choose a topic or add notes" }).click();
+  await authPage.waitForURL("**/study/new", { timeout: 10_000 });
+  await authPage.getByRole("heading", { name: "What would you like to learn?" }).waitFor();
+  await authPage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+  await authPage.getByRole("link", { name: "Choose what to strengthen" }).click();
+  await authPage.waitForURL("**/review", { timeout: 10_000 });
+  await authPage.getByRole("heading", { name: "Choose what to strengthen" }).waitFor();
+  await authPage.goto(`${clientUrl}/study/new`, { waitUntil: "domcontentloaded" });
+  await authPage.locator("#study-topic").fill("Dashboard continuation study");
+  await authPage.locator("#material").fill("A dashboard continuation should reopen the learner's own unfinished study session.");
+  await authPage.getByRole("button", { name: "Create study session" }).click();
+  await authPage.waitForURL(/\/study\/[0-9a-f-]+\?/i, { timeout: 10_000 });
+  const continuationSessionId = new URL(authPage.url()).pathname.split("/").pop();
+  const dashboardDestinations = [
+    ["Goals", "**/goals", "Goals"],
+    ["My Readiness", "**/readiness", "My Readiness"],
+    ["Today's plan", "**/plan/today", "A learning journey for today"],
+    ["Knowledge", "**/knowledge", "Knowledge map"],
+    ["Resources", "**/resources", "Learning resources"],
+    ["Learner", "**/learner", "What do you actually know?"],
+    ["Settings", "**/settings", "Settings"],
+  ];
+  for (const [label, urlPattern, heading] of dashboardDestinations) {
+    await authPage.getByRole("link", { name: label, exact: true }).click();
+    await authPage.waitForURL(urlPattern, { timeout: 10_000 });
+    await authPage.getByRole("heading", { name: heading, exact: true }).waitFor({ timeout: 10_000 });
+    await authPage.goBack({ waitUntil: "domcontentloaded" });
+    await authPage.getByRole("heading", { name: "Dashboard continuation study", exact: true }).waitFor({ timeout: 10_000 });
+  }
+  await authPage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+  await authPage.getByRole("heading", { name: "Dashboard continuation study", exact: true }).waitFor({ timeout: 10_000 });
+  const continuationLink = authPage.locator(".home-continuation a");
+  assert.equal(await continuationLink.count(), 1, "An unfinished study should expose one dashboard continuation action");
+  const continuationPath = await continuationLink.getAttribute("href");
+  assert(continuationPath?.includes(continuationSessionId), "The dashboard continuation should identify this learner's unfinished session");
+  await continuationLink.click();
+  await authPage.waitForURL((url) => `${url.pathname}${url.search}${url.hash}` === continuationPath, { timeout: 10_000 });
+  await authPage.getByRole("heading", { name: "Dashboard continuation study", exact: true }).waitFor();
+  await authPage.goBack({ waitUntil: "domcontentloaded" });
+  await authPage.locator(".home-context-strip").getByRole("link", { name: "View details" }).click();
+  await authPage.waitForURL(`**/goals/${authGoalId}`, { timeout: 10_000 });
+  await authPage.getByRole("heading", { name: "Backend Engineer", exact: true }).waitFor();
+  await authContext.close();
+
+  // Due-review journey: create real pending work, make only this isolated
+  // learner's persisted schedule due, then submit through Review & Improve.
+  const reviewEmail = `e2e-core-review-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+  const reviewPassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  ownedEmails.push(reviewEmail);
+  const reviewContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const reviewPage = await reviewContext.newPage();
+  reviewPage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  reviewPage.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
+  await reviewPage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await reviewPage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+  await reviewPage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+  await reviewPage.locator("#name").fill("RecallLoop Due Review Pilot");
+  await reviewPage.locator("#email").fill(reviewEmail);
+  await reviewPage.locator("#password").fill(reviewPassword);
+  await reviewPage.getByRole("button", { name: "Create account" }).click();
+  await reviewPage.waitForURL("**/onboarding", { timeout: 10_000 });
+  await reviewPage.locator("#start-topic").selectOption({ label: "Databases" });
+  await reviewPage.getByRole("button", { name: "Start studying" }).click();
+  await reviewPage.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+  const reviewToken = await reviewPage.evaluate(() => localStorage.getItem("recallloop_token"));
+  const reviewUser = (await pool.query("SELECT id FROM app_users WHERE email=$1", [reviewEmail])).rows[0];
+  assert(reviewToken && reviewUser, "Due-review learner must be separately registered and persisted");
+  await reviewPage.goto(`${clientUrl}/knowledge-check`, { waitUntil: "domcontentloaded" });
+  const reviewCoverage = await authenticatedApi(reviewToken, `${apiUrl}/api/assessments/coverage`);
+  const reviewSubject = reviewCoverage.subjects.find((item) => item.domainName === "Database Management Systems");
+  const reviewTopic = reviewSubject?.topics.find((item) => item.name === "Indexes");
+  const reviewConcept = reviewTopic?.concepts.find((item) => item.name === "Index selection" && item.supportedModes.includes("rapid_fire"));
+  assert(reviewSubject && reviewTopic && reviewConcept, "Due-review fixture must use actual eligible DBMS questions");
+  await reviewPage.locator("#knowledge-subject").selectOption(reviewSubject.id);
+  await reviewPage.locator("#knowledge-topic").selectOption(reviewTopic.id);
+  await reviewPage.locator("label.concept-choice").filter({ hasText: "Index selection" }).locator("input").check();
+  await reviewPage.locator("label.mode-choice").filter({ hasText: "Quick knowledge check" }).locator("input").check();
+  await reviewPage.getByRole("button", { name: /Start knowledge check/ }).click();
+  await reviewPage.waitForURL(/\/assessments\/[0-9a-f-]+/i, { timeout: 10_000 });
+  const reviewAssessmentId = new URL(reviewPage.url()).pathname.split("/").pop();
+  await reviewPage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+  const reviewAssessment = await authenticatedApi(reviewToken, `${apiUrl}/api/assessments/${reviewAssessmentId}`);
+  const firstReviewQuestion = reviewAssessment.questions[0];
+  assert(firstReviewQuestion && !firstReviewQuestion.submittedAt, "Assessment creation should persist pending review candidates");
+  await reviewPage.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), firstReviewQuestion.questionData?.prompt ?? firstReviewQuestion.question, { timeout: 10_000 });
+  if (firstReviewQuestion.questionType === "mcq") {
+    const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [firstReviewQuestion.canonicalQuestionRevisionId])).rows[0].correct_option_id;
+    const wrongOption = firstReviewQuestion.questionData.options.find((option) => option.id !== key);
+    await reviewPage.locator("label.option").filter({ hasText: wrongOption.text }).locator("input").check();
+  } else {
+    await reviewPage.locator("#assessment-answer").fill("I cannot recall this competency yet.");
+  }
+  await reviewPage.getByRole("button", { name: /Submit answer/ }).click();
+  const savedFirstQuestion = await waitForAssessment(reviewToken, apiUrl, reviewAssessmentId, (value) => value.questions.find((question) => question.id === firstReviewQuestion.id)?.submittedAt);
+  const submittedRecall = savedFirstQuestion.questions.find((question) => question.id === firstReviewQuestion.id);
+  assert(submittedRecall?.submittedAt, "The historical assessment answer should be submitted before preparing due work");
+  const historicalSnapshot = (await pool.query("SELECT answer, submitted_at, canonical_question_revision_id FROM recall_attempts WHERE id=$1 AND user_id=$2", [submittedRecall.id, reviewUser.id])).rows[0];
+  const reviewStateBefore = (await pool.query("SELECT concept_id, due_at, interval_days FROM review_states WHERE user_id=$1 AND concept_id=(SELECT concept_id FROM recall_attempts WHERE id=$2)", [reviewUser.id, submittedRecall.id])).rows[0];
+  assert(reviewStateBefore, "A submitted historical attempt should create the authoritative review_states record");
+  const duePrepared = await pool.query("UPDATE review_states SET due_at=now()-interval '1 minute', updated_at=now() WHERE user_id=$1 AND concept_id=$2 RETURNING due_at, interval_days", [reviewUser.id, reviewStateBefore.concept_id]);
+  assert.equal(duePrepared.rowCount, 1, "Only the isolated learner's schedule should be prepared as due");
+  const pendingDue = await pool.query("SELECT id FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND submitted_at IS NULL ORDER BY created_at,id LIMIT 1", [reviewUser.id, reviewStateBefore.concept_id]);
+  assert(pendingDue.rows[0], "The due review requires a genuinely pending recall attempt");
+  const pendingDueId = pendingDue.rows[0].id;
+  const dueDashboard = await authenticatedApi(reviewToken, `${apiUrl}/api/dashboard`);
+  assert(dueDashboard.todayDue.some((item) => item.recallId === pendingDueId), "Persisted due schedule should expose the pending recall to Review & Improve");
+  await reviewPage.goto(`${clientUrl}/dashboard`, { waitUntil: "domcontentloaded" });
+  await reviewPage.getByRole("link", { name: "Choose what to strengthen" }).click();
+  await reviewPage.waitForURL("**/review", { timeout: 10_000 });
+  const pendingReviewLink = reviewPage.locator(`a[href^="/recall/${pendingDueId}"]`);
+  await pendingReviewLink.click();
+  await reviewPage.waitForURL(new RegExp(`/recall/${pendingDueId}(?:\\?|$)`), { timeout: 10_000 });
+  const reviewAttempt = (await authenticatedApi(reviewToken, `${apiUrl}/api/recalls/${pendingDueId}`)).recall;
+  assert.equal(reviewAttempt.submittedAt, null, "The due recall should remain pending until the learner submits it");
+  if (reviewAttempt.questionType === "mcq") {
+    const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [reviewAttempt.canonicalQuestionRevisionId])).rows[0].correct_option_id;
+    const correct = reviewAttempt.questionData.options.find((option) => option.id === key);
+    await reviewPage.locator("label.option").filter({ hasText: correct.text }).locator("input").check();
+  } else {
+    const expected = (await pool.query("SELECT expected_answer FROM canonical_question_revisions WHERE id=$1", [reviewAttempt.canonicalQuestionRevisionId])).rows[0]?.expected_answer;
+    await reviewPage.locator("#answer").fill(expected ?? reviewAttempt.knowledgePoint);
+  }
+  await reviewPage.getByRole("button", { name: /Submit recall/ }).click();
+  await reviewPage.waitForURL(new RegExp(`/recall/${pendingDueId}/result`), { timeout: 10_000 });
+  const submittedReview = (await authenticatedApi(reviewToken, `${apiUrl}/api/recalls/${pendingDueId}`)).recall;
+  assert(submittedReview.submittedAt && submittedReview.evaluation, "Due-review answer should persist its evaluation");
+  const reviewStateAfter = (await pool.query("SELECT due_at, interval_days, last_outcome FROM review_states WHERE user_id=$1 AND concept_id=$2", [reviewUser.id, reviewStateBefore.concept_id])).rows[0];
+  assert(new Date(reviewStateAfter.due_at).getTime() > new Date(duePrepared.rows[0].due_at).getTime(), "Successful review submission should advance the persisted due timestamp");
+  assert(Number(reviewStateAfter.interval_days) > 0 && reviewStateAfter.last_outcome, "Scheduler interval and outcome should persist with the review");
+  const historicalAfter = (await pool.query("SELECT answer, submitted_at, canonical_question_revision_id FROM recall_attempts WHERE id=$1 AND user_id=$2", [submittedRecall.id, reviewUser.id])).rows[0];
+  assert.deepEqual(historicalAfter, historicalSnapshot, "Submitting due review must not overwrite the earlier historical attempt");
+  assert.equal((await authenticatedApi(reviewToken, `${apiUrl}/api/dashboard`)).todayDue.some((item) => item.recallId === pendingDueId), false, "Completed due work should no longer appear outstanding");
+  await reviewPage.goto(`${clientUrl}/review`, { waitUntil: "domcontentloaded" });
+  await reviewPage.reload({ waitUntil: "domcontentloaded" });
+  assert.equal((await authenticatedApi(reviewToken, `${apiUrl}/api/dashboard`)).todayDue.some((item) => item.recallId === pendingDueId), false, "Due-review completion should survive page reload");
+  await reviewContext.close();
+
+  // Full source-linked learning uses a separate account and starts from the
+  // real Resources action. The PDF contains the exact canonical concept and
+  // one mapped point so banked verification is eligible without copying text.
+  const sourceEmail = `e2e-core-source-${Date.now()}-${Math.random().toString(16).slice(2)}@test.local`;
+  const sourcePassword = `Pilot-${Math.random().toString(36).slice(2)}-${Date.now()}`;
+  ownedEmails.push(sourceEmail);
+  const sourceContext = await browser.newContext({ viewport: { width: 1440, height: 900 } });
+  const sourcePage = await sourceContext.newPage();
+  sourcePage.on("pageerror", (error) => browserJavaScriptErrors.push(error.message));
+  sourcePage.on("requestfailed", (request) => {
+    const failureText = request.failure()?.errorText ?? "request failed";
+    if (isExpectedCanceledRequest(request.method(), request.url(), failureText, new URL(clientUrl).origin)) expectedCanceledRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+    else unexpectedFailedRequests.push(`${request.method()} ${request.url()}: ${failureText}`);
+  });
+  await sourcePage.route("https://fonts.googleapis.com/**", (route) => route.fulfill({ status: 200, contentType: "text/css", body: "" }));
+  await sourcePage.route("https://fonts.gstatic.com/**", (route) => route.fulfill({ status: 204, body: "" }));
+  await sourcePage.goto(`${clientUrl}/register`, { waitUntil: "domcontentloaded" });
+  await sourcePage.locator("#name").fill("RecallLoop Source Learning Pilot");
+  await sourcePage.locator("#email").fill(sourceEmail);
+  await sourcePage.locator("#password").fill(sourcePassword);
+  await sourcePage.getByRole("button", { name: "Create account" }).click();
+  await sourcePage.waitForURL("**/onboarding", { timeout: 10_000 });
+  await sourcePage.locator("#start-topic").selectOption({ label: "Databases" });
+  await sourcePage.getByRole("button", { name: "Start studying" }).click();
+  await sourcePage.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+  const sourceGoalId = new URL(sourcePage.url()).searchParams.get("goalId");
+  const sourceToken = await sourcePage.evaluate(() => localStorage.getItem("recallloop_token"));
+  assert(sourceGoalId && sourceToken, "Source learner must have an authenticated goal context");
+  const canonicalIndex = (await pool.query("SELECT cc.id, kp.statement FROM knowledge_points kp JOIN canonical_concepts cc ON cc.id=kp.concept_id WHERE cc.name='Index selection' ORDER BY kp.importance DESC,kp.id LIMIT 1")).rows[0];
+  const canonicalPoint = canonicalIndex?.statement;
+  assert(canonicalIndex && canonicalPoint, "The PDF fixture must use an existing canonical assessment point");
+  await sourcePage.goto(`${clientUrl}/resources`, { waitUntil: "domcontentloaded" });
+  await sourcePage.getByText("Have material to study from?", { exact: true }).click();
+  await sourcePage.locator("#material-type").selectOption("pdf");
+  await sourcePage.locator("#material-file").setInputFiles({ name: "index-selection-learning.pdf", mimeType: "application/pdf", buffer: pdfFixture([`Index selection\n\n${canonicalPoint}\n\nA composite B-tree index supports predicates on leading columns, while index maintenance adds write cost.`]) });
+  await sourcePage.getByRole("button", { name: "Upload PDF" }).click();
+  await sourcePage.locator(".notice").filter({ hasText: "Extracted text from" }).waitFor({ timeout: 10_000 });
+  await sourcePage.getByRole("link", { name: "Start learning session" }).click();
+  await sourcePage.waitForURL(/\/study\/new\?sourceId=[0-9a-f-]+/i, { timeout: 10_000 });
+  await sourcePage.locator("#study-topic").fill("Index selection");
+  await sourcePage.locator("#topic-suggestions button").filter({ hasText: "Index selection" }).click();
+  await sourcePage.getByRole("button", { name: "Start learning session" }).click();
+  await sourcePage.waitForURL(/\/study\/[0-9a-f-]+\?/i, { timeout: 20_000 });
+  const linkedSourceSessionId = new URL(sourcePage.url()).pathname.split("/").pop();
+  const linkedSession = await authenticatedApi(sourceToken, `${apiUrl}/api/study-sessions/${linkedSourceSessionId}`);
+  const linkedConcept = linkedSession.concepts.find((concept) => concept.name === "Index selection");
+  assert(linkedConcept && linkedSession.session.status === "in_progress", `Imported content should create an inspectable linked study session; observed ${JSON.stringify({ status: linkedSession.session.status, concepts: linkedSession.concepts.map((concept) => ({ name: concept.name, canonicalConceptId: concept.canonicalConceptId, points: concept.requiredKnowledgePoints })) })}`);
+  assert.equal(linkedSession.session.canonicalConceptId, canonicalIndex.id, "The study session should retain the selected canonical learning objective");
+  assert.equal(linkedConcept.canonicalConceptId, canonicalIndex.id, "The PDF-extracted concept should map to the selected canonical learning objective");
+  const sourceRow = await pool.query("SELECT grounding_source_id FROM study_sessions WHERE id=$1 AND user_id=(SELECT id FROM app_users WHERE email=$2)", [linkedSourceSessionId, sourceEmail]);
+  assert.equal(sourceRow.rows[0]?.grounding_source_id, linkedSession.session.groundingSourceId, "The study session must persist the owned source identity");
+  assert.equal(linkedSession.session.rawMaterial, (await authenticatedApi(sourceToken, `${apiUrl}/api/grounding/sources/${linkedSession.session.groundingSourceId}`)).source.content, "The source session must use server-extracted document text");
+  const sourcePreviewText = await sourcePage.locator(".source-study-preview").innerText();
+  assert(sourcePreviewText.includes("Extracted pages: 1"), `Learner study view should retain PDF page provenance; observed ${sourcePreviewText}`);
+  await sourcePage.getByRole("button", { name: "Finish review and start recall" }).click();
+  await sourcePage.waitForURL(/\/recall\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const sourceRecallId = new URL(sourcePage.url()).pathname.split("/").pop();
+  const sourceRecall = (await authenticatedApi(sourceToken, `${apiUrl}/api/recalls/${sourceRecallId}`)).recall;
+  assert.equal(sourceRecall.studySessionId, linkedSourceSessionId, "Immediate recall must remain linked to the source study session");
+  if (sourceRecall.questionType === "mcq") {
+    const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [sourceRecall.canonicalQuestionRevisionId])).rows[0]?.correct_option_id;
+    const wrong = sourceRecall.questionData.options.find((option) => option.id !== key);
+    await sourcePage.locator("label.option").filter({ hasText: wrong.text }).locator("input").check();
+  } else {
+    await sourcePage.locator("#answer").fill("I cannot explain this concept yet.");
+  }
+  await sourcePage.getByRole("button", { name: /Submit recall/ }).click();
+  await sourcePage.waitForURL(new RegExp(`/recall/${sourceRecallId}/result`), { timeout: 10_000 });
+  const firstSourceResult = (await authenticatedApi(sourceToken, `${apiUrl}/api/recalls/${sourceRecallId}`)).recall;
+  assert(firstSourceResult.submittedAt && firstSourceResult.evaluation, "Source recall should be graded and persisted");
+  assert.equal(firstSourceResult.recommendation?.actionType, "recall", "A weak first recall should recommend another assessment attempt before remediation eligibility");
+  await sourcePage.getByRole("button", { name: "Start a recall round" }).click();
+  await sourcePage.waitForURL(/\/assessments\/[0-9a-f-]+/i, { timeout: 10_000 });
+  const sourceAssessmentId = new URL(sourcePage.url()).pathname.split("/").pop();
+  await sourcePage.getByRole("button", { name: /Start Rapid Fire/ }).click();
+  let sourceAssessment = await authenticatedApi(sourceToken, `${apiUrl}/api/assessments/${sourceAssessmentId}`);
+  const sourceAssessmentAttemptIds = [];
+  while (sourceAssessment.questions.some((question) => !question.submittedAt)) {
+    const current = sourceAssessment.questions.find((question) => !question.submittedAt);
+    sourceAssessmentAttemptIds.push(current.id);
+    await sourcePage.waitForFunction((prompt) => document.querySelector(".question-prompt")?.textContent?.trim() === prompt.trim(), current.questionData?.prompt ?? current.question, { timeout: 10_000 });
+    if (current.questionType === "mcq") {
+      const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [current.canonicalQuestionRevisionId])).rows[0]?.correct_option_id;
+      const wrong = current.questionData.options.find((option) => option.id !== key);
+      await sourcePage.locator("label.option").filter({ hasText: wrong.text }).locator("input").check();
+    } else if (current.questionData?.parts?.length) {
+      for (const part of current.questionData.parts) await sourcePage.locator(`#assessment-answer-${part.id}`).fill("I cannot explain this yet.");
+    } else {
+      await sourcePage.locator("#assessment-answer").fill("I cannot explain this yet.");
+    }
+    await sourcePage.getByRole("button", { name: /Submit answer/ }).click();
+    sourceAssessment = await waitForAssessment(sourceToken, apiUrl, sourceAssessmentId, (value) => value.questions.find((question) => question.id === current.id)?.submittedAt);
+  }
+  await sourcePage.locator(".report-hero").waitFor({ timeout: 10_000 });
+  assert(sourceAssessment.questions.every((question) => question.submittedAt && question.evaluation), "Source-linked assessment answers must all be evaluated and persisted");
+  const sourceAssessmentLinkage = await pool.query("SELECT count(*)::int AS count FROM recall_attempts WHERE assessment_session_id=$1 AND user_id=(SELECT id FROM app_users WHERE email=$2) AND study_session_id=$3", [sourceAssessmentId, sourceEmail, linkedSourceSessionId]);
+  assert.equal(sourceAssessmentLinkage.rows[0].count, sourceAssessment.questions.length, "Every source assessment attempt must inherit the source session relationship");
+  assert.equal(sourceAssessment.result?.recommendation?.actionType, "remediation", "Repeated weak source-linked evidence should unlock focused remediation");
+  await sourcePage.getByRole("button", { name: "Open focused review" }).click();
+  await sourcePage.waitForURL(/\/remediations\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const sourceRemediationId = new URL(sourcePage.url()).pathname.split("/").pop();
+  const sourceRemediation = (await authenticatedApi(sourceToken, `${apiUrl}/api/remediations/${sourceRemediationId}`)).remediation;
+  assert(sourceRemediation.status === "ready" && sourceRemediation.sources.some((item) => item.sourceType === "pdf" && Number(item.pageNumber) === 1), "Focused remediation should retrieve the linked PDF content with page citation");
+  await sourcePage.getByRole("button", { name: /Check what you remember/ }).click();
+  await sourcePage.waitForURL(/\/recall\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const sourceVerificationId = new URL(sourcePage.url()).pathname.split("/").pop();
+  const sourceVerification = (await authenticatedApi(sourceToken, `${apiUrl}/api/recalls/${sourceVerificationId}`)).recall;
+  assert(sourceVerification.canonicalQuestionRevisionId && !sourceAssessment.questions.some((question) => question.canonicalQuestionRevisionId === sourceVerification.canonicalQuestionRevisionId), "Source verification must use an unseen immutable question revision");
+  if (sourceVerification.questionType === "mcq") {
+    const key = (await pool.query("SELECT correct_option_id FROM canonical_question_revisions WHERE id=$1", [sourceVerification.canonicalQuestionRevisionId])).rows[0]?.correct_option_id;
+    await sourcePage.locator("label.option").filter({ hasText: sourceVerification.questionData.options.find((option) => option.id === key).text }).locator("input").check();
+  } else {
+    const expected = (await pool.query("SELECT expected_answer FROM canonical_question_revisions WHERE id=$1", [sourceVerification.canonicalQuestionRevisionId])).rows[0]?.expected_answer;
+    await sourcePage.locator("#answer").fill(expected ?? canonicalPoint);
+  }
+  await sourcePage.getByRole("button", { name: /Submit recall/ }).click();
+  await sourcePage.waitForURL(new RegExp(`/recall/${sourceVerificationId}/result`), { timeout: 10_000 });
+  const verifiedSourceRemediation = (await authenticatedApi(sourceToken, `${apiUrl}/api/remediations/${sourceRemediationId}`)).remediation;
+  assert.equal(verifiedSourceRemediation.status, "verified");
+  assert.equal(verifiedSourceRemediation.improved, true, "Only the persisted distinct source-linked answer can verify improvement");
+  const sourceReadiness = await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`);
+  assert(sourceReadiness.skills.some((skill) => skill.name === "Databases" && skill.assessedPoints > 0), "Source-linked recall and verification should update goal readiness evidence");
+  await sourcePage.goto(`${clientUrl}/readiness?goalId=${sourceGoalId}`, { waitUntil: "domcontentloaded" });
+  await sourcePage.getByRole("heading", { name: "My Readiness" }).waitFor();
+  await sourcePage.reload({ waitUntil: "domcontentloaded" });
+  assert((await authenticatedApi(sourceToken, `${apiUrl}/api/goals/${sourceGoalId}/readiness`)).skills.some((skill) => skill.assessedPoints > 0), "Source-linked readiness should survive page reload");
+  await sourceContext.close();
 
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
@@ -489,7 +881,7 @@ try {
     await browserContext.tracing.stop();
     traceStarted = false;
   }
-  console.log(`PASS ${browserName} Playwright core loop: register, text/Markdown/PDF/DOCX with page/section citations, DOCX invalid-file state, DBMS assessment, diagnosis, ${remediation ? "grounded remediation and distinct verification" : "truthful unseen-question resource fallback"}, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
+  console.log(`PASS ${browserName} Playwright core loop: source-linked study/recall/remediation/distinct verification, due review/scheduler/reload, positive baseline, authentication logout/login, dashboard destinations, ingestion/provenance, canonical DBMS assessment/improvement, readiness, responsive and keyboard checks (${originalAttemptIds.length} main assessment attempts, ${evidence.rows[0].revisions} revisions)`);
 } catch (error) {
   if (page) {
     console.error(`Browser state at failure (${page.url()}):\n${(await page.locator("body").innerText().catch(() => "unavailable")).slice(-3000)}`);
@@ -509,9 +901,10 @@ try {
 } finally {
   if (traceStarted) await browserContext?.tracing.stop().catch(() => {});
   await browser?.close().catch(() => {});
-  if (userId) await pool.query("DELETE FROM app_users WHERE id=$1", [userId]).catch((error) => console.error("Could not clean up isolated pilot learner:", error.message));
-  else await pool.query("DELETE FROM app_users WHERE email=$1", [email]).catch((error) => console.error("Could not clean up partially registered pilot learner:", error.message));
+  for (const ownedEmail of ownedEmails) await pool.query("DELETE FROM app_users WHERE email=$1", [ownedEmail]).catch((error) => console.error(`Could not clean up isolated pilot learner ${ownedEmail}:`, error.message));
+  const remainingPilotLearners = await pool.query("SELECT count(*)::int AS count FROM app_users WHERE email=ANY($1::text[])", [ownedEmails]).catch(() => ({ rows: [{ count: -1 }] }));
   await Promise.all(processes.map(stop));
   if (userInfoPreload) await unlink(userInfoPreload).catch(() => {});
   await pool.end();
+  assert.equal(remainingPilotLearners.rows[0].count, 0, "Every uniquely identified browser pilot learner should be removed after the run");
 }

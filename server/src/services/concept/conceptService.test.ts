@@ -17,6 +17,18 @@ describe("study concept content integrity", () => {
     expect(extractedInput?.rawMaterial).not.toMatch(/https?:\/\/|www\./i);
   });
 
+  it("keeps PDF page markers out of concept labels while preserving page content", async () => {
+    const evaluator = evaluatorReturning([{ name: "Index selection", description: "A composite index supports predicates on leading columns.", requiredKnowledgePoints: ["A composite index supports predicates on leading columns."], difficulty: 3 }]);
+
+    await prepareConcepts({ title: "Index selection", rawMaterial: "[Page 1]\nIndex selection\nA composite index supports predicates on leading columns.\n\n[Page 2]\nIndexes add write cost." }, evaluator);
+
+    const extractedInput = vi.mocked(evaluator.extractConcepts).mock.calls[0]?.[0];
+    expect(extractedInput?.rawMaterial).not.toContain("[Page 1]");
+    expect(extractedInput?.rawMaterial).not.toContain("[Page 2]");
+    expect(extractedInput?.rawMaterial).toContain("Index selection");
+    expect(extractedInput?.rawMaterial).toContain("A composite index supports predicates on leading columns.");
+  });
+
   it.each([
     { name: "https://video.example.test/watch", description: "A concept", requiredKnowledgePoints: ["A valid point"] },
     { name: "A concept", description: "See https://docs.example.test", requiredKnowledgePoints: ["A valid point"] },

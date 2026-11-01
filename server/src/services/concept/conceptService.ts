@@ -5,10 +5,11 @@ import { createConcepts, getConcept, listConceptsForSession, mapConcept, updateC
 import type { Evaluator } from "../evaluator/types.js";
 
 const URL_TOKEN = /(?:https?:\/\/|www\.)\S+/i;
+const PDF_PAGE_MARKER = /^\[Page \d+\][ \t]*\r?\n?/gm;
 
 export async function prepareConcepts(input: { title: string; rawMaterial?: string }, evaluator: Pick<Evaluator, "extractConcepts"> = getEvaluator()) {
   if (!input.rawMaterial?.trim()) throw new AppError("Study notes or source text are required before concepts can be extracted", 400, "STUDY_TEXT_REQUIRED");
-  const sourceText = input.rawMaterial.replace(/(?:https?:\/\/|www\.)\S+/gi, " ").trim();
+  const sourceText = input.rawMaterial.replace(/(?:https?:\/\/|www\.)\S+/gi, " ").replace(PDF_PAGE_MARKER, "").trim();
   if (!sourceText) throw new AppError("Add notes or source text; a link alone is not extractable content.", 400, "STUDY_TEXT_REQUIRED");
   const extracted = await evaluator.extractConcepts({ title: input.title, rawMaterial: sourceText });
   if (extracted.some((concept) => [concept.name, concept.description, ...concept.requiredKnowledgePoints].some((value) => URL_TOKEN.test(value)))) {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assessmentAvailability, summarizeAssessmentEvidence } from "./assessmentService.js";
+import { assessmentAvailability, hasFreshTargetedVerification, summarizeAssessmentEvidence } from "./assessmentService.js";
 
 describe("assessmentAvailability",()=>{
   it("distinguishes full, partial, awaiting-review, insufficient, and study-only catalog states",()=>{
@@ -8,6 +8,30 @@ describe("assessmentAvailability",()=>{
     expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:6,awaitingReviewCount:6})).toBe("awaiting_review");
     expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:6,awaitingReviewCount:0})).toBe("insufficient_eligible_questions");
     expect(assessmentAvailability({supportedModeCount:0,eligibleCount:0,currentRevisionCount:0,awaitingReviewCount:0})).toBe("study_only");
+  });
+});
+
+describe("hasFreshTargetedVerification", () => {
+  const candidate = (revisionId: string, questionType: "mcq" | "short_explanation", knowledgePoints: string[]) => ({ revisionId, questionType, knowledgePoints });
+
+  it("recognizes an unseen non-MCQ revision mapped to a diagnosed weak point", () => {
+    expect(hasFreshTargetedVerification({
+      candidates: [candidate("unused-short-explanation", "short_explanation", ["Can explain an index scan tradeoff."])],
+      recentRevisionIds: new Set(["submitted-mcq"]),
+      weakPoints: ["  Can explain an INDEX scan tradeoff.  "],
+    })).toBe(true);
+  });
+
+  it("does not offer remediation when only unrelated, MCQ, or already attempted items match", () => {
+    expect(hasFreshTargetedVerification({
+      candidates: [
+        candidate("unrelated", "short_explanation", ["Another point"]),
+        candidate("mcq", "mcq", ["Weak point"]),
+        candidate("attempted", "short_explanation", ["Weak point"]),
+      ],
+      recentRevisionIds: new Set(["attempted"]),
+      weakPoints: ["Weak point"],
+    })).toBe(false);
   });
 });
 

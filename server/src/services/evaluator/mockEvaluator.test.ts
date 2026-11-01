@@ -23,4 +23,13 @@ describe("deterministic local concept extraction", () => {
     expect(concepts[0].name).toBe("HTTP caching");
     expect(concepts[0].requiredKnowledgePoints).toContain("Can distinguish freshness from validation.");
   });
+
+  it("uses the selected topic when PDF extraction joins its heading to a long first line", async () => {
+    const concepts = await evaluator.extractConcepts({
+      title: "Index selection",
+      rawMaterial: "Index selection Can explain how a composite B-tree index column order affects equality and range predicates.",
+    });
+    expect(concepts[0].name).toBe("Index selection");
+    expect(concepts[0].requiredKnowledgePoints[0]).toContain("composite B-tree index column order");
+  });
 });

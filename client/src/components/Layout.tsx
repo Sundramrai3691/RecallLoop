@@ -1,6 +1,8 @@
-import { BookOpen, BrainCircuit, CalendarDays, Compass, LayoutDashboard, LibraryBig, Settings, Target } from "lucide-react";
+import { useState } from "react";
+import { BookOpen, BrainCircuit, CalendarDays, Compass, LayoutDashboard, LibraryBig, LogOut, Settings, Target } from "lucide-react";
 import { motion } from "motion/react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, Navigate, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
+import { api } from "../api/client";
 import { ThemeToggle } from "./theme/ThemeToggle";
 
 const groups = [
@@ -23,6 +25,24 @@ const groups = [
 
 export function Layout() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [signingOut, setSigningOut] = useState(false);
+  const token = localStorage.getItem("recallloop_token");
+
+  async function signOut() {
+    if (signingOut) return;
+    setSigningOut(true);
+    try {
+      await api.logout();
+    } catch {
+      // Clearing the client-held token still signs out if the server is unavailable.
+    } finally {
+      localStorage.removeItem("recallloop_token");
+      navigate("/login", { replace: true });
+    }
+  }
+
+  if (!token) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
   return <div className="app-shell">
     <a className="skip-link" href="#main-content">Skip to content</a>
     <aside className="sidebar">
@@ -35,8 +55,8 @@ export function Layout() {
           </NavLink>)}
         </div>)}
       </nav>
-      <div className="sidebar-bottom"><div className="loop-note"><span className="loop-note-kicker">THE LEARNING LOOP</span><span>Learn <b>→</b> Recall <b>→</b> Adapt</span></div><ThemeToggle /></div>
+      <div className="sidebar-bottom"><div className="loop-note"><span className="loop-note-kicker">THE LEARNING LOOP</span><span>Learn <b>→</b> Recall <b>→</b> Adapt</span></div><button className="btn" type="button" onClick={() => void signOut()} disabled={signingOut}><LogOut size={15} aria-hidden="true"/>{signingOut ? "Signing out…" : "Sign out"}</button><ThemeToggle /></div>
     </aside>
-    <main className="main-column" id="main-content" tabIndex={-1}><div className="mobile-brand"><Link className="wordmark" to="/dashboard">Recall<span className="wordmark-accent">Loop</span></Link><ThemeToggle /></div><motion.div className="page-content" key={location.pathname} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}><Outlet /></motion.div></main>
+    <main className="main-column" id="main-content" tabIndex={-1}><div className="mobile-brand"><Link className="wordmark" to="/dashboard">Recall<span className="wordmark-accent">Loop</span></Link><button className="btn" type="button" onClick={() => void signOut()} disabled={signingOut}><LogOut size={15} aria-hidden="true"/>{signingOut ? "Signing out…" : "Sign out"}</button><ThemeToggle /></div><motion.div className="page-content" key={location.pathname} initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2, ease: "easeOut" }}><Outlet /></motion.div></main>
   </div>;
 }

@@ -51,9 +51,13 @@ export class MockEvaluator implements Evaluator {
     const chunks = splitMaterial(material);
     return chunks.map((chunk, index) => {
       const firstLine = chunk.split("\n")[0]?.replace(/[:.]+$/, "").trim() ?? input.title;
+      const titlePrefix = input.title.trim();
+      const startsWithSuppliedTitle = titlePrefix.length >= 3
+        && firstLine.toLocaleLowerCase().startsWith(titlePrefix.toLocaleLowerCase())
+        && /^[\s:—–.!?-]/.test(firstLine.slice(titlePrefix.length));
       const name = /^https?:\/\/|^www\./i.test(firstLine) ? input.title :
         firstLine.length > 80 || firstLine.length < 3
-          ? `${input.title} — concept ${index + 1}`
+          ? startsWithSuppliedTitle ? titlePrefix : `${input.title} — concept ${index + 1}`
           : firstLine;
       return {
         name,

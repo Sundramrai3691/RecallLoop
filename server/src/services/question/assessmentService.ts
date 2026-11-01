@@ -3,6 +3,7 @@ import { getAttempt } from "../../repositories/legacyPostgresRepositories.js";
 import { AppError, notFound } from "../../utils/errors.js";
 import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, upsertQuestion } from "./questionService.js";
 import { findBuiltinMcq } from "./mcqBank.js";
+import type { QuestionType } from "../../domain/recallTypes.js";
 import { chooseCanonicalQuestionSet,hasCanonicalQuestionBank,listEligibleCanonicalQuestions,materializeCanonicalQuestion } from "../questionBank/questionBankService.js";
 
 export type AssessmentMode = "rapid_fire" | "deep_recall" | "mastery_check" | "practice";
@@ -50,6 +51,18 @@ export function assessmentAvailability(input: { supportedModeCount: number; elig
   if (input.currentRevisionCount > 0 && input.awaitingReviewCount > 0) return "awaiting_review";
   if (input.currentRevisionCount > 0) return "insufficient_eligible_questions";
   return "study_only";
+}
+
+export function hasFreshTargetedVerification(input: {
+  candidates: Array<{ revisionId: string; questionType: QuestionType; knowledgePoints: string[] }>;
+  recentRevisionIds: Set<string>;
+  weakPoints: string[];
+}): boolean {
+  const normalize = (value: string) => value.trim().toLocaleLowerCase().replace(/\s+/g, " ");
+  const weakPoints = new Set(input.weakPoints.map(normalize));
+  return input.candidates.some((candidate) => candidate.questionType !== "mcq"
+    && !input.recentRevisionIds.has(candidate.revisionId)
+    && candidate.knowledgePoints.some((point) => weakPoints.has(normalize(point))));
 }
 
 export async function listKnowledgeCheckCoverage() {
@@ -305,7 +318,23 @@ export async function getAssessment(userId: string, assessmentId: string) {
   const recommendationResult=complete?await query<any>(`SELECT r.id AS "attemptId",rec.action_type AS "actionType",rec.title,rec.reason,rec.estimated_minutes AS "estimatedMinutes",rec.priority FROM recall_attempts r JOIN assessment_recommendations rec ON rec.recall_attempt_id=r.id WHERE r.assessment_session_id=$1 ORDER BY rec.priority DESC,r.assessment_position LIMIT 1`,[assessmentId]):{rows:[]};
   let recommendation=recommendationResult.rows[0]??null;
   if (recommendation && conceptRow?.canonical_concept_id) {
-    const modeForAction: Record<string, AssessmentMode> = { recall: "rapid_fire", practice: "practice", mastery_check: "mastery_check", remediation: "deep_recall" };
+    if (recommendation.actionType === "remediation") {
+      const weakPoints = await query<any>(`SELECT DISTINCT kp.point FROM recall_evaluations e
+        JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id
+        WHERE e.recall_attempt_id=$1 AND kp.status IN ('missing','partial')`, [recommendation.attemptId]);
+      const client = await postgres.connect();
+      try {
+        const eligible = await listEligibleCanonicalQuestions(client,conceptRow.canonical_concept_id);
+        const recent = await client.query<any>(`SELECT canonical_question_revision_id FROM recall_attempts
+          WHERE user_id=$1 AND concept_id=$2 AND canonical_question_revision_id IS NOT NULL
+          ORDER BY created_at DESC LIMIT 20`,[userId,session.concept_id]);
+        const recentIds = new Set<string>(recent.rows.map((row:any)=>row.canonical_question_revision_id));
+        if (!hasFreshTargetedVerification({ candidates: eligible, recentRevisionIds: recentIds, weakPoints: weakPoints.rows.map((row:any)=>String(row.point)) })) {
+          recommendation = { actionType:"learn",title:`Review focused resources · ${conceptRow.name}`,reason:`Your result points to another review of this concept, but there is no unseen approved question mapped to the diagnosed knowledge point yet. Review the mapped resources before trying again.`,estimatedMinutes:12,priority:recommendation.priority };
+        }
+      } finally { client.release(); }
+    } else {
+    const modeForAction: Record<string, AssessmentMode> = { recall: "rapid_fire", practice: "practice", mastery_check: "mastery_check" };
     const mode = modeForAction[recommendation.actionType];
     if (mode) {
       const client = await postgres.connect();
@@ -318,6 +347,7 @@ export async function getAssessment(userId: string, assessmentId: string) {
         const canVerify = blueprint.every((type)=>freshCounts[type]>=blueprint.filter((required)=>required===type).length);
         if (!canVerify) recommendation = { actionType:"learn",title:`Review focused resources Â· ${conceptRow.name}`,reason:`Your result points to another review of this concept, but its exact approved bank does not have enough unseen questions for that check yet. Review the mapped resources before trying again.`,estimatedMinutes:12,priority:recommendation.priority };
       } finally { client.release(); }
+    }
     }
   }
   const scores = Object.fromEntries(DIMENSIONS.map((name) => [name,dimensions.rows.find((item) => item.dimension === name)?.score ?? null]));

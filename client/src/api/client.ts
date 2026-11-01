@@ -70,6 +70,10 @@ export const api = {
     return request<{ user: User }>("/api/auth/me");
   },
 
+  logout() {
+    return request<{ ok: boolean; message: string }>("/api/auth/logout", { method: "POST" });
+  },
+
   listGoals() {
     return request<{ goals: Goal[] }>("/api/goals");
   },

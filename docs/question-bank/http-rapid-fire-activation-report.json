@@ -1,7 +1,7 @@
 {
   "reportVersion": 1,
   "reportKind": "HTTP caching activation evidence; engineering validation is not human approval",
-  "generatedAt": "2026-10-18T20:17:27.583Z",
+  "generatedAt": "2026-11-01T06:09:09.532Z",
   "command": "npm run question-bank:activation-report -w server",
   "assessmentBlueprint": {
     "mode": "rapid_fire",
@@ -10,14 +10,11 @@
       "rapid_recall": 3
     },
     "eligible": {
-      "mcq": 0,
-      "rapid_recall": 0
+      "mcq": 2,
+      "rapid_recall": 3
     },
-    "complete": false,
-    "missingRequirements": [
-      "need 2 eligible MCQ revision(s)",
-      "need 3 eligible rapid-recall revision(s)"
-    ]
+    "complete": true,
+    "missingRequirements": []
   },
   "candidates": [
     {
@@ -38,17 +35,21 @@
         }
       ],
       "review": {
-        "status": "awaiting_subject_matter_review",
-        "latestDecision": null,
-        "recordCount": 0
+        "status": "automated_reviewed",
+        "subjectMatter": {
+          "latestDecision": null,
+          "recordCount": 0
+        },
+        "automated": {
+          "latestDecision": "approved",
+          "recordCount": 1,
+          "contentHashMatches": true,
+          "policyVersion": "copilot-automated-quality-v1"
+        }
       },
-      "publication": "draft",
-      "assessmentEligible": false,
-      "missingRequirements": [
-        "current exact-revision subject-matter approval is required",
-        "revision must be published by the review workflow",
-        "revision is excluded by the live assessment selector"
-      ]
+      "publication": "published",
+      "assessmentEligible": true,
+      "missingRequirements": []
     },
     {
       "revisionId": "b92a7bee-902c-40f3-9d56-25d55e12dae4",
@@ -68,17 +69,21 @@
         }
       ],
       "review": {
-        "status": "awaiting_subject_matter_review",
-        "latestDecision": null,
-        "recordCount": 0
+        "status": "automated_reviewed",
+        "subjectMatter": {
+          "latestDecision": null,
+          "recordCount": 0
+        },
+        "automated": {
+          "latestDecision": "approved",
+          "recordCount": 1,
+          "contentHashMatches": true,
+          "policyVersion": "copilot-automated-quality-v1"
+        }
       },
-      "publication": "draft",
-      "assessmentEligible": false,
-      "missingRequirements": [
-        "current exact-revision subject-matter approval is required",
-        "revision must be published by the review workflow",
-        "revision is excluded by the live assessment selector"
-      ]
+      "publication": "published",
+      "assessmentEligible": true,
+      "missingRequirements": []
     },
     {
       "revisionId": "555de991-2201-43d9-86c1-297b069be7b3",
@@ -98,17 +103,21 @@
         }
       ],
       "review": {
-        "status": "awaiting_subject_matter_review",
-        "latestDecision": null,
-        "recordCount": 0
+        "status": "automated_reviewed",
+        "subjectMatter": {
+          "latestDecision": null,
+          "recordCount": 0
+        },
+        "automated": {
+          "latestDecision": "approved",
+          "recordCount": 1,
+          "contentHashMatches": true,
+          "policyVersion": "copilot-automated-quality-v1"
+        }
       },
-      "publication": "draft",
-      "assessmentEligible": false,
-      "missingRequirements": [
-        "current exact-revision subject-matter approval is required",
-        "revision must be published by the review workflow",
-        "revision is excluded by the live assessment selector"
-      ]
+      "publication": "published",
+      "assessmentEligible": true,
+      "missingRequirements": []
     },
     {
       "revisionId": "92667c17-eaba-4e4f-8438-cbfebba7db29",
@@ -128,17 +137,21 @@
         }
       ],
       "review": {
-        "status": "awaiting_subject_matter_review",
-        "latestDecision": null,
-        "recordCount": 0
+        "status": "automated_reviewed",
+        "subjectMatter": {
+          "latestDecision": null,
+          "recordCount": 0
+        },
+        "automated": {
+          "latestDecision": "approved",
+          "recordCount": 1,
+          "contentHashMatches": true,
+          "policyVersion": "copilot-automated-quality-v1"
+        }
       },
-      "publication": "draft",
-      "assessmentEligible": false,
-      "missingRequirements": [
-        "current exact-revision subject-matter approval is required",
-        "revision must be published by the review workflow",
-        "revision is excluded by the live assessment selector"
-      ]
+      "publication": "published",
+      "assessmentEligible": true,
+      "missingRequirements": []
     },
     {
       "revisionId": "da582a24-5c33-458b-bd72-1ac7c2fe63fc",
@@ -158,17 +171,21 @@
         }
       ],
       "review": {
-        "status": "awaiting_subject_matter_review",
-        "latestDecision": null,
-        "recordCount": 0
+        "status": "automated_reviewed",
+        "subjectMatter": {
+          "latestDecision": null,
+          "recordCount": 0
+        },
+        "automated": {
+          "latestDecision": "approved",
+          "recordCount": 1,
+          "contentHashMatches": true,
+          "policyVersion": "copilot-automated-quality-v1"
+        }
       },
-      "publication": "draft",
-      "assessmentEligible": false,
-      "missingRequirements": [
-        "current exact-revision subject-matter approval is required",
-        "revision must be published by the review workflow",
-        "revision is excluded by the live assessment selector"
-      ]
+      "publication": "published",
+      "assessmentEligible": true,
+      "missingRequirements": []
     }
   ],
   "distinctVerificationCandidate": {
@@ -189,18 +206,22 @@
       }
     ],
     "review": {
-      "status": "awaiting_subject_matter_review",
-      "latestDecision": null,
-      "recordCount": 0
+      "status": "automated_reviewed",
+      "subjectMatter": {
+        "latestDecision": null,
+        "recordCount": 0
+      },
+      "automated": {
+        "latestDecision": "approved",
+        "recordCount": 1,
+        "contentHashMatches": true,
+        "policyVersion": "copilot-automated-quality-v1"
+      }
     },
-    "publication": "draft",
-    "assessmentEligible": false,
-    "missingRequirements": [
-      "current exact-revision subject-matter approval is required",
-      "revision must be published by the review workflow",
-      "revision is excluded by the live assessment selector"
-    ],
-    "availableAfterRapidFire": false
+    "publication": "published",
+    "assessmentEligible": true,
+    "missingRequirements": [],
+    "availableAfterRapidFire": true
   },
-  "assessmentToVerificationEligible": false
+  "assessmentToVerificationEligible": true
 }
