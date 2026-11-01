@@ -269,7 +269,7 @@ export interface RecallAttempt {
   evidenceWeight: number;
   repetitionReason?: "spaced_recall" | "mastery_confirmation" | "remediation" | null;
   remediationId?: string | null;
-  recommendation?: { actionType: "recall" | "learn" | "practice" | "remediation" | "mastery_check" | "none"; title: string; reason: string; estimatedMinutes: number; priority: number } | null;
+  recommendation?: { attemptId?: string; actionType: "recall" | "learn" | "practice" | "remediation" | "mastery_check" | "none"; title: string; reason: string; estimatedMinutes: number; priority: number } | null;
   evaluation: RecallEvaluation | null;
   submittedAt: string | null;
   createdAt: string;

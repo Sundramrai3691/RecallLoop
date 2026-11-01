@@ -302,7 +302,7 @@ export async function getAssessment(userId: string, assessmentId: string) {
   const complete = questions.length > 0 && questions.every((item:any) => Boolean(item?.submittedAt));
   if (complete && !session.completed_at) await query(`UPDATE assessment_sessions SET completed_at=now() WHERE id=$1`,[assessmentId]);
   const dimensions = await query<any>(`SELECT d.dimension,AVG(d.score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.assessment_session_id=$1 GROUP BY d.dimension`,[assessmentId]);
-  const recommendationResult=complete?await query<any>(`SELECT rec.action_type AS "actionType",rec.title,rec.reason,rec.estimated_minutes AS "estimatedMinutes",rec.priority FROM recall_attempts r JOIN assessment_recommendations rec ON rec.recall_attempt_id=r.id WHERE r.assessment_session_id=$1 ORDER BY rec.priority DESC,r.assessment_position LIMIT 1`,[assessmentId]):{rows:[]};
+  const recommendationResult=complete?await query<any>(`SELECT r.id AS "attemptId",rec.action_type AS "actionType",rec.title,rec.reason,rec.estimated_minutes AS "estimatedMinutes",rec.priority FROM recall_attempts r JOIN assessment_recommendations rec ON rec.recall_attempt_id=r.id WHERE r.assessment_session_id=$1 ORDER BY rec.priority DESC,r.assessment_position LIMIT 1`,[assessmentId]):{rows:[]};
   let recommendation=recommendationResult.rows[0]??null;
   if (recommendation && conceptRow?.canonical_concept_id) {
     const modeForAction: Record<string, AssessmentMode> = { recall: "rapid_fire", practice: "practice", mastery_check: "mastery_check", remediation: "deep_recall" };

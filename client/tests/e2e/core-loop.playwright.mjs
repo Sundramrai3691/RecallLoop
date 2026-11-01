@@ -353,9 +353,13 @@ try {
   const trigger = assessment.questions.find((question) => question.resultStatus === "incorrect" || question.resultStatus === "partial");
   assert(trigger, "A weak attempt is required for the remediation path");
 
-  const remediationResult = await authenticatedApi(token, `${apiUrl}/api/remediations/from-attempt/${trigger.id}`, { method: "POST", body: "{}" });
-  const remediation = remediationResult.remediation;
+  await page.getByRole("button", { name: "Open focused review" }).click();
+  await page.waitForURL(/\/remediations\/[0-9a-f-]+$/i, { timeout: 10_000 });
+  const remediationId = new URL(page.url()).pathname.split("/").pop();
+  const remediation = (await authenticatedApi(token, `${apiUrl}/api/remediations/${remediationId}`)).remediation;
   assert.equal(remediation.status, "ready");
+  assert(originalAttemptIds.includes(remediation.triggeringAttemptId), "The browser recommendation must create remediation from its persisted assessment attempt");
+  assert(assessment.questions.find((question) => question.id === remediation.triggeringAttemptId)?.submittedAt, "Remediation must be grounded in a submitted assessment answer");
   assert(remediation.sources.length > 0, "Remediation must be grounded in the learner's persisted source");
   const pdfPassage = remediation.sources.find((source) => source.sourceType === "pdf");
   assert(pdfPassage && [1, 3].includes(Number(pdfPassage.pageNumber)), "A PDF-grounded remediation excerpt must retain its original one-based page reference");

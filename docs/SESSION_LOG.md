@@ -450,3 +450,9 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 
 - Passed: `npm.cmd test` (31 files; 150 passed, 4 skipped); focused study-session unit tests (7 passed); `npm.cmd run build`; `node --check client/tests/e2e/core-loop.playwright.mjs`; and `git diff --check`.
 - Blocked by local infrastructure: `npm.cmd run db:migrate -w server` failed with `ECONNREFUSED 127.0.0.1:5432`; `npm.cmd run test:integration -w server` failed during migration/bootstrap before executing integration cases; `npm.cmd run test:e2e` built the client and then the API failed to start against the same unavailable configured DB. Edge cleanup also could not connect. Docker Engine and local PostgreSQL service/client are unavailable. No alternate DB was used, and no learner or database records were modified.
+
+## 2026-10-31 - Assessment remediation recommendation and completion contract
+
+- Fixed the canonical assessment report action so a recommended focused remediation is created from the precise submitted attempt selected by the backend, instead of incorrectly starting another deep-recall assessment. Updated the browser journey to follow that UI action and verify persisted remediation linkage.
+- Created and indexed `docs/CORE_FEATURE_COMPLETION.md` with statuses based on actual evidence. Learn-from-material and assessment journeys are blocked for current live verification by the unavailable configured PostgreSQL service; review/plan, onboarding, and full dashboard journey coverage remain partial with concrete E2E next actions.
+- `npm.cmd test` passed (31 files / 150 passed / 4 skipped); `npm.cmd run build`, browser script syntax and `git diff --check` passed. Current `npm.cmd run test:e2e` built the client, but Edge did not reach the browser journey because the API could not connect to configured PostgreSQL (`ECONNREFUSED 127.0.0.1:5432`). No database writes, commit, or push.
