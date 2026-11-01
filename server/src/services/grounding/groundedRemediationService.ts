@@ -162,7 +162,7 @@ export function rankRetrievedChunks(searchText:string,embedding:number[],candida
 export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {
   const attemptResult=await query<any>(`SELECT a.id,a.user_id AS "userId",a.concept_id AS "conceptId",a.confidence,a.evidence_weight AS "evidenceWeight",a.answer,a.submitted_at AS "submittedAt",c.name AS "conceptName",ss.grounding_source_id AS "groundingSourceId",e.mistakes,json_agg(json_build_object('point',kp.point,'status',kp.status,'feedback',kp.feedback) ORDER BY kp.id) FILTER(WHERE kp.id IS NOT NULL) AS "knowledgePointResults"
     FROM recall_attempts a JOIN personal_concepts c ON c.id=a.concept_id AND c.user_id=a.user_id JOIN study_sessions ss ON ss.id=a.study_session_id AND ss.user_id=a.user_id JOIN recall_evaluations e ON e.recall_attempt_id=a.id LEFT JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id
-    WHERE a.id=$1 AND a.user_id=$2 GROUP BY a.id,c.name,e.id`,[attemptId,userId]);
+    WHERE a.id=$1 AND a.user_id=$2 GROUP BY a.id,c.name,e.id,ss.grounding_source_id`,[attemptId,userId]);
   const attempt=attemptResult.rows[0];
   if(!attempt)throw notFound("Recall attempt not found","RECALL_NOT_FOUND");
   if(!attempt.submittedAt)throw conflict("Submit this recall before creating remediation","RECALL_NOT_SUBMITTED");

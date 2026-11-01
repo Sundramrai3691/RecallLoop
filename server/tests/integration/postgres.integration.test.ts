@@ -697,7 +697,7 @@ describe("PostgreSQL runtime integration", () => {
       expect(learnerAfterVerification?.attemptCount).toBe(4);
       expect(learnerAfterVerification?.mastery).toBeGreaterThan(masteryBeforeVerification??0);
 
-      const unrelated=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database B tree page splits','Maintains ordered database indexes.',$3) RETURNING id`,[userId,study.rows[0].id,["page split preserves sorted key order"]]);
+      const unrelated=await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points) VALUES($1,$2,'Database B tree page splits','Maintains ordered database indexes.',$3) RETURNING id`,[userId,sourceSession.id,["page split preserves sorted key order"]]);
       const unrelatedAssessment=await createAssessment(userId,unrelated.rows[0].id,"rapid_fire");
       const unrelatedQuestion=unrelatedAssessment.questions.find((item:any)=>item.questionType==="rapid_recall");
       const unrelatedRecall=await submitRecall(unrelatedQuestion.id,{answer:"I do not know this yet.",confidence:4,userId});

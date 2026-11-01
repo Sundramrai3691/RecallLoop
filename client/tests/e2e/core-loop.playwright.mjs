@@ -177,6 +177,23 @@ try {
   assert(token, "The supported registration flow should establish a learner session");
   userId = (await pool.query("SELECT id FROM app_users WHERE email=$1", [email])).rows[0]?.id;
   assert(userId, "The registered test learner must persist in PostgreSQL");
+  await page.locator("#start-topic").waitFor({ timeout: 10_000 });
+  const onboardingSkill = await page.locator("#start-topic option").evaluateAll((options) => options.find((option) => option.value)?.value ?? "");
+  assert(onboardingSkill, "Onboarding should offer a knowledge-map focus area");
+  await page.locator("#start-topic").selectOption(onboardingSkill);
+  assert.equal(await page.getByRole("button", { name: /Not sure/ }).getAttribute("aria-pressed"), "true", "A new learner starts with an unknown baseline rather than assumed mastery");
+  await page.getByRole("button", { name: "Start studying" }).click();
+  await page.waitForURL(/\/study\/new\?topic=/, { timeout: 10_000 });
+  const onboardingGoalId = new URL(page.url()).searchParams.get("goalId");
+  assert(onboardingGoalId, "Onboarding should route to a first learning activity for the saved goal");
+  const onboardingGoal = await pool.query("SELECT id FROM goals WHERE id=$1 AND user_id=$2", [onboardingGoalId, userId]);
+  const onboardingSkills = await pool.query("SELECT id FROM learner_skills WHERE goal_id=$1 AND user_id=$2", [onboardingGoalId, userId]);
+  assert.equal(onboardingGoal.rowCount, 1, "Onboarding should persist the learner's goal");
+  assert.equal(onboardingSkills.rowCount, 1, "Onboarding should persist the selected focus skill");
+  const baselineEvidence = await pool.query("SELECT count(*)::int AS count FROM recall_attempts WHERE user_id=$1", [userId]);
+  assert.equal(baselineEvidence.rows[0].count, 0, "Choosing an unknown starting point must not fabricate baseline evidence");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  assert.equal(await page.evaluate(() => localStorage.getItem("recallloop_token")), token, "The registered learner session should survive reload");
 
   // A protected API request from the address bar is expected to reject a
   // missing token. Verify the real API boundary, then simulate that precise
@@ -267,6 +284,8 @@ try {
   const sourceEvidenceBeforeRecall = await pool.query("SELECT count(*)::int AS count FROM recall_attempts WHERE study_session_id=$1", [sourceSessionId]);
   assert.equal(sourceEvidenceBeforeRecall.rows[0].count, 0, "Opening extracted material must not create learner evidence");
 
+  await page.goto(`${clientUrl}/resources`, { waitUntil: "domcontentloaded" });
+  await page.getByText("Have material to study from?", { exact: true }).click();
   await page.locator("#material-type").selectOption("docx");
   const docxBuffer = await docxFixture();
   await page.locator("#material-file").setInputFiles({ name: "index-selection-notes.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", buffer: docxBuffer });
@@ -353,10 +372,16 @@ try {
   const trigger = assessment.questions.find((question) => question.resultStatus === "incorrect" || question.resultStatus === "partial");
   assert(trigger, "A weak attempt is required for the remediation path");
 
+  let remediation = null;
+  let finalRemediation = null;
+  let verificationId = null;
+  const recommendation = assessment.result?.recommendation;
+  assert(recommendation && recommendation.actionType !== "none", "The report should provide its evidence-backed next action");
+  if (recommendation.actionType === "remediation") {
   await page.getByRole("button", { name: "Open focused review" }).click();
   await page.waitForURL(/\/remediations\/[0-9a-f-]+$/i, { timeout: 10_000 });
   const remediationId = new URL(page.url()).pathname.split("/").pop();
-  const remediation = (await authenticatedApi(token, `${apiUrl}/api/remediations/${remediationId}`)).remediation;
+  remediation = (await authenticatedApi(token, `${apiUrl}/api/remediations/${remediationId}`)).remediation;
   assert.equal(remediation.status, "ready");
   assert(originalAttemptIds.includes(remediation.triggeringAttemptId), "The browser recommendation must create remediation from its persisted assessment attempt");
   assert(assessment.questions.find((question) => question.id === remediation.triggeringAttemptId)?.submittedAt, "Remediation must be grounded in a submitted assessment answer");
@@ -369,7 +394,7 @@ try {
   await page.locator(".remediation-explanation").waitFor({ timeout: 10_000 });
   await page.getByRole("button", { name: /Check what you remember/ }).click();
   await page.waitForURL(/\/recall\/[0-9a-f-]+$/i, { timeout: 10_000 });
-  const verificationId = new URL(page.url()).pathname.split("/").pop();
+  verificationId = new URL(page.url()).pathname.split("/").pop();
   const verification = await authenticatedApi(token, `${apiUrl}/api/recalls/${verificationId}`);
   const verificationAttempt = verification.attempt ?? verification.recall ?? verification;
   assert(!originalAttemptIds.includes(verificationAttempt.id), "Verification must create a distinct learner attempt");
@@ -384,9 +409,17 @@ try {
   }
   await page.getByRole("button", { name: /Submit recall/ }).click();
   await page.waitForURL(new RegExp(`/recall/${verificationId}/result`), { timeout: 10_000 });
-  const finalRemediation = (await authenticatedApi(token, `${apiUrl}/api/remediations/${remediation.id}`)).remediation;
+  finalRemediation = (await authenticatedApi(token, `${apiUrl}/api/remediations/${remediation.id}`)).remediation;
   assert.equal(finalRemediation.status, "verified");
   assert.equal(finalRemediation.improved, true, "The distinct verification answer should improve persisted evidence");
+  } else if (recommendation.actionType === "learn") {
+    assert.match(recommendation.reason, /not have enough unseen questions/i, "The resource fallback should explain that distinct eligible coverage is unavailable");
+    await page.getByRole("button", { name: "Open focused resources" }).click();
+    await page.waitForURL(/\/resources\?conceptId=/, { timeout: 10_000 });
+    assert.equal(new URL(page.url()).searchParams.get("conceptId"), assessment.assessment.conceptId, "The recommendation should preserve the assessed concept");
+  } else {
+    assert.fail(`Expected remediation or honest coverage fallback, got ${recommendation.actionType}`);
+  }
 
   await page.goto(`${clientUrl}/readiness?goalId=${goalId}`, { waitUntil: "domcontentloaded" });
   await page.getByRole("heading", { name: "My Readiness" }).waitFor();
@@ -396,6 +429,40 @@ try {
   assert(dbmsSkill?.assessedPoints > 0 && dbmsSkill.unassessedPoints > 0, "Readiness must show persisted assessed evidence while leaving other DBMS points unassessed");
   await page.reload({ waitUntil: "domcontentloaded" });
   await page.getByText(/knowledge points have submitted evidence/).waitFor({ timeout: 10_000 });
+
+  await page.goto(`${clientUrl}/plan/today?goalId=${goalId}`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("button", { name: "Build my plan" }).click();
+  await page.locator(".journey-step").first().waitFor({ timeout: 10_000 });
+  let plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
+  assert(plan.tasks.length > 0, "The plan UI should persist tasks for the selected goal");
+  const firstTaskId = plan.tasks[0].id;
+  const firstTaskCard = page.locator(`.journey-card[data-task-id="${firstTaskId}"]`);
+  await firstTaskCard.getByRole("button", { name: "Keep for later today" }).click();
+  await firstTaskCard.getByText("In progress", { exact: true }).waitFor({ timeout: 10_000 });
+  plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
+  assert.equal(plan.tasks.find((task) => task.id === firstTaskId)?.status, "in_progress", "Keep for later should persist the in-progress state");
+  await firstTaskCard.getByRole("button", { name: "Skip today" }).click();
+  await firstTaskCard.getByText("Skipped for today", { exact: true }).waitFor({ timeout: 10_000 });
+  plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
+  assert.equal(plan.tasks.find((task) => task.id === firstTaskId)?.status, "missed", "Skip today should persist a skipped state");
+  await page.reload({ waitUntil: "domcontentloaded" });
+  const restoredTaskCard = page.locator(`.journey-card[data-task-id="${firstTaskId}"]`);
+  await restoredTaskCard.getByRole("button", { name: "Put back in today’s plan" }).click();
+  plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
+  assert.equal(plan.tasks.find((task) => task.id === firstTaskId)?.status, "planned", "Restoring a skipped task should persist across reload");
+  if (plan.tasks.length > 1) {
+    const secondTaskId = plan.tasks[1].id;
+    const secondTaskCard = page.locator(`.journey-card[data-task-id="${secondTaskId}"]`);
+    await secondTaskCard.getByRole("button", { name: "Mark complete" }).click();
+    await secondTaskCard.getByText("Completed", { exact: true }).waitFor({ timeout: 10_000 });
+    plan = await authenticatedApi(token, `${apiUrl}/api/plan/today`);
+    assert.equal(plan.tasks.find((task) => task.id === secondTaskId)?.status, "completed", "Mark complete should persist the completed state");
+  }
+  await page.goto(`${clientUrl}/review`, { waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Choose what to strengthen" }).waitFor();
+  await page.getByRole("heading", { name: "Concepts to improve" }).waitFor({ timeout: 10_000 });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page.getByRole("heading", { name: "Choose what to strengthen" }).waitFor();
 
   for (const viewport of [{ width: 1440, height: 900 }, { width: 390, height: 844 }]) {
     await page.setViewportSize(viewport);
@@ -411,9 +478,10 @@ try {
   await page.keyboard.press("Enter");
   assert.equal(await page.locator("details.source-contribution").evaluate((element) => element.open), true, "The source form disclosure should open from the keyboard");
 
-  const evidence = await pool.query(`SELECT count(*)::int AS attempts, count(*) FILTER (WHERE submitted_at IS NOT NULL)::int AS submitted, count(DISTINCT canonical_question_revision_id)::int AS revisions FROM recall_attempts WHERE user_id=$1 AND id=ANY($2::uuid[])`, [userId, [...originalAttemptIds, verificationId]]);
-  assert(evidence.rows[0].attempts >= originalAttemptIds.length + 1 && evidence.rows[0].submitted >= originalAttemptIds.length + 1, "The full journey's attempts must remain persisted for the isolated learner");
-  assert(evidence.rows[0].revisions >= 2, "Persisted assessment and verification evidence must reference distinct revisions");
+  const persistedAttemptIds = [...originalAttemptIds, ...(verificationId ? [verificationId] : [])];
+  const evidence = await pool.query(`SELECT count(*)::int AS attempts, count(*) FILTER (WHERE submitted_at IS NOT NULL)::int AS submitted, count(DISTINCT canonical_question_revision_id)::int AS revisions FROM recall_attempts WHERE user_id=$1 AND id=ANY($2::uuid[])`, [userId, persistedAttemptIds]);
+  assert(evidence.rows[0].attempts >= originalAttemptIds.length && evidence.rows[0].submitted >= originalAttemptIds.length, "Completed journey attempts must remain persisted for the isolated learner");
+  if (verificationId) assert(evidence.rows[0].revisions >= 2, "Persisted assessment and verification evidence must reference distinct revisions");
   assert.deepEqual(browserJavaScriptErrors, [], `Uncaught browser JavaScript exceptions: ${browserJavaScriptErrors.join("; ")}`);
   assert.deepEqual(unexpectedFailedRequests, [], `Unexpected failed network requests: ${unexpectedFailedRequests.join("; ")}`);
   if (expectedCanceledRequests.length) console.log(`Expected canceled requests (${expectedCanceledRequests.length}): ${expectedCanceledRequests.join("; ")}`);
@@ -421,7 +489,7 @@ try {
     await browserContext.tracing.stop();
     traceStarted = false;
   }
-  console.log(`PASS ${browserName} Playwright core loop: register, text/Markdown/PDF/DOCX with page/section citations, DOCX invalid-file state, DBMS assessment, diagnosis, grounded remediation, distinct verification, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
+  console.log(`PASS ${browserName} Playwright core loop: register, text/Markdown/PDF/DOCX with page/section citations, DOCX invalid-file state, DBMS assessment, diagnosis, ${remediation ? "grounded remediation and distinct verification" : "truthful unseen-question resource fallback"}, persisted readiness/reload, responsive dashboard, keyboard disclosure (${originalAttemptIds.length} assessment attempts, ${evidence.rows[0].revisions} revisions)`);
 } catch (error) {
   if (page) {
     console.error(`Browser state at failure (${page.url()}):\n${(await page.locator("body").innerText().catch(() => "unavailable")).slice(-3000)}`);
