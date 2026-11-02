@@ -44,10 +44,18 @@ beforeEach(()=>{
   lastCandidateSelectionMs=0;
   queryMock.mockImplementation(async(sql:string,values:unknown[])=>{
     lastQuery={sql,values};
-    const [userId,model,dimensions,sourceId,candidateLimit]=values as [string,string,number,string|null,number];
+    const sourceRestricted=sql.includes("AND s.id=$4::uuid");
+    const [userId,model,dimensions]=values as [string,string,number];
+    const sourceId=sourceRestricted?values[3] as string:null;
+    const lexicalQuery=values[sourceRestricted?4:3] as string;
+    const candidateLimit=values[sourceRestricted?5:4] as number;
     const selectionStarted=performance.now();
+    const terms=lexicalQuery.split(" | ");
     const rows=fixture.filter((row)=>row.userId===userId&&row.status==="processed"&&row.model===model&&row.embedding.length===dimensions&&(!sourceId||row.sourceId===sourceId))
-      .sort((a,b)=>a.chunkId.localeCompare(b.chunkId)).slice(0,candidateLimit);
+      .map((row)=>({...row,lexicalRank:terms.filter((term)=>new RegExp(`\\b${term}\\b`,"i").test(row.text)).length}))
+      .filter((row)=>row.lexicalRank>0)
+      .sort((a,b)=>b.lexicalRank-a.lexicalRank||a.chunkId.localeCompare(b.chunkId)).slice(0,candidateLimit)
+      .map(({lexicalRank,...row})=>row);
     lastCandidateSelectionMs=performance.now()-selectionStarted;
     lastSelectedRows=rows;
     return{rows:rows.map((row)=>({...row,embeddingModel:row.model,embeddingDimensions:row.embedding.length})),rowCount:rows.length};
@@ -90,10 +98,12 @@ describe("grounded remediation retrieval",()=>{
     expect(lastQuery.sql).toContain("s.user_id=$1");
     expect(lastQuery.sql).toContain("s.processing_status='processed'");
     expect(lastQuery.sql).toContain("c.embedding_model=$2 AND c.embedding_dimensions=$3");
-    expect(lastQuery.sql).toContain("ORDER BY c.id LIMIT $5");
+    expect(lastQuery.sql).toContain("to_tsvector('simple'::regconfig,c.content) @@ to_tsquery('simple'::regconfig,$4)");
+    expect(lastQuery.sql).toContain("ORDER BY ts_rank_cd");
+    expect(lastQuery.sql).toContain("c.id ASC");
     expect(lastQuery.sql).not.toContain("s.created_at DESC");
     expect(lastQuery.sql).not.toContain("c.chunk_order LIMIT");
-    expect(lastQuery.values).toEqual(["learner","hash-token-v1",64,null,5000]);
+    expect(lastQuery.values).toEqual(["learner","hash-token-v1",64,"tcp | slow | start | congestion | window",5000]);
     expect(retrieved[0]).toMatchObject({
       chunkId:chunkIds[targetIndex],
       sourceId:"old-source",
@@ -128,6 +138,28 @@ describe("grounded remediation retrieval",()=>{
     }
   });
 
+  it("finds a relevant passage beyond the old stable-ID 5,000-row cap",async()=>{
+    const provider=new DeterministicEmbeddingProvider();
+    const irrelevantText="A field guide about aquatic habitats, seasonal rainfall, and plant biodiversity.";
+    const relevantText="TCP congestion control uses slow start to increase the congestion window as acknowledgements arrive.";
+    const [irrelevantEmbedding,relevantEmbedding]=await provider.embed([irrelevantText,relevantText]);
+    fixture=Array.from({length:5005},(_,index)=>fixtureChunk({
+      chunkId:`${String(index).padStart(5,"0")}-unrelated`,
+      sourceId:`source-${index}`,
+      text:irrelevantText,
+      embedding:irrelevantEmbedding,
+    }));
+    fixture.push(fixtureChunk({chunkId:"zzzzz-relevant",sourceId:"old-source",text:relevantText,embedding:relevantEmbedding,createdAt:1,chunkOrder:250}));
+
+    const retrieved=await retrieveForGap({userId:"learner",conceptName:"TCP",knowledgePoint:"slow start congestion window"});
+
+    expect(fixture.map((item)=>item.chunkId).sort().slice(0,5000)).not.toContain("zzzzz-relevant");
+    expect(retrieved.map((chunk)=>chunk.chunkId)).toContain("zzzzz-relevant");
+    expect(retrieved[0].sourceId).toBe("old-source");
+    expect(lastSelectedRows).toHaveLength(1);
+    expect(lastQuery.values[3]).toContain("tcp");
+  });
+
   it("applies ownership, processing, model, dimension, and source filters at the repository boundary",async()=>{
     const vector=[1,0];
     fixture=[
@@ -139,11 +171,17 @@ describe("grounded remediation retrieval",()=>{
       fixtureChunk({chunkId:"other-source",sourceId:"another",text:"other source",embedding:vector}),
     ];
 
-    const chunks=await retrieveChunks("learner",vector,"hash-token-v1",5000,"selected");
+    const chunks=await retrieveChunks("learner",vector,"hash-token-v1","eligible",5000,"selected");
 
     expect(chunks.map((chunk)=>chunk.chunkId)).toEqual(["eligible"]);
-    expect(lastQuery.values).toEqual(["learner","hash-token-v1",2,"selected",5000]);
-    expect(lastQuery.sql).toContain("($4::uuid IS NULL OR s.id=$4)");
+    expect(lastQuery.values).toEqual(["learner","hash-token-v1",2,"selected","eligible",5000]);
+    expect(lastQuery.sql).toContain("s.id=$4::uuid");
+  });
+
+  it("does not query PostgreSQL when the target yields no searchable terms",async()=>{
+    const chunks=await retrieveChunks("learner",[1,0],"hash-token-v1","the and of",5);
+    expect(chunks).toEqual([]);
+    expect(queryMock).not.toHaveBeenCalled();
   });
 
   it("uses relevant content from an early long-document chunk and retains its page citation",async()=>{

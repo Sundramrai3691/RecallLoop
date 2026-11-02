@@ -1,5 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
 import { readFile } from "node:fs/promises";
 import { postgres, runPostgresMigration, withTransaction } from "../../src/db/postgres.js";
 import { createAssessment,createCanonicalKnowledgeCheck,getAssessment,listKnowledgeCheckCoverage } from "../../src/services/question/assessmentService.js";
@@ -12,7 +13,9 @@ import { recommendResources } from "../../src/services/resources/resourceRecomme
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
 import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
-import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource,retrieveForGap } from "../../src/services/grounding/groundedRemediationService.js";
+import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource,rankRetrievedChunks,retrieveForGap } from "../../src/services/grounding/groundedRemediationService.js";
+import { retrieveChunks } from "../../src/repositories/groundingRepository.js";
+import { DeterministicEmbeddingProvider } from "../../src/services/grounding/embeddingProvider.js";
 import { makePdf } from "../../src/services/grounding/pdfExtractorFixtures.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
 import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
@@ -704,13 +707,70 @@ describe("PostgreSQL runtime integration", () => {
       const newerText=Array.from({length:1200},()=>"Recent unrelated material describes aquatic ecosystems, seasonal rainfall, and plant biodiversity.").join(" ");
       const newerSource=await ingestGroundingSource(userId,{title:"Recent unrelated notes",text:newerText,sourceType:"text"});
       expect(newerSource.chunkCount).toBeGreaterThan(40);
+      await postgres.query(`UPDATE grounding_chunks SET id='zzzz-relevant-old-source-chunk' WHERE source_id=$1`,[oldSource.id]);
+      await postgres.query(`INSERT INTO grounding_chunks(id,source_id,chunk_order,content,metadata,embedding,embedding_model,embedding_dimensions)
+        SELECT '00000-unrelated-'||lpad(g::text,5,'0'),$1,$2+g,
+          'Unrelated field guide record '||g||' covers aquatic habitats and seasonal rainfall.',
+          '{}'::jsonb,array_fill(0::real,ARRAY[64]),'hash-token-v1',64
+        FROM generate_series(1,5005) g`,[newerSource.id,newerSource.chunkCount]);
+      await postgres.query(`ANALYZE grounding_chunks`);
+      await postgres.query(`ANALYZE grounding_sources`);
       const foreignSource=await ingestGroundingSource(otherUser,{title:"Other learner TCP notes",text:"TCP slow start and congestion window details are private to another learner.",sourceType:"text"});
 
+      const retrieveStarted=performance.now();
       const retrieved=await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window"});
+      const elapsedForGap=performance.now()-retrieveStarted;
 
       expect(retrieved[0]?.sourceId).toBe(oldSource.id);
       expect(retrieved[0]?.text).toContain("congestion window");
       expect(retrieved.some((chunk)=>chunk.sourceId===foreignSource.id)).toBe(false);
+      expect(retrieved[0]?.chunkId).toBe("zzzz-relevant-old-source-chunk");
+      if(process.env.RECALLLOOP_RETRIEVAL_BENCHMARK==="1"){
+        const searchText="TCP. slow start congestion window";
+        const [embedding]=await new DeterministicEmbeddingProvider().embed([searchText]);
+        const oldQueryStarted=performance.now();
+        const oldRows=await postgres.query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.metadata->>'section' AS section,c.metadata->>'paragraphStart' AS "paragraphStart",c.metadata->>'paragraphEnd' AS "paragraphEnd",c.content AS text,c.embedding
+          FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
+          WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3
+          ORDER BY s.created_at DESC,c.chunk_order LIMIT 40`,[userId,"hash-token-v1",embedding.length]);
+        const oldQueryMs=performance.now()-oldQueryStarted;
+        const oldRankingStarted=performance.now();
+        const oldRanked=rankRetrievedChunks(searchText,embedding,oldRows.rows);
+        const oldRankingMs=performance.now()-oldRankingStarted;
+        const candidateQueryStarted=performance.now();
+        const candidates=await retrieveChunks(userId,embedding,"hash-token-v1",searchText);
+        const candidateQueryMs=performance.now()-candidateQueryStarted;
+        const rankingStarted=performance.now();
+        const ranked=rankRetrievedChunks(searchText,embedding,candidates);
+        const rankingMs=performance.now()-rankingStarted;
+        const planResult=await postgres.query<any>(`EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON)
+          SELECT c.id           FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
+          WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3
+            AND to_tsvector('simple'::regconfig,c.content) @@ to_tsquery('simple'::regconfig,$4)
+          ORDER BY ts_rank_cd(to_tsvector('simple'::regconfig,c.content),to_tsquery('simple'::regconfig,$4)) DESC,c.id ASC LIMIT $5`,
+        [userId,"hash-token-v1",embedding.length,"tcp | slow | start | congestion | window",5000]);
+        const plan=planResult.rows[0]["QUERY PLAN"][0];
+        const planText=JSON.stringify(plan.Plan);
+        console.info("postgres-retrieval-fixture",JSON.stringify({
+          eligibleRows:oldSource.chunkCount+newerSource.chunkCount+5005,
+          before:{candidateRows:oldRows.rowCount,rankingCandidates:oldRows.rowCount,rankedCandidates:oldRanked.length,queryMs:Number(oldQueryMs.toFixed(3)),rankingMs:Number(oldRankingMs.toFixed(3)),contextCharacters:oldRanked.reduce((sum,row)=>sum+row.text.length,0)},
+          after:{candidateRows:candidates.length,rankingCandidates:candidates.length,rankedCandidates:ranked.length,queryMs:Number(candidateQueryMs.toFixed(3)),rankingMs:Number(rankingMs.toFixed(3)),totalRetrieveForGapMs:Number(elapsedForGap.toFixed(3)),contextCharacters:ranked.reduce((sum,row)=>sum+row.text.length,0)},
+          databaseExecutionMs:plan["Execution Time"],
+          ginIndexUsed:planText.includes("idx_grounding_chunks_content_fts"),
+          selectedChunk:ranked[0]?.chunkId??null,
+          database:"isolated-test-only",
+        }));
+      }
+      expect((await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window",sourceId:newerSource.id})).length).toBe(0);
+      expect((await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window",sourceId:oldSource.id})).map((chunk)=>chunk.sourceId)).toEqual([oldSource.id]);
+
+      await postgres.query(`UPDATE grounding_sources SET processing_status='processing' WHERE id=$1`,[oldSource.id]);
+      expect(await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window"})).toEqual([]);
+      await postgres.query(`UPDATE grounding_sources SET processing_status='processed' WHERE id=$1`,[oldSource.id]);
+      await postgres.query(`UPDATE grounding_chunks SET embedding_model='different-model' WHERE id='zzzz-relevant-old-source-chunk'`);
+      expect(await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window"})).toEqual([]);
+      await postgres.query(`UPDATE grounding_chunks SET embedding_model='hash-token-v1',embedding_dimensions=63 WHERE id='zzzz-relevant-old-source-chunk'`);
+      expect(await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window"})).toEqual([]);
     }finally{
       await postgres.query(`DELETE FROM app_users WHERE id=ANY($1::uuid[])`,[[userId,otherUser]]);
     }

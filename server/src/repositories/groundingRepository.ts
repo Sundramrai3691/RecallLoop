@@ -2,10 +2,12 @@ import { query, withTransaction } from "../db/postgres.js";
 import type { TextChunk } from "../services/grounding/chunker.js";
 import type { EmbeddingProvider } from "../services/grounding/embeddingProvider.js";
 import type { GroundedRemediation, GroundingSource } from "../services/grounding/remediationGenerator.js";
+import { significantTokens } from "../lib/llm/json.js";
 
 export interface GroundingDocument { id:string; userId:string; title:string; sourceType:string; reference:string; provenance:Record<string,unknown>; content:string; contentHash:string; processingStatus:string; processingError:string|null; createdAt:string; updatedAt:string; }
 export interface RetrievedChunk extends GroundingSource { relevance:number; }
 export const MAX_RETRIEVAL_CANDIDATES=5000;
+const MAX_LEXICAL_QUERY_TERMS=64;
 
 function mapDocument(row:any):GroundingDocument { return {id:row.id,userId:row.user_id,title:row.title,sourceType:row.source_type,reference:row.reference,provenance:row.provenance,content:row.content,contentHash:row.content_hash,processingStatus:row.processing_status,processingError:row.processing_error,createdAt:row.created_at,updatedAt:row.updated_at}; }
 
@@ -51,11 +53,23 @@ export async function listSources(userId:string) {
   return result.rows;
 }
 
-export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=MAX_RETRIEVAL_CANDIDATES,sourceId?:string|null):Promise<Array<GroundingSource & {embedding:number[]}>> {
+export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,searchText:string,limit=MAX_RETRIEVAL_CANDIDATES,sourceId?:string|null):Promise<Array<GroundingSource & {embedding:number[]}>> {
+  const lexicalTerms=[...new Set(significantTokens(searchText).map((token)=>token.replace(/[^a-z0-9]/g,"")).filter((token)=>token.length>2))].slice(0,MAX_LEXICAL_QUERY_TERMS);
+  if(!lexicalTerms.length)return [];
+  const lexicalQuery=lexicalTerms.join(" | ");
+  const sourceRestricted=sourceId!=null;
+  const sourceFilter=sourceRestricted?"AND s.id=$4::uuid":"";
+  const lexicalQueryParameter=sourceRestricted?"$5":"$4";
+  const limitParameter=sourceRestricted?"$6":"$5";
+  const parameters=sourceRestricted
+    ?[userId,providerName,queryEmbedding.length,sourceId,lexicalQuery,Math.min(MAX_RETRIEVAL_CANDIDATES,Math.max(0,Math.floor(limit)))]
+    :[userId,providerName,queryEmbedding.length,lexicalQuery,Math.min(MAX_RETRIEVAL_CANDIDATES,Math.max(0,Math.floor(limit)))];
   const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.metadata->>'section' AS section,c.metadata->>'paragraphStart' AS "paragraphStart",c.metadata->>'paragraphEnd' AS "paragraphEnd",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
     FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
-    WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3 AND ($4::uuid IS NULL OR s.id=$4)
-    ORDER BY c.id LIMIT $5`,[userId,providerName,queryEmbedding.length,sourceId??null,Math.min(MAX_RETRIEVAL_CANDIDATES,Math.max(0,Math.floor(limit)))]);
+    WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3 ${sourceFilter}
+      AND to_tsvector('simple'::regconfig,c.content) @@ to_tsquery('simple'::regconfig,${lexicalQueryParameter})
+    ORDER BY ts_rank_cd(to_tsvector('simple'::regconfig,c.content),to_tsquery('simple'::regconfig,${lexicalQueryParameter})) DESC,c.id ASC
+    LIMIT ${limitParameter}`,parameters);
   return result.rows.map((row)=>({...row,embedding:row.embedding}));
 }
 

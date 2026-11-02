@@ -48,6 +48,10 @@ The before run completed 1,076 API requests in 11.614 seconds; the after run com
 - The readiness endpoint itself was timed and its request/query counts recorded. Its plan artifact is a representative latest-evidence component query, not an `EXPLAIN` of the complete readiness SQL. No production-sized query-plan inference is made.
 - Structured request logs include request ID, normalized route, method, response status, duration, pool query count/time, and a pool snapshot; they omit bodies and auth headers. A bounded in-memory metrics buffer is opt-in via `PERFORMANCE_METRICS=1`. Error and ingestion/transaction events use safe categories/codes and request correlation, not provider response bodies or learner answers. Request query counts cover `pool.query`; transaction work is measured as an outer transaction duration and its client queries are not individually attributed.
 
+## Grounded retrieval candidate regression
+
+The retrieval regression used only a dedicated disposable PostgreSQL 16 container/database, separate from the configured application database. Its 5,121 eligible chunks included 5,005 unrelated low-ID distractors, an older relevant chunk, and a foreign learner's source. The prior recency-first 40-row window returned no relevant context; the indexed FTS query returned the relevant older chunk, and the plan used `idx_grounding_chunks_content_fts`. In the latest single run, FTS query time was 4.903 ms, application ranking 0.074 ms, total `retrieveForGap` 6.642 ms, and `EXPLAIN ANALYZE` execution 2.640 ms. These are small-fixture diagnostics, not a representative workload, production latency, or capacity estimate. Full-text search requires at least one shared query term, searches at most 64 query terms, and caps candidates at 5,000 before embedding ranking; database ranking work for common terms is not proven bounded by these output limits.
+
 ## Source-ingestion stress profile
 
 The extended run completed 1,094 requests in 14.343 seconds without failures/timeouts. These are 10-concurrency API latencies; extraction phase timings are process-local instrumentation.

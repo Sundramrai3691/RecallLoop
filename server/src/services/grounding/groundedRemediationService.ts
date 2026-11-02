@@ -157,7 +157,7 @@ export async function retrieveForGap(input:{userId:string;conceptName:string;kno
   const provider=createEmbeddingProvider();
   const searchText=[input.conceptName,input.knowledgePoint,input.misconception].filter(Boolean).join(". ");
   const [embedding]=await provider.embed([searchText]);
-  const candidates=await retrieveChunks(input.userId,embedding,provider.name,MAX_RETRIEVAL_CANDIDATES,input.sourceId);
+  const candidates=await retrieveChunks(input.userId,embedding,provider.name,searchText,MAX_RETRIEVAL_CANDIDATES,input.sourceId);
   return rankRetrievedChunks(searchText,embedding,candidates,input.limit??5,MIN_RELEVANCE);
 }
 
