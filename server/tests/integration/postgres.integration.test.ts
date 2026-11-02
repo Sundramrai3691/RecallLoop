@@ -11,7 +11,7 @@ import { submitRecall } from "../../src/services/recall/recallService.js";
 import { getSettings,updateSettings } from "../../src/services/settings/settingsService.js";
 import { recommendResources } from "../../src/services/resources/resourceRecommendationService.js";
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
-import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
+import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan,updatePlanTask } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
 import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource,rankRetrievedChunks,retrieveForGap } from "../../src/services/grounding/groundedRemediationService.js";
 import { retrieveChunks } from "../../src/repositories/groundingRepository.js";
@@ -503,6 +503,54 @@ describe("PostgreSQL runtime integration", () => {
       const counts=await postgres.query<any>(`SELECT (SELECT count(*)::int FROM recall_evaluations WHERE recall_attempt_id=$1) AS evaluations,(SELECT count(*)::int FROM learner_knowledge_point_states WHERE user_id=$2 AND concept_id=$3) AS states`,[structured.id,userId,concept.id]);
       expect(counts.rows[0]).toMatchObject({evaluations:1,states:2});
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("serializes concurrent recall scheduler transitions for the same concept",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Concurrent Scheduler Test') RETURNING id`,[`scheduler-concurrency-${randomUUID()}@test.local`])).rows[0].id;
+    const suffix=randomUUID().replaceAll("-","");
+    const triggerName=`delay_scheduler_recall_${suffix}`;
+    const functionName=`delay_scheduler_recall_fn_${suffix}`;
+    let triggerCreated=false;
+    let functionCreated=false;
+    try{
+      const session=(await postgres.query<any>(`INSERT INTO study_sessions(user_id,title) VALUES($1,'Concurrent scheduler fixture') RETURNING id`,[userId])).rows[0];
+      const point="Atomicity guarantees all operations commit together or none do.";
+      const concept=(await postgres.query<any>(`INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,mastery) VALUES($1,$2,'Concurrent scheduler','Scheduler concurrency fixture',$3,.5) RETURNING id`,[userId,session.id,[point]])).rows[0];
+      await postgres.query(`INSERT INTO review_states(user_id,concept_id,state,due_at,interval_days,stability,difficulty,last_recall_at,last_outcome,consecutive_successes)
+        VALUES($1,$2,'review',now(),4,4,.3,now(),'good',1)`,[userId,concept.id]);
+      const attempts=(await postgres.query<any>(`INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question)
+        VALUES($1,$2,$3,'descriptive','Concurrent scheduler response'),($1,$2,$3,'descriptive','Concurrent scheduler response') RETURNING id`,[userId,concept.id,session.id])).rows;
+      const goal=(await postgres.query<any>(`INSERT INTO goals(user_id,title) VALUES($1,'Concurrent scheduler plan') RETURNING id`,[userId])).rows[0];
+      const plan=(await postgres.query<any>(`INSERT INTO plans(user_id,goal_id,start_date,end_date) VALUES($1,$2,date_trunc('day',now()),date_trunc('day',now())+interval '7 days') RETURNING id`,[userId,goal.id])).rows[0];
+      const task=(await postgres.query<any>(`INSERT INTO plan_tasks(user_id,plan_id,goal_id,concept_id,recall_attempt_id,task_type,title,scheduled_for,source,reason)
+        VALUES($1,$2,$3,$4,$5,'recall','Recall this concept',now(),'scheduler','Due review') RETURNING id`,[userId,plan.id,goal.id,concept.id,attempts[0].id])).rows[0];
+      await expect(updatePlanTask(userId,task.id,"completed")).rejects.toMatchObject({status:409,code:"RECALL_TASK_NOT_SUBMITTED"});
+      const slowAnswer=point.replaceAll("'","''");
+      await postgres.query(`CREATE FUNCTION ${functionName}() RETURNS trigger LANGUAGE plpgsql AS $$
+        BEGIN
+          IF NEW.answer='${slowAnswer}' THEN PERFORM pg_sleep(.5); ELSE PERFORM pg_sleep(.05); END IF;
+          RETURN NEW;
+        END $$`);
+      functionCreated=true;
+      await postgres.query(`CREATE TRIGGER ${triggerName} BEFORE UPDATE OF submitted_at ON recall_attempts
+        FOR EACH ROW WHEN (OLD.submitted_at IS NULL AND NEW.submitted_at IS NOT NULL)
+        EXECUTE FUNCTION ${functionName}()`);
+      triggerCreated=true;
+
+      await Promise.all([
+        submitRecall(attempts[0].id,{userId,answer:point,confidence:6}),
+        submitRecall(attempts[1].id,{userId,answer:"This response discusses an unrelated topic.",confidence:6}),
+      ]);
+
+      const state=(await postgres.query<any>(`SELECT interval_days,last_outcome FROM review_states WHERE user_id=$1 AND concept_id=$2`,[userId,concept.id])).rows[0];
+      expect(state).toMatchObject({interval_days:state.last_outcome==="easy"?4:1});
+      expect((await postgres.query<any>(`SELECT status FROM plan_tasks WHERE id=$1`,[task.id])).rows[0].status).toBe("completed");
+      expect((await getTodayPlan(userId)).tasks.find((item:any)=>item.id===task.id)?.status).toBe("completed");
+    }finally{
+      if(triggerCreated)await postgres.query(`DROP TRIGGER IF EXISTS ${triggerName} ON recall_attempts`);
+      if(functionCreated)await postgres.query(`DROP FUNCTION IF EXISTS ${functionName}()`);
+      await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);
+    }
   });
 
   it("builds readiness from latest submitted recall and baseline point evidence with distinct outcomes",async()=>{

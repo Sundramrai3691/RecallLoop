@@ -30,6 +30,10 @@ Percentiles are per operation and concurrency level. `p99` is withheld when the 
 
 The readiness row regressed in this run and is called out rather than hidden. Its API uses two pool queries at p50/p95; this work did not add an index or cache without stronger evidence. Small local workloads and run-to-run scheduling can move tail latency materially.
 
+### Readiness latency follow-up (2026-11-03)
+
+The saved matched-profile repeat runs recorded goal-readiness p95 values of 116.52 ms, 66.31 ms, and 74.63 ms at concurrency 10, versus 34.07 ms in the original before sample and 49.61 ms in the initial after sample. These successful local runs confirm variability and that the initial regression was not explained by a single repeatable measurement. The captured plan is for a representative latest-evidence component, not the complete readiness SQL; no query-level attribution, production-scale benchmark, or cause is established. No index/cache change is justified without a measured plan or workload demonstrating a bottleneck.
+
 For visibility across all exercised concurrency levels, p95 milliseconds were:
 
 | Operation | c1 before → after | c5 before → after | c10 before → after |

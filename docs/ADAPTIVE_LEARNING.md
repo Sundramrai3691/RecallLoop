@@ -53,7 +53,7 @@ A Learning Pack combines fitting resources with explanation, application, and qu
 - `confirm`: show the recommended date and allow the learner to confirm or change it.
 - `manual`: keep `ReviewState` authoritative, but do not add optional future reviews to the plan automatically. Due recalls remain visible.
 
-The scheduler owns due dates and review state. Review intervals are whole days to match the persisted `review_states.interval_days` column; a hard outcome rounds the 1.5× interval to the nearest whole day before calculating the due date. The planner consumes due recalls; it does not calculate new review intervals.
+The scheduler owns due dates and review state. Its current MVP policy maps hint-adjusted coverage below `0.5` to `again` (1 day, reset consecutive successes), `[0.5, 0.75)` to `hard` (rounded 1.5× prior interval, minimum 1 day), `[0.75, 0.9)` to `good` (2×, minimum 2 days), and `>= 0.9` to `easy` (3×, minimum 4 days). Due dates add whole 24-hour days. These deterministic thresholds are product heuristics, not FSRS or calibrated mastery estimates. The planner consumes due recalls; it does not calculate new review intervals.
 
 ## Learner Model
 
@@ -78,7 +78,7 @@ Planner calendar days use UTC because the application has no per-user time-zone 
 
 ## My Readiness
 
-`GET /api/goals/:goalId/readiness` keeps learner-declared goal relevance separate from demonstrated evidence. It lists the learner's goal skills by priority and maps a skill only when its normalized name exactly matches a canonical skill. For mapped skills, active canonical knowledge points are counted as strength (`mastery >= 0.7`), weakness (`mastery < 0.7`), or unassessed from each user's most recently updated canonical point state. Unmapped names are explicitly marked unassessed. Latest evidence time is shown when available. The view does not infer confidence, combine skills into a readiness score, or represent company/interview weighting; exact-name mapping can leave custom skill labels unmapped.
+`GET /api/goals/:goalId/readiness` keeps learner-declared goal relevance separate from demonstrated evidence. It lists the learner's goal skills by priority and maps a skill only when its normalized name exactly matches a canonical skill. For mapped skills, each active canonical point is classified from the latest submitted mapped recall or assessed-baseline result, not from blended point mastery: correct, partial, incorrect, unanswered, or unassessed. Unmapped names remain explicitly unmapped. Evidence ordering is deterministic; pending attempts, self-declared baselines, and unmapped point results do not count as demonstrated evidence. The view does not infer confidence, combine skills into a readiness score, or represent company/interview weighting; exact-name mapping can leave custom skill labels unmapped. See [ADR 010](adr/010-latest-submitted-readiness-evidence.md).
 
 ## Data and implementation boundaries
 

@@ -1,5 +1,5 @@
 import { query } from "../../db/postgres.js";
-import { AppError, notFound } from "../../utils/errors.js";
+import { AppError, conflict, notFound } from "../../utils/errors.js";
 import { goalRepository, learnerSkillRepository, planRepository, planTaskRepository } from "../../repositories/postgresRepositories.js";
 import type { GoalRecord, LearnerSkillRecord, PlanTaskRecord } from "../../repositories/types.js";
 import { fitTasksToBudget } from "./planSelection.js";
@@ -230,6 +230,14 @@ export async function updatePlanTask(userId: string, taskId: string, status: "pl
   const existing = await planTaskRepository.findById(taskId);
   if (!existing) throw notFound("Plan task not found", "PLAN_TASK_NOT_FOUND");
   if (existing.userId !== userId) throw new AppError("You do not have access to this resource", 403, "FORBIDDEN");
+  if (existing.taskType === "recall") {
+    const attempt = existing.recallAttemptId
+      ? await query<{ submitted_at: Date | null }>(`SELECT submitted_at FROM recall_attempts WHERE id=$1 AND user_id=$2`, [existing.recallAttemptId,userId])
+      : { rows: [] };
+    const submitted = Boolean(attempt.rows[0]?.submitted_at);
+    if (status === "completed" && !submitted) throw conflict("Submit this recall before completing its plan task.", "RECALL_TASK_NOT_SUBMITTED");
+    if (status !== "completed" && submitted) throw conflict("This recall is already submitted and its plan task is complete.", "RECALL_TASK_ALREADY_SUBMITTED");
+  }
   const task = await planTaskRepository.updateStatus(taskId, userId, status);
   return { id: task!.id, status: task!.status };
 }

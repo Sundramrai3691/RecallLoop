@@ -1,6 +1,7 @@
 import { query, withTransaction } from "../db/postgres.js";
 import type { PoolClient } from "pg";
 import { AppError } from "../utils/errors.js";
+import type { ReviewStateSnapshot } from "../services/scheduler/types.js";
 
 export function mapSession(row: any) { return { id: row.id, userId: row.user_id, title: row.title, rawMaterial: row.raw_material, sourceType: row.source_type, sourceUrl: row.source_url ?? null, groundingSourceId: row.grounding_source_id ?? null, canonicalTopicId: row.canonical_topic_id ?? null, canonicalConceptId: row.canonical_concept_id ?? null, startedAt: row.started_at, completedAt: row.completed_at, status: row.status, createdAt: row.created_at, updatedAt: row.updated_at }; }
 export function mapConcept(row: any) { return { id: row.id, userId: row.user_id, studySessionId: row.study_session_id, name: row.name, description: row.description, canonicalConceptId: row.canonical_concept_id ?? null, parentConceptId: row.parent_concept_id, requiredKnowledgePoints: row.required_knowledge_points, difficulty: row.difficulty, mastery: Number(row.mastery), createdAt: row.created_at, updatedAt: row.updated_at }; }
@@ -81,10 +82,35 @@ export async function revealNextHint(userId: string, attemptId: string) {
   return { hint: hintResult.rows[0]?.hint ?? null, maxHintLevel: result.rows[0].max_hint_level };
 }
 
-export async function submitAttempt(userId: string, attemptId: string, answer: string, confidence: number, evaluation: any, scheduled: any, conceptId: string, mastery: number, input: { selectedOptionId?: string | null; resultStatus: string; evidenceWeight: number; recommendation: any; structuredAnswers?: Array<{partId:string;answer:string}> | null }) {
+export async function submitAttempt(userId: string, attemptId: string, answer: string, confidence: number, evaluation: any, conceptId: string, input: {
+  selectedOptionId?: string | null;
+  resultStatus: string;
+  evidenceWeight: number;
+  recommendation: any;
+  structuredAnswers?: Array<{partId:string;answer:string}> | null;
+  scheduleReview: (previous: ReviewStateSnapshot | null, currentMastery: number) => { scheduled: ReviewStateSnapshot; mastery: number };
+}) {
   const written = await withTransaction(async (client) => {
+    const conceptResult = await client.query<any>(`SELECT mastery FROM personal_concepts WHERE id=$1 AND user_id=$2 FOR UPDATE`, [conceptId,userId]);
+    if (!conceptResult.rows[0]) return null;
+    const reviewResult = await client.query<any>(`SELECT * FROM review_states WHERE user_id=$1 AND concept_id=$2 FOR UPDATE`, [userId,conceptId]);
+    const previousRow = reviewResult.rows[0];
+    const previous: ReviewStateSnapshot | null = previousRow ? {
+      conceptId: previousRow.concept_id,
+      state: previousRow.state,
+      dueAt: previousRow.due_at,
+      intervalDays: previousRow.interval_days,
+      stability: Number(previousRow.stability),
+      difficulty: Number(previousRow.difficulty),
+      lastRecallAt: previousRow.last_recall_at,
+      lastOutcome: previousRow.last_outcome,
+      consecutiveSuccesses: previousRow.consecutive_successes,
+      updatedAt: previousRow.updated_at,
+    } : null;
+    const { scheduled, mastery } = input.scheduleReview(previous, Number(conceptResult.rows[0].mastery));
     const result = await client.query(`UPDATE recall_attempts SET answer=$3,confidence=$4,selected_option_id=$5,submitted_at=now(),time_taken_seconds=GREATEST(0,FLOOR(EXTRACT(EPOCH FROM (now()-started_at)))::int),result_status=$6,evidence_weight=$7,structured_answers=$8 WHERE id=$1 AND user_id=$2 AND submitted_at IS NULL RETURNING id`, [attemptId,userId,answer,confidence,input.selectedOptionId ?? null,input.resultStatus,input.evidenceWeight,input.structuredAnswers ? JSON.stringify(input.structuredAnswers) : null]);
     if (!result.rows[0]) return null;
+    await client.query(`UPDATE plan_tasks SET status='completed',updated_at=now() WHERE user_id=$1 AND recall_attempt_id=$2 AND status<>'completed'`, [userId,attemptId]);
     const evaluationResult = await client.query(`INSERT INTO recall_evaluations (recall_attempt_id,overall_coverage,missing_concepts,mistakes,strengths,feedback,suggested_recall_type,evaluator_version) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, [attemptId,evaluation.overallCoverage,evaluation.missingConcepts,evaluation.mistakes,evaluation.strengths,evaluation.feedback,evaluation.suggestedRecallType,evaluation.evaluatorVersion]);
     for (const point of evaluation.knowledgePointResults) {
         const canonicalKnowledgePointId=await resolveCanonicalKnowledgePoint(client,attemptId,point.point);

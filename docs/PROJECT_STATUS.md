@@ -1,5 +1,15 @@
 # Project status
 
+## 2026-11-03 Learner model, readiness and scheduler integrity closeout
+
+- Corrected `docs/ADAPTIVE_LEARNING.md` to match the implemented readiness projection: each canonical point reflects its latest submitted mapped recall or assessed-baseline result, not blended point mastery. Correct, partial, incorrect, unanswered, and unassessed remain distinct; no aggregate readiness score or confidence is invented.
+- Reproduced a concurrent recall scheduling race with a controlled PostgreSQL integration regression. Recall persistence now locks the owned concept and current review state before calculating mastery/scheduling, then persists attempt evidence, learner state, review state, and linked recall-plan completion in one transaction. Manual completion before submission and reopening after submission are rejected. The plan UI now explains that submitting recall completes the step.
+- The focused isolated PostgreSQL regression selection passed (**2 passed, 22 skipped**); `npm.cmd run build` passed server compilation, client type-checking, and Vite production build. The minified initial client entry remains **429.34 kB**. No full unit suite was run because the focused database regression and production build covered the code change.
+- Edge E2E was attempted on a dedicated PostgreSQL 16 target (not the configured application database), with deterministic mock providers. It stopped before the assessment loop because the isolated database does not contain the activated DBMS Index selection blueprint required by the harness. No question-bank seeding or approval changes were made. The harness removed its uniquely named test learners; a follow-up query found zero `e2e-core-*` rows. The new plan-task UI behavior is therefore not browser-validated.
+- Readiness latency remains unexplained. The saved concurrency-10 p95 repeat values were 116.52, 66.31, and 74.63 ms, compared with 34.07 ms before and 49.61 ms in the initial after sample. The captured plan covers only a representative latest-evidence component, not the complete readiness query. Do not optimize speculatively.
+- No migration, application-database write, question-bank change, live provider call, commit, or push was performed. The disposable PostgreSQL target is removed after closeout; the configured application container and volume remain intact.
+- **Next priority:** obtain a representative readiness workload and an `EXPLAIN (ANALYZE, BUFFERS)` of the complete readiness query before attributing or optimizing the variable latency. Independent question/evaluator validation and production operations prerequisites remain open.
+
 ## 2026-11-02 Question-bank quality and assessment-integrity audit
 
 - Generated [quality-audit-2026-11-02.json](question-bank/quality-audit-2026-11-02.json) from a `BEGIN READ ONLY` transaction against the verified local `recallloop` database (PostgreSQL 16.15, role `recallloop`). The report reads only taxonomy, question-bank, and review tables; it did not read learner tables, write to the database, run migrations/seeds, or call providers.

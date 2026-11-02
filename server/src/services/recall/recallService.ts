@@ -63,11 +63,8 @@ export async function submitRecall(id: string, input: { answer?: string; answers
   const evaluation = { ...evaluationBody, evaluatorVersion: mcq ? "deterministic-mcq-1.0" : evaluator!.version };
   const hintWeight = evidenceWeight(attempt.hintsUsed ?? 0);
   const dimension = attempt.question?.assessmentLevel ?? "explanation";
-  const previous = await getReview(input.userId, concept.id);
-  const previousSnapshot: ReviewStateSnapshot | null = previous ? { conceptId: concept.id, state: previous.state, dueAt: previous.dueAt, intervalDays: previous.intervalDays, stability: previous.stability, difficulty: previous.difficulty, lastRecallAt: previous.lastRecallAt, lastOutcome: previous.lastOutcome, consecutiveSuccesses: previous.consecutiveSuccesses, updatedAt: previous.updatedAt } : null;
   const evidenceCoverage = evaluation.overallCoverage * hintWeight;
-  const mastery = Number((Number(concept.mastery) * 0.4 + evidenceCoverage * 0.6).toFixed(4));
-  const scheduled = getScheduler().scheduleNextReview({ conceptId: concept.id, coverage: evidenceCoverage, now: new Date(), previous: previousSnapshot, conceptDifficulty: concept.difficulty });
+  const projectedMastery = Number((Number(concept.mastery) * 0.4 + evidenceCoverage * 0.6).toFixed(4));
   const status = skipped ? "unanswered" : evaluation.overallCoverage >= 0.75 ? "correct" : evaluation.overallCoverage >= 0.4 ? "partial" : "incorrect";
   const [dimensionHistory,recentAttempts,requiredResult] = await Promise.all([
     query<any>(`SELECT dimension,AVG(score)::float AS score FROM recall_dimension_results d JOIN recall_attempts r ON r.id=d.recall_attempt_id WHERE r.user_id=$1 AND r.concept_id=$2 GROUP BY dimension`,[input.userId,concept.id]),
@@ -80,9 +77,19 @@ export async function submitRecall(id: string, input: { answer?: string; answers
   for(const previousAttempt of recentAttempts.rows){if(Number(previousAttempt.overall_coverage)<.55)consecutiveFailures++;else break;}
   const repeatedPoint=evaluation.missingConcepts[0] ?? null;
   const repeatedCount=repeatedPoint?recentAttempts.rows.filter((row)=>row.missing_concepts.includes(repeatedPoint)).length:0;
-  const recommendation=recommendNextAction({conceptName:concept.name,mastery,latestCoverage:evidenceCoverage,dimensions,consecutiveFailures,repeatedMissingPoint:repeatedPoint,repeatedMissingCount:repeatedCount,goalRequired:Boolean(requiredResult.rows[0]?.required)});
+  const recommendation=recommendNextAction({conceptName:concept.name,mastery:projectedMastery,latestCoverage:evidenceCoverage,dimensions,consecutiveFailures,repeatedMissingPoint:repeatedPoint,repeatedMissingCount:repeatedCount,goalRequired:Boolean(requiredResult.rows[0]?.required)});
   const persistedAnswer=structuredAnswers?structuredAnswers.map((part)=>{const label=parts?.find((item)=>item.id===part.partId)?.label??part.partId;return `${label}: ${part.answer}`;}).join("\n\n"):answer??"";
-  const updated = await submitAttempt(input.userId, id, persistedAnswer, confidence, { ...evaluation, dimension }, scheduled, concept.id, mastery, { selectedOptionId: input.selectedOptionId, resultStatus: status, evidenceWeight: hintWeight, recommendation, structuredAnswers });
+  const updated = await submitAttempt(input.userId, id, persistedAnswer, confidence, { ...evaluation, dimension }, concept.id, {
+    selectedOptionId: input.selectedOptionId,
+    resultStatus: status,
+    evidenceWeight: hintWeight,
+    recommendation,
+    structuredAnswers,
+    scheduleReview: (previous: ReviewStateSnapshot | null, currentMastery: number) => ({
+      scheduled: getScheduler().scheduleNextReview({ conceptId: concept.id, coverage: evidenceCoverage, now: new Date(), previous, conceptDifficulty: concept.difficulty }),
+      mastery: Number((currentMastery * 0.4 + evidenceCoverage * 0.6).toFixed(4)),
+    }),
+  });
   if (!updated) throw conflict("This recall has already been submitted", "ALREADY_SUBMITTED");
   const refreshed = await getRecall(id, input.userId);
   return { attempt: refreshed.attempt, concept: refreshed.concept, review: await getReview(input.userId, concept.id) };
