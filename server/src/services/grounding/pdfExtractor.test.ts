@@ -25,6 +25,13 @@ describe("PDF page extraction",()=>{
     expect(result.text).not.toContain("[Page 2]");
   });
 
+  it("extracts long page text across ordinary PDF text runs",async()=>{
+    const longText="Transactions preserve atomicity and isolation; ordered indexes support lookup and range scans. ".repeat(30);
+    const extracted=await extractPdfPages(makePdf([longText]));
+    expect(extracted.pages[0].text.length).toBeGreaterThan(2_000);
+    expect(extracted.text).toContain("ordered indexes support lookup and range scans");
+  });
+
   it("identifies a valid PDF with no usable text as scanned or unextractable",async()=>{
     await expect(extractPdfPages(makePdf([""," "]))).rejects.toMatchObject({code:"PDF_NO_EXTRACTABLE_TEXT",status:422});
   });

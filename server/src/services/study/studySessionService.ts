@@ -6,6 +6,13 @@ import { recordLearningEvent } from "../events/learningEventService.js";
 import { query } from "../../db/postgres.js";
 import { findSource } from "../../repositories/groundingRepository.js";
 import { createHash } from "node:crypto";
+import { measurePerformance } from "../../observability/performanceMetrics.js";
+import { getRequestTrace } from "../../observability/requestContext.js";
+
+function logIdempotencyOutcome(outcome:"reconciled"|"created_after_race"|"payload_conflict"):void {
+  if(process.env.REQUEST_LOGS==="0")return;
+  console.info(JSON.stringify({event:"study_session.idempotency",outcome,requestId:getRequestTrace()?.requestId??null}));
+}
 
 const SOURCE_TYPES = ["manual", "notes", "url", "file"];
 
@@ -57,7 +64,8 @@ export async function createStudySession(input: { title: string; rawMaterial?: s
         && prior.title === input.title?.trim()
         && prior.canonicalTopicId === (input.canonicalTopicId ?? null)
         && prior.canonicalConceptId === (input.canonicalConceptId ?? null);
-      if (!sameIntent) throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED");
+      if (!sameIntent) { logIdempotencyOutcome("payload_conflict"); throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED"); }
+      logIdempotencyOutcome("reconciled");
       return (await recoverPersistedSession(prior))!;
     }
   }
@@ -94,11 +102,12 @@ export async function createStudySession(input: { title: string; rawMaterial?: s
     const existing = await getSessionByIdempotencyKey(input.userId,input.idempotencyKey);
     if (existing) {
       const match = await query<{ id: string }>(`SELECT id FROM study_sessions WHERE id=$1 AND user_id=$2 AND idempotency_request_hash=$3`,[existing.id,input.userId,requestHash]);
-      if (!match.rows[0]) throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED");
+      if (!match.rows[0]) { logIdempotencyOutcome("payload_conflict"); throw new AppError("This recovery key belongs to a different study request. Start a new study session to change its material.",409,"IDEMPOTENCY_KEY_REUSED"); }
+      logIdempotencyOutcome("reconciled");
       return (await recoverPersistedSession(existing))!;
     }
   }
-  const preparedConcepts = await prepareConcepts({ title, rawMaterial });
+  const preparedConcepts = await measurePerformance("study.concept_extraction", () => prepareConcepts({ title, rawMaterial }));
   let session: any;
   let isNew = true;
   if (input.idempotencyKey) {
@@ -109,8 +118,8 @@ export async function createStudySession(input: { title: string; rawMaterial?: s
     session = await createSession(input.userId, request);
   }
   if (!session) throw notFound("Learning material is no longer available", "SOURCE_NOT_FOUND");
-  if (!isNew) return (await recoverPersistedSession(session))!;
-  const concepts = await persistPreparedConcepts({ studySessionId: session.id, concepts: preparedConcepts, userId: input.userId });
+  if (!isNew) { logIdempotencyOutcome("created_after_race"); return (await recoverPersistedSession(session))!; }
+  const concepts = await measurePerformance("study.concept_persistence", () => persistPreparedConcepts({ studySessionId: session.id, concepts: preparedConcepts, userId: input.userId }));
   await recordLearningEvent({ userId: input.userId, type: "STUDY_STARTED", entityType: "StudySession", entityId: session.id, payload: { title } });
   return { session, concepts };
 }

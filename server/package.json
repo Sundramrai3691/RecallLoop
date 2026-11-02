@@ -24,6 +24,7 @@
     "question-bank:seed:dbms": "tsx src/scripts/seedDbmsCoreQuestions.ts",
     "question-bank:coverage": "tsx src/scripts/coreSdeCoverage.ts",
     "benchmark:evaluator:live": "tsx src/scripts/runEvaluatorBenchmark.ts",
+    "performance:baseline": "tsx src/scripts/runPerformanceBaseline.ts",
     "benchmark:annotations": "tsx src/scripts/benchmarkAnnotations.ts",
     "benchmark:annotations:generate": "tsx src/scripts/generateBenchmarkV2.ts",
     "db:import-legacy": "tsx ../scripts/migrate-mongo-to-postgres.ts",

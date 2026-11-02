@@ -1,5 +1,12 @@
 # Project status
 
+## 2026-11-02 Local performance and observability baseline
+
+- Added an opt-in bounded real-API benchmark restricted to the explicitly configured loopback `recallloop` database, disposable learners, and mock/deterministic providers. The comparable run exercised 1,076 requests at concurrency 1/5/10 with zero failures/timeouts; an extended ingestion run exercised 1,094 requests. Per-route structured request telemetry and opt-in bounded metrics omit request bodies, tokens, learner IDs, and source content.
+- Measured and improved dashboard aggregation from five sequential queries to one, and study-session completion from repeated pending-attempt loads (41 pool queries/request) to one pending-attempt read (5 queries/request). At concurrency 10, dashboard p95 improved 52.41→21.52 ms and the full study create/retry/complete/recall flow 620.23→350.14 ms. Readiness p95 regressed 34.07→49.61 ms in the same single local comparison; no speculative index/cache was added.
+- Lazy-loaded route pages reduced the Vite entry bundle from 576.03 kB (174.51 kB gzip) to 429.34 kB (137.70 kB gzip); the complete Edge journey passed afterward. See [Performance Baseline](performance/RECALLLOOP_PERFORMANCE_BASELINE.md) and its raw JSON artifacts for methodology, measurements, and limitations.
+- Validation: `npm.cmd test` passed (38 files / 192 passed / 4 opt-in provider checks skipped); `npm.cmd run test:integration -w server` passed (22/22); `npm.cmd run test:e2e` passed in Edge; `npm.cmd run build` passed; the focused PDF extractor regression passed (10/10); final `git diff --check` passed. No live-provider calls, production capacity claim, commit, or push.
+
 ## 2026-11-01 Independent evaluator benchmark review preparation
 
 - Preserved the v1 benchmark and its proposed labels unchanged. Inspected all 35 cases against a bounded read-only query of the configured local `recallloop` question-bank/taxonomy records: 35 distinct current eligible revisions, exact hashes and mappings matched; zero discrepancies. No learner tables or write operations were involved.

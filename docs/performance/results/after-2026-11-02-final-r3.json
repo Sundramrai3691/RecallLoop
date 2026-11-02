@@ -1,0 +1,3461 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-11-02T11:25:31.937Z",
+  "scope": "local-development-only",
+  "runtime": {
+    "node": "v24.18.0",
+    "platform": "win32",
+    "architecture": "x64",
+    "postgresVersion": "PostgreSQL 16.15 (Debian 16.15-1.pgdg13+2) on x86_64-pc-linux-gnu, compiled by gcc (Debian 14.2.0-19) 14.2.0, 64-bit",
+    "applicationDatabase": "recallloop",
+    "databaseRole": "recallloop",
+    "serverAddress": "172.18.0.2/32",
+    "serverPort": 5432,
+    "poolMax": 10,
+    "providers": {
+      "llm": "mock",
+      "embeddings": "deterministic-local",
+      "remediation": "mock"
+    }
+  },
+  "limits": {
+    "maxRequests": 1200,
+    "maxDurationMs": 120000,
+    "actualRequestCount": 1076,
+    "actualDurationMs": 10269,
+    "requestTimeoutMs": 10000
+  },
+  "workload": {
+    "profile": "matched-before-after",
+    "concurrency": [
+      1,
+      5,
+      10
+    ],
+    "disposableLearners": 10,
+    "readRequestsPerEndpointPerLevel": [
+      10,
+      50,
+      100
+    ],
+    "studyCyclesPerLevel": [
+      1,
+      5,
+      10
+    ],
+    "assessmentFlowsPerLevel": [
+      1,
+      5,
+      10
+    ],
+    "sourceIngestions": "text/markdown 2x concurrency, 2-page PDF and one-paragraph DOCX",
+    "syntheticOnly": true
+  },
+  "apiResults": [
+    {
+      "operation": "dashboard",
+      "concurrency": 1,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 125.41,
+      "throughputPerSecond": 79.74,
+      "errorRate": 0,
+      "p50Ms": 12.24,
+      "p95Ms": 17.84,
+      "p99Ms": null
+    },
+    {
+      "operation": "goal.detail",
+      "concurrency": 1,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 159.75,
+      "throughputPerSecond": 62.6,
+      "errorRate": 0,
+      "p50Ms": 15.84,
+      "p95Ms": 17.12,
+      "p99Ms": null
+    },
+    {
+      "operation": "goal.readiness",
+      "concurrency": 1,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 161.02,
+      "throughputPerSecond": 62.11,
+      "errorRate": 0,
+      "p50Ms": 16.04,
+      "p95Ms": 19.65,
+      "p99Ms": null
+    },
+    {
+      "operation": "recalls.due",
+      "concurrency": 1,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 127.94,
+      "throughputPerSecond": 78.16,
+      "errorRate": 0,
+      "p50Ms": 15.17,
+      "p95Ms": 17.3,
+      "p99Ms": null
+    },
+    {
+      "operation": "learner.summary",
+      "concurrency": 1,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 163.9,
+      "throughputPerSecond": 61.01,
+      "errorRate": 0,
+      "p50Ms": 16.09,
+      "p95Ms": 25.05,
+      "p99Ms": null
+    },
+    {
+      "operation": "dashboard",
+      "concurrency": 5,
+      "totalRequests": 50,
+      "succeeded": 50,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 123.29,
+      "throughputPerSecond": 405.56,
+      "errorRate": 0,
+      "p50Ms": 10.55,
+      "p95Ms": 33.66,
+      "p99Ms": null
+    },
+    {
+      "operation": "goal.detail",
+      "concurrency": 5,
+      "totalRequests": 50,
+      "succeeded": 50,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 77.22,
+      "throughputPerSecond": 647.52,
+      "errorRate": 0,
+      "p50Ms": 7.39,
+      "p95Ms": 9.65,
+      "p99Ms": null
+    },
+    {
+      "operation": "goal.readiness",
+      "concurrency": 5,
+      "totalRequests": 50,
+      "succeeded": 50,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 144.53,
+      "throughputPerSecond": 345.96,
+      "errorRate": 0,
+      "p50Ms": 12.56,
+      "p95Ms": 25.28,
+      "p99Ms": null
+    },
+    {
+      "operation": "recalls.due",
+      "concurrency": 5,
+      "totalRequests": 50,
+      "succeeded": 50,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 80.67,
+      "throughputPerSecond": 619.79,
+      "errorRate": 0,
+      "p50Ms": 7.56,
+      "p95Ms": 10.55,
+      "p99Ms": null
+    },
+    {
+      "operation": "learner.summary",
+      "concurrency": 5,
+      "totalRequests": 50,
+      "succeeded": 50,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 166.76,
+      "throughputPerSecond": 299.83,
+      "errorRate": 0,
+      "p50Ms": 15.83,
+      "p95Ms": 20.9,
+      "p99Ms": null
+    },
+    {
+      "operation": "dashboard",
+      "concurrency": 10,
+      "totalRequests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 186.71,
+      "throughputPerSecond": 535.6,
+      "errorRate": 0,
+      "p50Ms": 16.33,
+      "p95Ms": 21.52,
+      "p99Ms": 69.22
+    },
+    {
+      "operation": "goal.detail",
+      "concurrency": 10,
+      "totalRequests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 188.94,
+      "throughputPerSecond": 529.26,
+      "errorRate": 0,
+      "p50Ms": 17.4,
+      "p95Ms": 28.52,
+      "p99Ms": 30.91
+    },
+    {
+      "operation": "goal.readiness",
+      "concurrency": 10,
+      "totalRequests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 264.11,
+      "throughputPerSecond": 378.63,
+      "errorRate": 0,
+      "p50Ms": 22.88,
+      "p95Ms": 49.61,
+      "p99Ms": 62.22
+    },
+    {
+      "operation": "recalls.due",
+      "concurrency": 10,
+      "totalRequests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 106.74,
+      "throughputPerSecond": 936.85,
+      "errorRate": 0,
+      "p50Ms": 10.55,
+      "p95Ms": 12.84,
+      "p99Ms": 13.95
+    },
+    {
+      "operation": "learner.summary",
+      "concurrency": 10,
+      "totalRequests": 100,
+      "succeeded": 100,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 262.29,
+      "throughputPerSecond": 381.26,
+      "errorRate": 0,
+      "p50Ms": 25.52,
+      "p95Ms": 31.6,
+      "p99Ms": 33.19
+    },
+    {
+      "operation": "study.create-idempotent-complete-recall",
+      "concurrency": 1,
+      "totalRequests": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 97.53,
+      "throughputPerSecond": 10.25,
+      "errorRate": 0,
+      "p50Ms": 97.52,
+      "p95Ms": 97.52,
+      "p99Ms": null
+    },
+    {
+      "operation": "study.create-idempotent-complete-recall",
+      "concurrency": 5,
+      "totalRequests": 5,
+      "succeeded": 5,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 227.36,
+      "throughputPerSecond": 21.99,
+      "errorRate": 0,
+      "p50Ms": 213.17,
+      "p95Ms": 226.87,
+      "p99Ms": null
+    },
+    {
+      "operation": "study.create-idempotent-complete-recall",
+      "concurrency": 10,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 351.68,
+      "throughputPerSecond": 28.43,
+      "errorRate": 0,
+      "p50Ms": 345.41,
+      "p95Ms": 350.14,
+      "p99Ms": null
+    },
+    {
+      "operation": "assessment.rapid-fire-submit",
+      "concurrency": 1,
+      "totalRequests": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 250.95,
+      "throughputPerSecond": 3.98,
+      "errorRate": 0,
+      "p50Ms": 250.94,
+      "p95Ms": 250.94,
+      "p99Ms": null
+    },
+    {
+      "operation": "assessment.rapid-fire-submit",
+      "concurrency": 5,
+      "totalRequests": 5,
+      "succeeded": 5,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 373.5,
+      "throughputPerSecond": 13.39,
+      "errorRate": 0,
+      "p50Ms": 371.27,
+      "p95Ms": 373.12,
+      "p99Ms": null
+    },
+    {
+      "operation": "assessment.rapid-fire-submit",
+      "concurrency": 10,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 766.47,
+      "throughputPerSecond": 13.05,
+      "errorRate": 0,
+      "p50Ms": 751.32,
+      "p95Ms": 766.06,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.text",
+      "concurrency": 1,
+      "totalRequests": 2,
+      "succeeded": 2,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 71.78,
+      "throughputPerSecond": 27.86,
+      "errorRate": 0,
+      "p50Ms": 34.68,
+      "p95Ms": 37.09,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.markdown",
+      "concurrency": 1,
+      "totalRequests": 2,
+      "succeeded": 2,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 71.45,
+      "throughputPerSecond": 27.99,
+      "errorRate": 0,
+      "p50Ms": 35.6,
+      "p95Ms": 35.85,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.pdf.small",
+      "concurrency": 1,
+      "totalRequests": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 122.38,
+      "throughputPerSecond": 8.17,
+      "errorRate": 0,
+      "p50Ms": 122.38,
+      "p95Ms": 122.38,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.docx",
+      "concurrency": 1,
+      "totalRequests": 1,
+      "succeeded": 1,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 74.52,
+      "throughputPerSecond": 13.42,
+      "errorRate": 0,
+      "p50Ms": 74.51,
+      "p95Ms": 74.51,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.text",
+      "concurrency": 5,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 94.14,
+      "throughputPerSecond": 106.23,
+      "errorRate": 0,
+      "p50Ms": 42.94,
+      "p95Ms": 52.74,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.markdown",
+      "concurrency": 5,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 105.36,
+      "throughputPerSecond": 94.91,
+      "errorRate": 0,
+      "p50Ms": 50.03,
+      "p95Ms": 59.85,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.pdf.small",
+      "concurrency": 5,
+      "totalRequests": 5,
+      "succeeded": 5,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 63.03,
+      "throughputPerSecond": 79.33,
+      "errorRate": 0,
+      "p50Ms": 61.59,
+      "p95Ms": 62.39,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.docx",
+      "concurrency": 5,
+      "totalRequests": 5,
+      "succeeded": 5,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 86.21,
+      "throughputPerSecond": 58,
+      "errorRate": 0,
+      "p50Ms": 85.14,
+      "p95Ms": 85.52,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.text",
+      "concurrency": 10,
+      "totalRequests": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 212.73,
+      "throughputPerSecond": 94.02,
+      "errorRate": 0,
+      "p50Ms": 104.67,
+      "p95Ms": 115.17,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.markdown",
+      "concurrency": 10,
+      "totalRequests": 20,
+      "succeeded": 20,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 199.41,
+      "throughputPerSecond": 100.3,
+      "errorRate": 0,
+      "p50Ms": 85.34,
+      "p95Ms": 115.91,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.pdf.small",
+      "concurrency": 10,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 78.73,
+      "throughputPerSecond": 127.02,
+      "errorRate": 0,
+      "p50Ms": 76.76,
+      "p95Ms": 77.34,
+      "p99Ms": null
+    },
+    {
+      "operation": "grounding.docx",
+      "concurrency": 10,
+      "totalRequests": 10,
+      "succeeded": 10,
+      "failed": 0,
+      "timeouts": 0,
+      "errorCategories": {},
+      "durationMs": 156.83,
+      "throughputPerSecond": 63.76,
+      "errorRate": 0,
+      "p50Ms": 154.28,
+      "p95Ms": 155.43,
+      "p99Ms": null
+    }
+  ],
+  "httpStatusCounts": {
+    "200": 912,
+    "201": 154
+  },
+  "requestMetrics": {
+    "POST /api/auth/register": {
+      "sampleCount": 10,
+      "statusCounts": {
+        "201": 10
+      },
+      "durationMs": {
+        "p50": 346.41,
+        "p95": 389.32,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 2,
+        "p95": 2
+      },
+      "poolQueryDurationMs": {
+        "p50": 5.31,
+        "p95": 7.76
+      }
+    },
+    "POST /api/goals/": {
+      "sampleCount": 10,
+      "statusCounts": {
+        "201": 10
+      },
+      "durationMs": {
+        "p50": 6.54,
+        "p95": 8.66,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 0,
+        "p95": 0
+      },
+      "poolQueryDurationMs": {
+        "p50": 0,
+        "p95": 0
+      }
+    },
+    "GET /api/dashboard/": {
+      "sampleCount": 160,
+      "statusCounts": {
+        "200": 160
+      },
+      "durationMs": {
+        "p50": 5.91,
+        "p95": 22.23,
+        "p99": 59.71
+      },
+      "poolQueriesPerRequest": {
+        "p50": 1,
+        "p95": 1
+      },
+      "poolQueryDurationMs": {
+        "p50": 5.34,
+        "p95": 21.69
+      }
+    },
+    "GET /api/goals/:id": {
+      "sampleCount": 160,
+      "statusCounts": {
+        "200": 160
+      },
+      "durationMs": {
+        "p50": 3.95,
+        "p95": 9.6,
+        "p99": 11.63
+      },
+      "poolQueriesPerRequest": {
+        "p50": 1,
+        "p95": 1
+      },
+      "poolQueryDurationMs": {
+        "p50": 3.55,
+        "p95": 8.33
+      }
+    },
+    "GET /api/goals/:goalId/readiness": {
+      "sampleCount": 160,
+      "statusCounts": {
+        "200": 160
+      },
+      "durationMs": {
+        "p50": 13.98,
+        "p95": 33.83,
+        "p99": 48.62
+      },
+      "poolQueriesPerRequest": {
+        "p50": 2,
+        "p95": 2
+      },
+      "poolQueryDurationMs": {
+        "p50": 13.37,
+        "p95": 33.23
+      }
+    },
+    "GET /api/recalls/due": {
+      "sampleCount": 160,
+      "statusCounts": {
+        "200": 160
+      },
+      "durationMs": {
+        "p50": 3.51,
+        "p95": 5.23,
+        "p99": 5.95
+      },
+      "poolQueriesPerRequest": {
+        "p50": 1,
+        "p95": 1
+      },
+      "poolQueryDurationMs": {
+        "p50": 2.93,
+        "p95": 4.7
+      }
+    },
+    "GET /api/learner/summary": {
+      "sampleCount": 160,
+      "statusCounts": {
+        "200": 160
+      },
+      "durationMs": {
+        "p50": 18.13,
+        "p95": 24.31,
+        "p99": 26.24
+      },
+      "poolQueriesPerRequest": {
+        "p50": 6,
+        "p95": 6
+      },
+      "poolQueryDurationMs": {
+        "p50": 17.51,
+        "p95": 23.65
+      }
+    },
+    "POST /api/study-sessions/": {
+      "sampleCount": 32,
+      "statusCounts": {
+        "201": 32
+      },
+      "durationMs": {
+        "p50": 79.17,
+        "p95": 99.98,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 2,
+        "p95": 2
+      },
+      "poolQueryDurationMs": {
+        "p50": 25.16,
+        "p95": 38.51
+      }
+    },
+    "POST /api/study-sessions/:id/complete": {
+      "sampleCount": 16,
+      "statusCounts": {
+        "200": 16
+      },
+      "durationMs": {
+        "p50": 85.81,
+        "p95": 108.73,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 5,
+        "p95": 5
+      },
+      "poolQueryDurationMs": {
+        "p50": 21.51,
+        "p95": 32.34
+      }
+    },
+    "POST /api/recalls/:id/submit": {
+      "sampleCount": 96,
+      "statusCounts": {
+        "200": 96
+      },
+      "durationMs": {
+        "p50": 89.84,
+        "p95": 158.3,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 19,
+        "p95": 19
+      },
+      "poolQueryDurationMs": {
+        "p50": 55.63,
+        "p95": 110.52
+      }
+    },
+    "POST /api/assessments/": {
+      "sampleCount": 16,
+      "statusCounts": {
+        "201": 16
+      },
+      "durationMs": {
+        "p50": 127.79,
+        "p95": 164.66,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 20,
+        "p95": 20
+      },
+      "poolQueryDurationMs": {
+        "p50": 57.22,
+        "p95": 76.66
+      }
+    },
+    "POST /api/grounding/sources": {
+      "sampleCount": 64,
+      "statusCounts": {
+        "201": 64
+      },
+      "durationMs": {
+        "p50": 70.47,
+        "p95": 93.54,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 2,
+        "p95": 2
+      },
+      "poolQueryDurationMs": {
+        "p50": 13.14,
+        "p95": 33.87
+      }
+    },
+    "POST /api/grounding/sources/pdf": {
+      "sampleCount": 16,
+      "statusCounts": {
+        "201": 16
+      },
+      "durationMs": {
+        "p50": 60.19,
+        "p95": 118.57,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 3,
+        "p95": 3
+      },
+      "poolQueryDurationMs": {
+        "p50": 41.87,
+        "p95": 44.01
+      }
+    },
+    "POST /api/grounding/sources/docx": {
+      "sampleCount": 16,
+      "statusCounts": {
+        "201": 16
+      },
+      "durationMs": {
+        "p50": 121.7,
+        "p95": 126.26,
+        "p99": null
+      },
+      "poolQueriesPerRequest": {
+        "p50": 3,
+        "p95": 3
+      },
+      "poolQueryDurationMs": {
+        "p50": 20.37,
+        "p95": 48.16
+      }
+    }
+  },
+  "httpPayloadBytes": {
+    "request": {
+      "POST /goals": {
+        "sampleCount": 10,
+        "p50Ms": 84,
+        "p95Ms": 84,
+        "p99Ms": null
+      },
+      "GET /dashboard/": {
+        "sampleCount": 160,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0
+      },
+      "GET /goals/c1d55e41-d88c-44ac-a5da-cf8e8789f1c5": {
+        "sampleCount": 30,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/c1d55e41-d88c-44ac-a5da-cf8e8789f1c5/readiness": {
+        "sampleCount": 30,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /recalls/due": {
+        "sampleCount": 160,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0
+      },
+      "GET /learner/summary": {
+        "sampleCount": 160,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": 0
+      },
+      "GET /goals/db232316-253e-4eac-b64f-8f9fcc7937a3": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/158c171f-d587-405b-871c-3815cef75af1": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/02f23237-5a9f-45c0-bc64-8db013589d58": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/4ebabd85-5ce1-4dd8-9afc-2536d084a6c6": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/db232316-253e-4eac-b64f-8f9fcc7937a3/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/158c171f-d587-405b-871c-3815cef75af1/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/02f23237-5a9f-45c0-bc64-8db013589d58/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/4ebabd85-5ce1-4dd8-9afc-2536d084a6c6/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/527e4dab-5495-4893-8fa0-ff6b06fd9b71": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/f777b2a3-3ebc-4cbf-928c-6e28bee5ec59": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/5279d460-8c67-4e9d-b913-1bf5bd97c5ed": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/f80e6ca3-eec0-44b8-be6f-77875c6f03b3": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/13ee7c38-4da4-4897-83f7-bc68ce08c1ce": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/527e4dab-5495-4893-8fa0-ff6b06fd9b71/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/f777b2a3-3ebc-4cbf-928c-6e28bee5ec59/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/5279d460-8c67-4e9d-b913-1bf5bd97c5ed/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/f80e6ca3-eec0-44b8-be6f-77875c6f03b3/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "GET /goals/13ee7c38-4da4-4897-83f7-bc68ce08c1ce/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 0,
+        "p95Ms": 0,
+        "p99Ms": null
+      },
+      "POST /study-sessions": {
+        "sampleCount": 32,
+        "p50Ms": 441,
+        "p95Ms": 441,
+        "p99Ms": null
+      },
+      "POST /study-sessions/c9275590-c9f1-4b6e-a17c-5396d719eea4/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /recalls/d34910df-1fc2-4d15-b540-7b9646a33709/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /study-sessions/c5fd5cd3-3028-4ea6-b7fa-c50afb3d408c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/0c24dbf6-8912-4b6b-a427-f128de4b8f19/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/6f279803-ffaf-4b20-aed2-b20053dfe654/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/555d94c6-2d93-458c-b49f-551f52e5280c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/ab95d205-660a-4a54-8dd3-da308980bb8c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /recalls/bf43e3f1-1b3a-4da1-b3a5-c16f7f13e8a1/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/4be106e4-1c28-4bb6-bc4b-d6e52dd389c4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/7d3d1865-9cc2-4b8b-9795-1737b1ba25e6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/f1333a38-fd92-43f5-ae2c-e623f5e33e93/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/76c5b0f6-7e82-4898-88b8-7857f0314e9f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /study-sessions/d4d196a1-50ea-4c4b-90d4-519a15528c8a/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/9319279c-7b25-440f-96ae-f9ea5dc84afa/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/f013e11d-4df2-4dab-a5b5-98ad1a0d2743/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/d11faee6-1a58-4b3c-a454-110b794239a0/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/b845d02a-abe8-4f5d-9205-53cd63eb7c43/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/57b1a92a-692d-4785-b335-c714f99c1cb9/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/4d0c929b-3c86-49b4-b5fc-c6339f9a8054/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/7838a512-96ec-4e42-a055-c67f071c1cb0/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/dc779cf7-7371-405f-86a9-279577b2af4f/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /study-sessions/2f4644ad-80d4-4a6c-8cf7-2c051f33add5/complete": {
+        "sampleCount": 1,
+        "p50Ms": 2,
+        "p95Ms": 2,
+        "p99Ms": null
+      },
+      "POST /recalls/cf51c282-29a2-4107-a148-692e270d89e3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/3d35de6b-1d1b-4507-b6eb-d8fce788d7f8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/6ec8a242-6521-4cbc-a3dc-b4f02e1a6e0e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/cc025241-b8c0-4822-9c82-80698ec6fe02/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/4fb7e2b0-652a-444c-bca3-1c6d48ff5426/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/bab351e4-16cc-4fb0-a394-d0c8e2ab6d30/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/b9072cfd-134b-48e8-80a9-670ea90e483f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/44576707-dd3d-4e0d-9309-26744bebff24/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/299b4593-e0d3-464a-95ac-b4ab2d04c65d/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /recalls/825a806c-04b6-4f28-8fb3-2c52e0683e91/submit": {
+        "sampleCount": 1,
+        "p50Ms": 171,
+        "p95Ms": 171,
+        "p99Ms": null
+      },
+      "POST /assessments": {
+        "sampleCount": 16,
+        "p50Ms": 81,
+        "p95Ms": 81,
+        "p99Ms": null
+      },
+      "POST /recalls/c6f518e0-36cb-48dd-8acd-1001a5559e2b/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/b05814e4-a9bf-456c-a1d3-d6da97cd557e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/54b4cc3c-c67e-4764-a192-f16d900789cb/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/48a3e023-e194-4172-bfc2-7b3fc3a65d48/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/ed95a9b6-75e5-4b9f-83c4-e6946d2ef260/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/564cc816-8846-4269-9646-42eb52f54744/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/6109f70f-aec0-49dc-ac19-8e59ad82b263/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/730525cc-b71c-409a-a630-585525f94587/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/7ebfcf79-69a2-44b3-88b4-a56e1cbe66b6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/45880cd3-c87c-4d71-a831-96d3993e2489/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/b3b158f2-279a-41da-8bb8-e13b017787b1/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/304e048a-a47c-49ce-8ab1-6f7f18674f2c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/bd42cdfa-108f-4418-8141-007d0e59f7bf/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/73a66ee2-0a11-4657-8072-bc92990b6189/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/ea8c8a92-7d42-4d7e-bac7-725888779997/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/89b76273-2d62-45bc-a3c6-e3360f69ba39/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/8aece922-b536-4e3e-99b4-3747503874c2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/ecb31b37-8f29-47a5-9e50-b4350e2e1cb5/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/beef7676-f9d8-45f0-ae2a-e31577cffed8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/066041a8-8535-4d60-8040-fb0accfc60c3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/7d9f3c7e-6ce7-4870-ae89-c0ae3503d011/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/725a0adb-9d85-405d-998b-fa1b82662fc6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/d7fb466b-d40c-4965-b7f3-df4eaf632771/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/eb4b7a9e-a09e-4419-9681-52517efb2676/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/e2244cd4-4394-488c-b081-7ae1aa0717af/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/17aafc91-0fcd-443f-925b-3770c7aa8246/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/38c172a7-60bf-4e78-968a-f27387695785/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/a74a9d3e-6986-43ae-972d-f3c1a1e90d07/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/60301fed-8069-42a5-a1a2-f5e2d5fbefc0/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/b7c4403b-679f-47d5-93c0-99b9aa8b0b9b/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/7d795d55-ac3f-45e8-bf42-afcf34bb5108/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/9e021587-76d6-4e04-8b7b-8b1abda6c2f4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/f74416bd-2a78-4e75-8141-e0f4804791aa/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/584ce916-999a-44b8-a152-8761731c7cef/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/043898c1-d153-46b7-8879-278dfdf19ae2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/878cc930-b6e1-45cb-a4fc-9c87fad970de/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/ac6a972a-0fec-40f5-a8a6-a93e7616faaa/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/d4d2d87e-fdf2-4618-a8ae-b91fb53945f2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/c816f497-3635-4381-ac0a-92f0789d59a3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/f7a710c0-df26-401b-9e8f-1c1f0b66d292/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/9327071e-0e51-4e00-bb84-daee47e93b5c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/152aa70c-4227-4d7e-94ae-18908246fa82/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/db0287a8-c864-4537-b386-23f7d77945b8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/7a0ac90e-8194-40af-96f4-5f03711bce4d/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/b999c3cb-9ae5-42c9-b8b4-6fed31ebff4e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/257486fd-b000-42e6-b1dd-242273de1aed/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/5224f2a2-21b3-449f-a316-199c4b640b6f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/b7defaca-34f3-4755-ac67-7b58bc9a9f01/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/74fdabed-cfae-484d-8a82-3a339e038ef0/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/18e98962-d95f-42cb-a942-9aed0cfa6a85/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/cc5d74bd-3e7b-4038-87c4-09c314c35a8e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/0d5baad8-f882-413f-b672-23f3c55c3a37/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/d1a9e8f7-d074-4026-879b-cbe4f684f3f2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/6c17b42c-9a93-4308-9299-771ab2d63621/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/64fd94cb-f73c-4306-8669-039244c44516/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/457c1368-8040-4258-a6b2-5dbaac7f7ee2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/a6cd5c63-4c51-42ad-adb3-a7b27576b7ec/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/c5421fc9-e85c-4332-bfd7-6f75c8696ee8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/6ec022cc-86dc-4396-aee0-7d9abcecdfae/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/14b5cda7-ac2f-4f46-93bf-73577ea6aa68/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/3d62810d-fb1a-4d1f-adb2-d043ecb4609c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/bf0f9900-b643-4167-9c3e-73c2824adebd/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/c2b53417-c82f-4f7d-accc-55a7a9b33aed/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/01daab9f-cef0-4db0-bb06-647d207c779f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/b9a02bca-da30-41ae-8e7b-e7ae6f515327/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/92dff3da-dcf6-4ed4-9574-141ca3a272bd/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/8c905d6a-ce2b-4fd3-acd4-ae9f7bfa50a4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/fd51c303-08b4-4bde-ba68-d7666c90beb5/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/18a32b6b-5cb5-48e2-988e-d10fe57e9050/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/cb036b3b-bfb9-43be-85d7-ca1692619900/submit": {
+        "sampleCount": 1,
+        "p50Ms": 149,
+        "p95Ms": 149,
+        "p99Ms": null
+      },
+      "POST /recalls/5f5fb987-38a7-4aab-9bc5-fb374b22e914/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/d19aa95f-8a12-4a4e-a609-81d0c529f703/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/facb85f0-801d-4f29-92a3-1933af93628e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/04d85779-ff1f-4948-85e9-bfa88efaf1e9/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/4dc26a29-7a11-423b-b43f-1c8244c28992/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/487d8d36-c828-46ca-9280-47a17eba3ecb/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/02ec7576-0af3-4423-9226-163bc447600c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/f4b80393-ecf4-449b-ace3-e3e8d1b8ea8c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/5435b4e4-3dbb-4c4d-8878-75c9d486ec57/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /recalls/e7a44202-3be3-4b60-8222-40e6a4e02656/submit": {
+        "sampleCount": 1,
+        "p50Ms": 45,
+        "p95Ms": 45,
+        "p99Ms": null
+      },
+      "POST /grounding/sources": {
+        "sampleCount": 64,
+        "p50Ms": 8063,
+        "p95Ms": 8075,
+        "p99Ms": null
+      },
+      "POST /grounding/sources/pdf": {
+        "sampleCount": 16,
+        "p50Ms": 1499,
+        "p95Ms": 1499,
+        "p99Ms": null
+      },
+      "POST /grounding/sources/docx": {
+        "sampleCount": 16,
+        "p50Ms": 1439,
+        "p95Ms": 1440,
+        "p99Ms": null
+      }
+    },
+    "response": {
+      "POST /goals": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /dashboard/": {
+        "sampleCount": 160,
+        "p50Ms": 268,
+        "p95Ms": 268,
+        "p99Ms": 268
+      },
+      "GET /goals/c1d55e41-d88c-44ac-a5da-cf8e8789f1c5": {
+        "sampleCount": 30,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/c1d55e41-d88c-44ac-a5da-cf8e8789f1c5/readiness": {
+        "sampleCount": 30,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /recalls/due": {
+        "sampleCount": 160,
+        "p50Ms": 14,
+        "p95Ms": 14,
+        "p99Ms": 14
+      },
+      "GET /learner/summary": {
+        "sampleCount": 160,
+        "p50Ms": 391,
+        "p95Ms": 391,
+        "p99Ms": 391
+      },
+      "GET /goals/db232316-253e-4eac-b64f-8f9fcc7937a3": {
+        "sampleCount": 20,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/158c171f-d587-405b-871c-3815cef75af1": {
+        "sampleCount": 20,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/02f23237-5a9f-45c0-bc64-8db013589d58": {
+        "sampleCount": 20,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/4ebabd85-5ce1-4dd8-9afc-2536d084a6c6": {
+        "sampleCount": 20,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/158c171f-d587-405b-871c-3815cef75af1/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/4ebabd85-5ce1-4dd8-9afc-2536d084a6c6/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/db232316-253e-4eac-b64f-8f9fcc7937a3/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/02f23237-5a9f-45c0-bc64-8db013589d58/readiness": {
+        "sampleCount": 20,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/527e4dab-5495-4893-8fa0-ff6b06fd9b71": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/f777b2a3-3ebc-4cbf-928c-6e28bee5ec59": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/5279d460-8c67-4e9d-b913-1bf5bd97c5ed": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/f80e6ca3-eec0-44b8-be6f-77875c6f03b3": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/13ee7c38-4da4-4897-83f7-bc68ce08c1ce": {
+        "sampleCount": 10,
+        "p50Ms": 346,
+        "p95Ms": 346,
+        "p99Ms": null
+      },
+      "GET /goals/527e4dab-5495-4893-8fa0-ff6b06fd9b71/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/13ee7c38-4da4-4897-83f7-bc68ce08c1ce/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/f80e6ca3-eec0-44b8-be6f-77875c6f03b3/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/f777b2a3-3ebc-4cbf-928c-6e28bee5ec59/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "GET /goals/5279d460-8c67-4e9d-b913-1bf5bd97c5ed/readiness": {
+        "sampleCount": 10,
+        "p50Ms": 307,
+        "p95Ms": 307,
+        "p99Ms": null
+      },
+      "POST /study-sessions": {
+        "sampleCount": 32,
+        "p50Ms": 2313,
+        "p95Ms": 2313,
+        "p99Ms": null
+      },
+      "POST /study-sessions/c9275590-c9f1-4b6e-a17c-5396d719eea4/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /recalls/d34910df-1fc2-4d15-b540-7b9646a33709/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /study-sessions/0c24dbf6-8912-4b6b-a427-f128de4b8f19/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/6f279803-ffaf-4b20-aed2-b20053dfe654/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/c5fd5cd3-3028-4ea6-b7fa-c50afb3d408c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/ab95d205-660a-4a54-8dd3-da308980bb8c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/555d94c6-2d93-458c-b49f-551f52e5280c/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /recalls/bf43e3f1-1b3a-4da1-b3a5-c16f7f13e8a1/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/4be106e4-1c28-4bb6-bc4b-d6e52dd389c4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/f1333a38-fd92-43f5-ae2c-e623f5e33e93/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/7d3d1865-9cc2-4b8b-9795-1737b1ba25e6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/76c5b0f6-7e82-4898-88b8-7857f0314e9f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /study-sessions/f013e11d-4df2-4dab-a5b5-98ad1a0d2743/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/d11faee6-1a58-4b3c-a454-110b794239a0/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/57b1a92a-692d-4785-b335-c714f99c1cb9/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/2f4644ad-80d4-4a6c-8cf7-2c051f33add5/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/4d0c929b-3c86-49b4-b5fc-c6339f9a8054/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/d4d196a1-50ea-4c4b-90d4-519a15528c8a/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/b845d02a-abe8-4f5d-9205-53cd63eb7c43/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/9319279c-7b25-440f-96ae-f9ea5dc84afa/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/dc779cf7-7371-405f-86a9-279577b2af4f/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /study-sessions/7838a512-96ec-4e42-a055-c67f071c1cb0/complete": {
+        "sampleCount": 1,
+        "p50Ms": 5910,
+        "p95Ms": 5910,
+        "p99Ms": null
+      },
+      "POST /recalls/3d35de6b-1d1b-4507-b6eb-d8fce788d7f8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/cf51c282-29a2-4107-a148-692e270d89e3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/bab351e4-16cc-4fb0-a394-d0c8e2ab6d30/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/b9072cfd-134b-48e8-80a9-670ea90e483f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/6ec8a242-6521-4cbc-a3dc-b4f02e1a6e0e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/299b4593-e0d3-464a-95ac-b4ab2d04c65d/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/44576707-dd3d-4e0d-9309-26744bebff24/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/cc025241-b8c0-4822-9c82-80698ec6fe02/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/4fb7e2b0-652a-444c-bca3-1c6d48ff5426/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /recalls/825a806c-04b6-4f28-8fb3-2c52e0683e91/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3147,
+        "p95Ms": 3147,
+        "p99Ms": null
+      },
+      "POST /assessments": {
+        "sampleCount": 16,
+        "p50Ms": 9267,
+        "p95Ms": 9267,
+        "p99Ms": null
+      },
+      "POST /recalls/c6f518e0-36cb-48dd-8acd-1001a5559e2b/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/b05814e4-a9bf-456c-a1d3-d6da97cd557e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/54b4cc3c-c67e-4764-a192-f16d900789cb/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/48a3e023-e194-4172-bfc2-7b3fc3a65d48/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/ed95a9b6-75e5-4b9f-83c4-e6946d2ef260/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/564cc816-8846-4269-9646-42eb52f54744/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4351,
+        "p95Ms": 4351,
+        "p99Ms": null
+      },
+      "POST /recalls/730525cc-b71c-409a-a630-585525f94587/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/6109f70f-aec0-49dc-ac19-8e59ad82b263/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/7ebfcf79-69a2-44b3-88b4-a56e1cbe66b6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/45880cd3-c87c-4d71-a831-96d3993e2489/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/b3b158f2-279a-41da-8bb8-e13b017787b1/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3539,
+        "p95Ms": 3539,
+        "p99Ms": null
+      },
+      "POST /recalls/bd42cdfa-108f-4418-8141-007d0e59f7bf/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/73a66ee2-0a11-4657-8072-bc92990b6189/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/304e048a-a47c-49ce-8ab1-6f7f18674f2c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/ea8c8a92-7d42-4d7e-bac7-725888779997/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/89b76273-2d62-45bc-a3c6-e3360f69ba39/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3659,
+        "p95Ms": 3659,
+        "p99Ms": null
+      },
+      "POST /recalls/ecb31b37-8f29-47a5-9e50-b4350e2e1cb5/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/8aece922-b536-4e3e-99b4-3747503874c2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/beef7676-f9d8-45f0-ae2a-e31577cffed8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/066041a8-8535-4d60-8040-fb0accfc60c3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/7d9f3c7e-6ce7-4870-ae89-c0ae3503d011/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3587,
+        "p95Ms": 3587,
+        "p99Ms": null
+      },
+      "POST /recalls/725a0adb-9d85-405d-998b-fa1b82662fc6/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/d7fb466b-d40c-4965-b7f3-df4eaf632771/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/eb4b7a9e-a09e-4419-9681-52517efb2676/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/e2244cd4-4394-488c-b081-7ae1aa0717af/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/17aafc91-0fcd-443f-925b-3770c7aa8246/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3783,
+        "p95Ms": 3783,
+        "p99Ms": null
+      },
+      "POST /recalls/38c172a7-60bf-4e78-968a-f27387695785/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/a74a9d3e-6986-43ae-972d-f3c1a1e90d07/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/60301fed-8069-42a5-a1a2-f5e2d5fbefc0/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/b7c4403b-679f-47d5-93c0-99b9aa8b0b9b/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/584ce916-999a-44b8-a152-8761731c7cef/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/878cc930-b6e1-45cb-a4fc-9c87fad970de/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/f74416bd-2a78-4e75-8141-e0f4804791aa/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/7d795d55-ac3f-45e8-bf42-afcf34bb5108/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4351,
+        "p95Ms": 4351,
+        "p99Ms": null
+      },
+      "POST /recalls/9e021587-76d6-4e04-8b7b-8b1abda6c2f4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/043898c1-d153-46b7-8879-278dfdf19ae2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/ac6a972a-0fec-40f5-a8a6-a93e7616faaa/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4351,
+        "p95Ms": 4351,
+        "p99Ms": null
+      },
+      "POST /recalls/d4d2d87e-fdf2-4618-a8ae-b91fb53945f2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4351,
+        "p95Ms": 4351,
+        "p99Ms": null
+      },
+      "POST /recalls/c816f497-3635-4381-ac0a-92f0789d59a3/submit": {
+        "sampleCount": 1,
+        "p50Ms": 5130,
+        "p95Ms": 5130,
+        "p99Ms": null
+      },
+      "POST /recalls/f7a710c0-df26-401b-9e8f-1c1f0b66d292/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4351,
+        "p95Ms": 4351,
+        "p99Ms": null
+      },
+      "POST /recalls/9327071e-0e51-4e00-bb84-daee47e93b5c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/152aa70c-4227-4d7e-94ae-18908246fa82/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/b999c3cb-9ae5-42c9-b8b4-6fed31ebff4e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/b7defaca-34f3-4755-ac67-7b58bc9a9f01/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3539,
+        "p95Ms": 3539,
+        "p99Ms": null
+      },
+      "POST /recalls/7a0ac90e-8194-40af-96f4-5f03711bce4d/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3539,
+        "p95Ms": 3539,
+        "p99Ms": null
+      },
+      "POST /recalls/db0287a8-c864-4537-b386-23f7d77945b8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/257486fd-b000-42e6-b1dd-242273de1aed/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/18e98962-d95f-42cb-a942-9aed0cfa6a85/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3539,
+        "p95Ms": 3539,
+        "p99Ms": null
+      },
+      "POST /recalls/5224f2a2-21b3-449f-a316-199c4b640b6f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3539,
+        "p95Ms": 3539,
+        "p99Ms": null
+      },
+      "POST /recalls/74fdabed-cfae-484d-8a82-3a339e038ef0/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3840,
+        "p95Ms": 3840,
+        "p99Ms": null
+      },
+      "POST /recalls/cc5d74bd-3e7b-4038-87c4-09c314c35a8e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/0d5baad8-f882-413f-b672-23f3c55c3a37/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/d1a9e8f7-d074-4026-879b-cbe4f684f3f2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/6c17b42c-9a93-4308-9299-771ab2d63621/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3659,
+        "p95Ms": 3659,
+        "p99Ms": null
+      },
+      "POST /recalls/a6cd5c63-4c51-42ad-adb3-a7b27576b7ec/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/64fd94cb-f73c-4306-8669-039244c44516/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3659,
+        "p95Ms": 3659,
+        "p99Ms": null
+      },
+      "POST /recalls/457c1368-8040-4258-a6b2-5dbaac7f7ee2/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/c5421fc9-e85c-4332-bfd7-6f75c8696ee8/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3659,
+        "p95Ms": 3659,
+        "p99Ms": null
+      },
+      "POST /recalls/14b5cda7-ac2f-4f46-93bf-73577ea6aa68/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4296,
+        "p95Ms": 4296,
+        "p99Ms": null
+      },
+      "POST /recalls/6ec022cc-86dc-4396-aee0-7d9abcecdfae/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3659,
+        "p95Ms": 3659,
+        "p99Ms": null
+      },
+      "POST /recalls/3d62810d-fb1a-4d1f-adb2-d043ecb4609c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/c2b53417-c82f-4f7d-accc-55a7a9b33aed/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/bf0f9900-b643-4167-9c3e-73c2824adebd/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/01daab9f-cef0-4db0-bb06-647d207c779f/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3587,
+        "p95Ms": 3587,
+        "p99Ms": null
+      },
+      "POST /recalls/b9a02bca-da30-41ae-8e7b-e7ae6f515327/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/92dff3da-dcf6-4ed4-9574-141ca3a272bd/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3587,
+        "p95Ms": 3587,
+        "p99Ms": null
+      },
+      "POST /recalls/8c905d6a-ce2b-4fd3-acd4-ae9f7bfa50a4/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/fd51c303-08b4-4bde-ba68-d7666c90beb5/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3587,
+        "p95Ms": 3587,
+        "p99Ms": null
+      },
+      "POST /recalls/18a32b6b-5cb5-48e2-988e-d10fe57e9050/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3625,
+        "p95Ms": 3625,
+        "p99Ms": null
+      },
+      "POST /recalls/cb036b3b-bfb9-43be-85d7-ca1692619900/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3587,
+        "p95Ms": 3587,
+        "p99Ms": null
+      },
+      "POST /recalls/d19aa95f-8a12-4a4e-a609-81d0c529f703/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/5f5fb987-38a7-4aab-9bc5-fb374b22e914/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/04d85779-ff1f-4948-85e9-bfa88efaf1e9/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3783,
+        "p95Ms": 3783,
+        "p99Ms": null
+      },
+      "POST /recalls/facb85f0-801d-4f29-92a3-1933af93628e/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/02ec7576-0af3-4423-9226-163bc447600c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/487d8d36-c828-46ca-9280-47a17eba3ecb/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3783,
+        "p95Ms": 3783,
+        "p99Ms": null
+      },
+      "POST /recalls/4dc26a29-7a11-423b-b43f-1c8244c28992/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/f4b80393-ecf4-449b-ace3-e3e8d1b8ea8c/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3783,
+        "p95Ms": 3783,
+        "p99Ms": null
+      },
+      "POST /recalls/5435b4e4-3dbb-4c4d-8878-75c9d486ec57/submit": {
+        "sampleCount": 1,
+        "p50Ms": 4154,
+        "p95Ms": 4154,
+        "p99Ms": null
+      },
+      "POST /recalls/e7a44202-3be3-4b60-8222-40e6a4e02656/submit": {
+        "sampleCount": 1,
+        "p50Ms": 3783,
+        "p95Ms": 3783,
+        "p99Ms": null
+      },
+      "POST /grounding/sources": {
+        "sampleCount": 64,
+        "p50Ms": 8446,
+        "p95Ms": 8458,
+        "p99Ms": null
+      },
+      "POST /grounding/sources/pdf": {
+        "sampleCount": 16,
+        "p50Ms": 1310,
+        "p95Ms": 1310,
+        "p99Ms": null
+      },
+      "POST /grounding/sources/docx": {
+        "sampleCount": 16,
+        "p50Ms": 962,
+        "p95Ms": 962,
+        "p99Ms": null
+      }
+    }
+  },
+  "ingestionSamples": [
+    {
+      "format": "text",
+      "concurrency": 1,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 1,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 1,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 1,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 1,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "docx",
+      "concurrency": 1,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 5,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 5,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 5,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 5,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 5,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 5,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 5,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "docx",
+      "concurrency": 5,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 5,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 5,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 5,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 5,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8062,
+      "extractedCharacters": 7972,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "text",
+      "concurrency": 10,
+      "inputBytes": 8063,
+      "extractedCharacters": 7973,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8074,
+      "extractedCharacters": 7976,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "markdown",
+      "concurrency": 10,
+      "inputBytes": 8075,
+      "extractedCharacters": 7977,
+      "chunkCount": 8
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "pdf.small",
+      "concurrency": 10,
+      "inputBytes": 1499,
+      "extractedCharacters": 596,
+      "chunkCount": 2
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1440,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1439,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    },
+    {
+      "format": "docx",
+      "concurrency": 10,
+      "inputBytes": 1438,
+      "extractedCharacters": 301,
+      "chunkCount": 1
+    }
+  ],
+  "databasePlans": [
+    {
+      "name": "dashboard.due",
+      "nodes": {
+        "planningTimeMs": 0.134,
+        "executionTimeMs": 0.054,
+        "plan": {
+          "nodeType": "Nested Loop",
+          "relation": null,
+          "index": null,
+          "estimatedRows": 1,
+          "actualRows": 6,
+          "loops": 1,
+          "sharedHitBlocks": 44,
+          "sharedReadBlocks": 0,
+          "children": [
+            {
+              "nodeType": "Index Scan",
+              "relation": "review_states",
+              "index": "idx_review_due",
+              "estimatedRows": 1,
+              "actualRows": 6,
+              "loops": 1,
+              "sharedHitBlocks": 2,
+              "sharedReadBlocks": 0,
+              "children": []
+            },
+            {
+              "nodeType": "Index Scan",
+              "relation": "recall_attempts",
+              "index": "idx_recall_history_window",
+              "estimatedRows": 1,
+              "actualRows": 6,
+              "loops": 6,
+              "sharedHitBlocks": 42,
+              "sharedReadBlocks": 0,
+              "children": []
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "session.idempotency",
+      "nodes": {
+        "planningTimeMs": 0.072,
+        "executionTimeMs": 0.025,
+        "plan": {
+          "nodeType": "Index Scan",
+          "relation": "study_sessions",
+          "index": "idx_study_sessions_user_idempotency_key",
+          "estimatedRows": 1,
+          "actualRows": 0,
+          "loops": 1,
+          "sharedHitBlocks": 1,
+          "sharedReadBlocks": 0,
+          "children": []
+        }
+      }
+    },
+    {
+      "name": "readiness.latest",
+      "nodes": {
+        "planningTimeMs": 0.35,
+        "executionTimeMs": 0.155,
+        "plan": {
+          "nodeType": "Unique",
+          "relation": null,
+          "index": null,
+          "estimatedRows": 1,
+          "actualRows": 2,
+          "loops": 1,
+          "sharedHitBlocks": 81,
+          "sharedReadBlocks": 0,
+          "children": [
+            {
+              "nodeType": "Sort",
+              "relation": null,
+              "index": null,
+              "estimatedRows": 1,
+              "actualRows": 15,
+              "loops": 1,
+              "sharedHitBlocks": 81,
+              "sharedReadBlocks": 0,
+              "children": [
+                {
+                  "nodeType": "Hash Join",
+                  "relation": null,
+                  "index": null,
+                  "estimatedRows": 1,
+                  "actualRows": 15,
+                  "loops": 1,
+                  "sharedHitBlocks": 81,
+                  "sharedReadBlocks": 0,
+                  "children": [
+                    {
+                      "nodeType": "Index Scan",
+                      "relation": "recall_knowledge_point_results",
+                      "index": "idx_recall_point_results_canonical",
+                      "estimatedRows": 90,
+                      "actualRows": 85,
+                      "loops": 1,
+                      "sharedHitBlocks": 38,
+                      "sharedReadBlocks": 0,
+                      "children": []
+                    },
+                    {
+                      "nodeType": "Hash",
+                      "relation": null,
+                      "index": null,
+                      "estimatedRows": 1,
+                      "actualRows": 18,
+                      "loops": 1,
+                      "sharedHitBlocks": 43,
+                      "sharedReadBlocks": 0,
+                      "children": [
+                        {
+                          "nodeType": "Nested Loop",
+                          "relation": null,
+                          "index": null,
+                          "estimatedRows": 1,
+                          "actualRows": 18,
+                          "loops": 1,
+                          "sharedHitBlocks": 43,
+                          "sharedReadBlocks": 0,
+                          "children": [
+                            {
+                              "nodeType": "Index Scan",
+                              "relation": "recall_attempts",
+                              "index": "idx_recall_history_window",
+                              "estimatedRows": 1,
+                              "actualRows": 18,
+                              "loops": 1,
+                              "sharedHitBlocks": 7,
+                              "sharedReadBlocks": 0,
+                              "children": []
+                            },
+                            {
+                              "nodeType": "Index Scan",
+                              "relation": "recall_evaluations",
+                              "index": "recall_evaluations_recall_attempt_id_key",
+                              "estimatedRows": 1,
+                              "actualRows": 1,
+                              "loops": 18,
+                              "sharedHitBlocks": 36,
+                              "sharedReadBlocks": 0,
+                              "children": []
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "applicationMetrics": {
+    "db.pool_query": {
+      "sampleCount": 4292,
+      "p50Ms": 2.87,
+      "p95Ms": 10.57,
+      "p99Ms": 23.01
+    },
+    "db.transaction": {
+      "sampleCount": 298,
+      "p50Ms": 32.33,
+      "p95Ms": 75.82,
+      "p99Ms": 96.28
+    },
+    "study.concept_extraction": {
+      "sampleCount": 32,
+      "p50Ms": 0.1,
+      "p95Ms": 1.55,
+      "p99Ms": null
+    },
+    "study.concept_persistence": {
+      "sampleCount": 16,
+      "p50Ms": 28.29,
+      "p95Ms": 57.45,
+      "p99Ms": null
+    },
+    "grounding.text.chunking": {
+      "sampleCount": 64,
+      "p50Ms": 0.12,
+      "p95Ms": 0.27,
+      "p99Ms": null
+    },
+    "grounding.text.embedding": {
+      "sampleCount": 64,
+      "p50Ms": 2.43,
+      "p95Ms": 4.67,
+      "p99Ms": null
+    },
+    "grounding.text.persist": {
+      "sampleCount": 64,
+      "p50Ms": 48.27,
+      "p95Ms": 78.44,
+      "p99Ms": null
+    },
+    "grounding.pdf.extraction": {
+      "sampleCount": 16,
+      "p50Ms": 3.37,
+      "p95Ms": 103.16,
+      "p99Ms": null
+    },
+    "grounding.pdf.chunking": {
+      "sampleCount": 16,
+      "p50Ms": 0.03,
+      "p95Ms": 0.53,
+      "p99Ms": null
+    },
+    "grounding.pdf.embedding": {
+      "sampleCount": 16,
+      "p50Ms": 0.19,
+      "p95Ms": 0.46,
+      "p99Ms": null
+    },
+    "grounding.pdf.persist": {
+      "sampleCount": 16,
+      "p50Ms": 16.49,
+      "p95Ms": 18.15,
+      "p99Ms": null
+    },
+    "grounding.docx.extraction": {
+      "sampleCount": 16,
+      "p50Ms": 50.04,
+      "p95Ms": 98.67,
+      "p99Ms": null
+    },
+    "grounding.docx.content_persist": {
+      "sampleCount": 16,
+      "p50Ms": 12.83,
+      "p95Ms": 40.33,
+      "p99Ms": null
+    },
+    "grounding.docx.chunking": {
+      "sampleCount": 16,
+      "p50Ms": 0.07,
+      "p95Ms": 0.27,
+      "p99Ms": null
+    },
+    "grounding.docx.embedding": {
+      "sampleCount": 16,
+      "p50Ms": 0.09,
+      "p95Ms": 0.29,
+      "p99Ms": null
+    },
+    "grounding.docx.persist": {
+      "sampleCount": 16,
+      "p50Ms": 16.04,
+      "p95Ms": 49.42,
+      "p99Ms": null
+    }
+  },
+  "memory": {
+    "rssBeforeBytes": 104382464,
+    "rssAfterBytes": 218873856,
+    "heapUsedAfterBytes": 75283480
+  },
+  "providerLatencyMeasured": false,
+  "productionCapacityClaim": false
+}

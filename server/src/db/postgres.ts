@@ -3,26 +3,35 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { env } from "../config/env.js";
+import { performance } from "node:perf_hooks";
+import { recordPoolQuery } from "../observability/requestContext.js";
+import { measurePerformance } from "../observability/performanceMetrics.js";
+import { getRequestTrace } from "../observability/requestContext.js";
 
 export const postgres = new Pool({ connectionString: env.databaseUrl, max: 10 });
 
 export async function query<T extends QueryResultRow = QueryResultRow>(text: string, values: unknown[] = []) {
-  return postgres.query<T>(text, values);
+  return measurePerformance("db.pool_query", async () => {
+    const started = performance.now();
+    try { return await postgres.query<T>(text, values); }
+    finally { recordPoolQuery(performance.now() - started); }
+  });
 }
 
 export async function withTransaction<T>(work: (client: PoolClient) => Promise<T>) {
-  const client = await postgres.connect();
-  try {
-    await client.query("BEGIN");
-    const result = await work(client);
-    await client.query("COMMIT");
-    return result;
-  } catch (error) {
-    await client.query("ROLLBACK");
-    throw error;
-  } finally {
-    client.release();
-  }
+  return measurePerformance("db.transaction", async () => {
+    const client = await postgres.connect();
+    try {
+      await client.query("BEGIN");
+      const result = await work(client);
+      await client.query("COMMIT");
+      return result;
+    } catch (error) {
+      if (process.env.REQUEST_LOGS !== "0") console.error(JSON.stringify({ event: "db.transaction_rollback", requestId: getRequestTrace()?.requestId ?? null }));
+      await client.query("ROLLBACK");
+      throw error;
+    } finally { client.release(); }
+  });
 }
 
 export async function runPostgresMigration() {

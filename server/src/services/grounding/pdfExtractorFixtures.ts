@@ -6,8 +6,8 @@ export function makePdf(pageTexts:string[]):Buffer {
   pageTexts.forEach((text,index)=>{
     const pageId=pageIds[index]; const contentId=pageId+1;
     objects[pageId]=`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${pageIds.length*2+3} 0 R >> >> /Contents ${contentId} 0 R >>`;
-    const escaped=text.replace(/([\\()])/g,"\\$1");
-    const stream=text?`BT /F1 12 Tf 72 720 Td (${escaped}) Tj ET`:"";
+    const textRuns=Array.from({length:Math.ceil(text.length/80)},(_,run)=>text.slice(run*80,(run+1)*80).replace(/([\\()])/g,"\\$1"));
+    const stream=text?`BT /F1 12 Tf 72 720 Td ${textRuns.map((run)=>`(${run}) Tj`).join(" 0 -14 Td ")} ET`:"";
     objects[contentId]=`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`;
   });
   objects[pageIds.length*2+3]="<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>";

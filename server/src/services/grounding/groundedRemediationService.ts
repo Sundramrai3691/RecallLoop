@@ -10,10 +10,19 @@ import { significantTokens } from "../../lib/llm/json.js";
 import { fetchPublicArticle } from "./webArticleExtractor.js";
 import { extractPdfPages, MAX_PDF_BYTES } from "./pdfExtractor.js";
 import { extractDocx, MAX_DOCX_BYTES } from "./docxExtractor.js";
+import { measurePerformance, measureSyncPerformance } from "../../observability/performanceMetrics.js";
+import { getRequestTrace } from "../../observability/requestContext.js";
 
 const MAX_SOURCE_CHARS=250_000;
 const MIN_RELEVANCE=0.22;
 const scoreForStatus=(status:string)=>status==="correct"?1:status==="partial"?0.5:0;
+
+function logIngestionFailure(format:"text"|"pdf"|"docx",error:unknown):void {
+  if(process.env.REQUEST_LOGS==="0")return;
+  const candidate=error as {code?:unknown};
+  const code=typeof candidate?.code==="string"&&/^[A-Z0-9_]{1,64}$/.test(candidate.code)?candidate.code:"INGESTION_FAILED";
+  console.warn(JSON.stringify({event:"grounding.ingestion_failure",format,code,requestId:getRequestTrace()?.requestId??null}));
+}
 
 export async function ingestGroundingSource(userId:string,input:{title?:string;text?:string;sourceType?:string;reference?:string;url?:string;provenance?:Record<string,unknown>;resourceId?:string},options:{embeddingProvider?:EmbeddingProvider;articleFetcher?:typeof fetchPublicArticle}={}) {
   const sourceType=input.sourceType??"text";
@@ -39,16 +48,17 @@ export async function ingestGroundingSource(userId:string,input:{title?:string;t
   if(document.duplicate&&document.processingStatus==="processed")return {...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
   try {
     if(input.resourceId){const resource=await query(`SELECT 1 FROM resources WHERE id=$1`,[input.resourceId]);if(!resource.rowCount)throw notFound("Resource not found","RESOURCE_NOT_FOUND");await query(`UPDATE grounding_sources SET resource_id=$3 WHERE id=$1 AND user_id=$2`,[document.id,userId,input.resourceId]);}
-    const chunks=chunkText(document.id,contentHash,text);
+    const chunks=measureSyncPerformance("grounding.text.chunking",()=>chunkText(document.id,contentHash,text));
     if(!chunks.length)throw new AppError("No text could be parsed from this source",400,"EMPTY_SOURCE");
     const provider=options.embeddingProvider??createEmbeddingProvider();
-    const vectors=await provider.embed(chunks.map((chunk)=>chunk.text));
+    const vectors=await measurePerformance("grounding.text.embedding",()=>provider.embed(chunks.map((chunk)=>chunk.text)));
     if(vectors.length!==chunks.length||vectors.some((vector)=>!vector.length||vector.some((value)=>!Number.isFinite(value))))throw new AppError("Embedding provider returned missing or invalid vectors",503,"EMBEDDING_INVALID_RESPONSE");
     const dimensions=vectors[0].length;
     if(vectors.some((vector)=>vector.length!==dimensions))throw new AppError("Embedding provider returned inconsistent vector dimensions",503,"EMBEDDING_INVALID_RESPONSE");
-    const processed=await finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider);
+    const processed=await measurePerformance("grounding.text.persist",()=>finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider));
     return {...processed,chunkCount:chunks.length,duplicate:document.duplicate};
   }catch(error){
+    logIngestionFailure("text",error);
     await failSourceProcessing(document.id,error instanceof Error?error.message:"Source processing failed");
     throw error;
   }
@@ -68,25 +78,26 @@ export async function ingestGroundingPdf(userId:string,input:{title?:string;refe
   if(document.duplicate&&document.processingStatus==="processed")return {...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
   if(document.duplicate&&document.processingStatus==="processing")return {...document,chunkCount:0,duplicate:true};
   try {
-    const extracted=await (options.pdfExtractor??extractPdfPages)(file);
+    const extracted=await measurePerformance("grounding.pdf.extraction",()=> (options.pdfExtractor??extractPdfPages)(file));
     const pageSummaries=extracted.pages.map((page)=>({pageNumber:page.pageNumber,extractedCharacters:page.text.length,hasText:page.text.length>0}));
     const finalProvenance={...(input.provenance??{}),extraction:{method:"pdfjs-page-text-v1",status:"processed",pageCount:extracted.pageCount,pages:pageSummaries}};
     await updateSourceExtractedContent(document.id,{content:extracted.text,provenance:finalProvenance});
-    const chunks=extracted.pages.flatMap((page)=>{
+    const chunks=measureSyncPerformance("grounding.pdf.chunking",()=>extracted.pages.flatMap((page)=>{
       if(!page.text) return [];
       return chunkText(document.id,contentHash,page.text).map((chunk)=>({...chunk,order:0,metadata:{...chunk.metadata,pageNumber:page.pageNumber}}));
-    });
+    }));
     // Keep a single stable document order while maintaining each chunk's original PDF page.
     chunks.forEach((chunk,index)=>{chunk.order=index;chunk.id=stableChunkId(document.id,contentHash,index,`${chunk.metadata.pageNumber}\0${chunk.text}`);});
     if(!chunks.length)throw new AppError("No usable text could be extracted from this PDF.",422,"PDF_NO_EXTRACTABLE_TEXT");
     const provider=options.embeddingProvider??createEmbeddingProvider();
-    const vectors=await provider.embed(chunks.map((chunk)=>chunk.text));
+    const vectors=await measurePerformance("grounding.pdf.embedding",()=>provider.embed(chunks.map((chunk)=>chunk.text)));
     if(vectors.length!==chunks.length||vectors.some((vector)=>!vector.length||vector.some((value)=>!Number.isFinite(value))))throw new AppError("Embedding provider returned missing or invalid vectors",503,"EMBEDDING_INVALID_RESPONSE");
     const dimensions=vectors[0].length;
     if(vectors.some((vector)=>vector.length!==dimensions))throw new AppError("Embedding provider returned inconsistent vector dimensions",503,"EMBEDDING_INVALID_RESPONSE");
-    const processed=await finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider);
+    const processed=await measurePerformance("grounding.pdf.persist",()=>finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider));
     return {...processed,chunkCount:chunks.length,duplicate:document.duplicate};
   }catch(error){
+    logIngestionFailure("pdf",error);
     const sourceStatus=error instanceof AppError&&error.code==="PDF_NO_EXTRACTABLE_TEXT"?"scanned_or_no_extractable_text":"failed";
     const safeMessage=error instanceof AppError?error.message:"PDF extraction failed. Check the file and try again.";
     await failSourceProcessing(document.id,safeMessage,sourceStatus);
@@ -107,24 +118,25 @@ export async function ingestGroundingDocx(userId:string,input:{title?:string;ref
   if(document.duplicate&&document.processingStatus==="processed")return{...document,chunkCount:await countSourceChunks(document.id),duplicate:true};
   if(document.duplicate&&document.processingStatus==="processing")return{...document,chunkCount:0,duplicate:true};
   try{
-    const extracted=await(options.docxExtractor??extractDocx)(file);
+    const extracted=await measurePerformance("grounding.docx.extraction",()=> (options.docxExtractor??extractDocx)(file));
     const finalProvenance={...(input.provenance??{}),extraction:{method:"mammoth-structured-docx-v1",status:"processed",paragraphCount:extracted.paragraphCount,sections:extracted.sections}};
-    await updateSourceExtractedContent(document.id,{content:extracted.text,provenance:finalProvenance});
-    const chunks=chunkText(document.id,contentHash,extracted.text).map((chunk)=>{
+    await measurePerformance("grounding.docx.content_persist",()=>updateSourceExtractedContent(document.id,{content:extracted.text,provenance:finalProvenance}));
+    const chunks=measureSyncPerformance("grounding.docx.chunking",()=>chunkText(document.id,contentHash,extracted.text).map((chunk)=>{
       const intersecting=extracted.segments.filter((segment)=>segment.end>chunk.metadata.start&&segment.start<chunk.metadata.end);
       const paragraphs=intersecting.map((segment)=>segment.paragraph);
       const sections=[...new Set(intersecting.map((segment)=>segment.section).filter((section):section is string=>Boolean(section)))];
       const metadata={...chunk.metadata,section:sections.join("; ")||null,...(paragraphs.length?{paragraphStart:Math.min(...paragraphs),paragraphEnd:Math.max(...paragraphs)}:{})};
       return{...chunk,metadata,id:stableChunkId(document.id,contentHash,chunk.order,`${JSON.stringify(metadata)}\0${chunk.text}`)};
-    });
+    }));
     if(!chunks.length)throw new AppError("No useful text could be extracted from this DOCX.",422,"DOCX_EMPTY");
     const provider=options.embeddingProvider??createEmbeddingProvider();
-    const vectors=await provider.embed(chunks.map((chunk)=>chunk.text));
+    const vectors=await measurePerformance("grounding.docx.embedding",()=>provider.embed(chunks.map((chunk)=>chunk.text)));
     if(vectors.length!==chunks.length||vectors.some((vector)=>!vector.length||vector.some((value)=>!Number.isFinite(value))))throw new AppError("Embedding provider returned missing or invalid vectors",503,"EMBEDDING_INVALID_RESPONSE");
     const dimensions=vectors[0].length;if(vectors.some((vector)=>vector.length!==dimensions))throw new AppError("Embedding provider returned inconsistent vector dimensions",503,"EMBEDDING_INVALID_RESPONSE");
-    const processed=await finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider);
+    const processed=await measurePerformance("grounding.docx.persist",()=>finishSourceProcessing(document.id,chunks.map((chunk,index)=>({...chunk,embedding:vectors[index]})),provider));
     return{...processed,chunkCount:chunks.length,duplicate:document.duplicate};
   }catch(error){
+    logIngestionFailure("docx",error);
     const safeMessage=error instanceof AppError?error.message:"DOCX extraction failed. Check the file and try again.";
     await failSourceProcessing(document.id,safeMessage);
     return{...(await findSource(userId,document.id))!,chunkCount:0,duplicate:document.duplicate};

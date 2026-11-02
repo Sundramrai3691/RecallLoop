@@ -12,6 +12,7 @@ This index separates current implementation references from domain explanations,
 - [Core feature completion contract](CORE_FEATURE_COMPLETION.md): current learner-journey statuses, evidence, and concrete next actions.
 - [Core learning roadmap](CORE_LEARNING_ROADMAP.md): prioritized learner-facing integrity and product phases with acceptance evidence.
 - [Session log](SESSION_LOG.md): append-only record of repository work sessions.
+- [Performance and observability baseline](performance/RECALLLOOP_PERFORMANCE_BASELINE.md): bounded local API, PostgreSQL query, ingestion, and initial-bundle measurements with explicit limits.
 - [Frontend design](FRONTEND_DESIGN.md): UI system and interaction patterns.
 - [Product flow and UX journey audit](UX_JOURNEY.md): state-aware next actions, action-to-outcome inventory, learner journeys, and browser validation evidence.
 
