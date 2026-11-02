@@ -12,7 +12,7 @@ import { recommendResources } from "../../src/services/resources/resourceRecomme
 import { buildLearningPack } from "../../src/services/resources/learningPackService.js";
 import { createGoal,generateGoalPlan,getGoalReadiness,getTodayPlan } from "../../src/services/goal/goalService.js";
 import { getConceptState,getWeakSkills } from "../../src/services/learner/learnerModelService.js";
-import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource } from "../../src/services/grounding/groundedRemediationService.js";
+import { createGroundedRemediation,getGroundedRemediation,getGroundingSource,ingestGroundingPdf,ingestGroundingSource,retrieveForGap } from "../../src/services/grounding/groundedRemediationService.js";
 import { makePdf } from "../../src/services/grounding/pdfExtractorFixtures.js";
 import { createTargetedVerification } from "../../src/services/question/assessmentService.js";
 import { serializeAttempt,serializeSession } from "../../src/lib/serialize.js";
@@ -693,6 +693,27 @@ describe("PostgreSQL runtime integration", () => {
       const historical=await postgres.query(`SELECT count(*)::int AS count FROM plan_tasks WHERE user_id=$1 AND plan_id=$2 AND status='missed'`,[userId,plan.plan.id]);
       expect(historical.rows[0].count).toBeGreaterThan(0);
     }finally{await postgres.query(`DELETE FROM app_users WHERE id=$1`,[userId]);}
+  });
+
+  it("retrieves a relevant older chunk beyond the recent-source window without crossing owners",async()=>{
+    const userId=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Retrieval Ranking Test') RETURNING id`,[`retrieval-ranking-${randomUUID()}@test.local`])).rows[0].id;
+    const otherUser=(await postgres.query<any>(`INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration-hash','Retrieval Ranking Other User') RETURNING id`,[`retrieval-ranking-other-${randomUUID()}@test.local`])).rows[0].id;
+    try{
+      const oldSource=await ingestGroundingSource(userId,{title:"Earlier TCP notes",text:"TCP congestion control uses slow start to increase the congestion window (cwnd) as acknowledgements arrive.",sourceType:"text"});
+      await postgres.query(`UPDATE grounding_sources SET created_at=now()-interval '1 day' WHERE id=$1`,[oldSource.id]);
+      const newerText=Array.from({length:1200},()=>"Recent unrelated material describes aquatic ecosystems, seasonal rainfall, and plant biodiversity.").join(" ");
+      const newerSource=await ingestGroundingSource(userId,{title:"Recent unrelated notes",text:newerText,sourceType:"text"});
+      expect(newerSource.chunkCount).toBeGreaterThan(40);
+      const foreignSource=await ingestGroundingSource(otherUser,{title:"Other learner TCP notes",text:"TCP slow start and congestion window details are private to another learner.",sourceType:"text"});
+
+      const retrieved=await retrieveForGap({userId,conceptName:"TCP",knowledgePoint:"slow start congestion window"});
+
+      expect(retrieved[0]?.sourceId).toBe(oldSource.id);
+      expect(retrieved[0]?.text).toContain("congestion window");
+      expect(retrieved.some((chunk)=>chunk.sourceId===foreignSource.id)).toBe(false);
+    }finally{
+      await postgres.query(`DELETE FROM app_users WHERE id=ANY($1::uuid[])`,[[userId,otherUser]]);
+    }
   });
 
   it("ingests attributed source text, retrieves a real gap, generates grounded remediation, and verifies improvement",async()=>{

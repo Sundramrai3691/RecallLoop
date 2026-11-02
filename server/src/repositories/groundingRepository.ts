@@ -5,6 +5,7 @@ import type { GroundedRemediation, GroundingSource } from "../services/grounding
 
 export interface GroundingDocument { id:string; userId:string; title:string; sourceType:string; reference:string; provenance:Record<string,unknown>; content:string; contentHash:string; processingStatus:string; processingError:string|null; createdAt:string; updatedAt:string; }
 export interface RetrievedChunk extends GroundingSource { relevance:number; }
+export const MAX_RETRIEVAL_CANDIDATES=5000;
 
 function mapDocument(row:any):GroundingDocument { return {id:row.id,userId:row.user_id,title:row.title,sourceType:row.source_type,reference:row.reference,provenance:row.provenance,content:row.content,contentHash:row.content_hash,processingStatus:row.processing_status,processingError:row.processing_error,createdAt:row.created_at,updatedAt:row.updated_at}; }
 
@@ -50,12 +51,12 @@ export async function listSources(userId:string) {
   return result.rows;
 }
 
-export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=40,sourceId?:string|null):Promise<Array<GroundingSource & {embedding:number[]}>> {
+export async function retrieveChunks(userId:string,queryEmbedding:number[],providerName:string,limit=MAX_RETRIEVAL_CANDIDATES,sourceId?:string|null):Promise<Array<GroundingSource & {embedding:number[]}>> {
   const result=await query<any>(`SELECT c.id AS "chunkId",s.id AS "sourceId",s.title,s.source_type AS "sourceType",s.reference,s.provenance,c.metadata->>'pageNumber' AS "pageNumber",c.metadata->>'section' AS section,c.metadata->>'paragraphStart' AS "paragraphStart",c.metadata->>'paragraphEnd' AS "paragraphEnd",c.content AS text,c.embedding,c.embedding_model AS "embeddingModel",c.embedding_dimensions AS "embeddingDimensions"
     FROM grounding_chunks c JOIN grounding_sources s ON s.id=c.source_id
     WHERE s.user_id=$1 AND s.processing_status='processed' AND c.embedding_model=$2 AND c.embedding_dimensions=$3 AND ($4::uuid IS NULL OR s.id=$4)
-    ORDER BY s.created_at DESC,c.chunk_order LIMIT $5`,[userId,providerName,queryEmbedding.length,sourceId??null,5000]);
-  return result.rows.slice(0,limit).map((row)=>({...row,embedding:row.embedding}));
+    ORDER BY c.id LIMIT $5`,[userId,providerName,queryEmbedding.length,sourceId??null,Math.min(MAX_RETRIEVAL_CANDIDATES,Math.max(0,Math.floor(limit)))]);
+  return result.rows.map((row)=>({...row,embedding:row.embedding}));
 }
 
 export async function createOrGetRemediation(input:{userId:string;attemptId:string;conceptId:string;knowledgePoint:string;reason:string;evidence:unknown;triggerScore:number}) {

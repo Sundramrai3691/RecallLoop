@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { query } from "../../db/postgres.js";
 import { AppError, conflict, notFound } from "../../utils/errors.js";
 import { recommendResources } from "../resources/resourceRecommendationService.js";
-import { beginSourceProcessing, countSourceChunks, createOrGetRemediation, failSourceProcessing, finishSourceProcessing, findSource, getRemediation, getRemediationForVerification, listSources, retrieveChunks, storeRemediationRetrieval, updateRemediation, updateRemediationStatus, updateSourceExtractedContent } from "../../repositories/groundingRepository.js";
+import { beginSourceProcessing, countSourceChunks, createOrGetRemediation, failSourceProcessing, finishSourceProcessing, findSource, getRemediation, getRemediationForVerification, listSources, MAX_RETRIEVAL_CANDIDATES, retrieveChunks, storeRemediationRetrieval, updateRemediation, updateRemediationStatus, updateSourceExtractedContent } from "../../repositories/groundingRepository.js";
 import { chunkText, stableChunkId } from "./chunker.js";
 import { cosineSimilarity, createEmbeddingProvider, type EmbeddingProvider } from "./embeddingProvider.js";
 import { createGroundedRemediator, type GroundedRemediator, type GroundingSource } from "./remediationGenerator.js";
@@ -157,18 +157,39 @@ export async function retrieveForGap(input:{userId:string;conceptName:string;kno
   const provider=createEmbeddingProvider();
   const searchText=[input.conceptName,input.knowledgePoint,input.misconception].filter(Boolean).join(". ");
   const [embedding]=await provider.embed([searchText]);
-  const candidates=await retrieveChunks(input.userId,embedding,provider.name,40,input.sourceId);
+  const candidates=await retrieveChunks(input.userId,embedding,provider.name,MAX_RETRIEVAL_CANDIDATES,input.sourceId);
   return rankRetrievedChunks(searchText,embedding,candidates,input.limit??5,MIN_RELEVANCE);
 }
 
 export function rankRetrievedChunks(searchText:string,embedding:number[],candidates:Array<GroundingSource & {embedding:number[]}>,limit=5,threshold=MIN_RELEVANCE) {
   const queryTokens=new Set(significantTokens(searchText));
-  return candidates.map((chunk)=>{
+  const ranked=candidates.map((chunk)=>{
     const chunkTokens=new Set(significantTokens(chunk.text));
     const lexical=queryTokens.size?[...queryTokens].filter((token)=>chunkTokens.has(token)).length/queryTokens.size:0;
     const semantic=Math.max(0,cosineSimilarity(embedding,chunk.embedding));
     return {...chunk,relevance:Number((semantic*.55+lexical*.45).toFixed(4))};
-  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId)).slice(0,limit).map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber),paragraphStart:chunk.paragraphStart==null?null:Number(chunk.paragraphStart),paragraphEnd:chunk.paragraphEnd==null?null:Number(chunk.paragraphEnd)}));
+  }).filter((chunk)=>chunk.relevance>=threshold).sort((a,b)=>b.relevance-a.relevance||a.chunkId.localeCompare(b.chunkId));
+  const resultLimit=Math.max(0,Math.min(5,Math.floor(limit)));
+  if(!resultLimit)return [];
+  const selected:Array<(typeof ranked)[number]>=[];
+  const selectedTokens:Array<Set<string>>=[];
+  const selectedNormalizedText=new Set<string>();
+  for(const chunk of ranked) {
+    const normalizedText=chunk.text.toLowerCase().replace(/\s+/g," ").trim();
+    if(selectedNormalizedText.has(normalizedText))continue;
+    const tokens=new Set(significantTokens(chunk.text));
+    const duplicate=selectedTokens.some((otherTokens)=>{
+      const intersection=[...tokens].filter((token)=>otherTokens.has(token)).length;
+      const union=new Set([...tokens,...otherTokens]).size;
+      return union>0&&intersection/union>=0.9;
+    });
+    if(duplicate)continue;
+    selected.push(chunk);
+    selectedTokens.push(tokens);
+    selectedNormalizedText.add(normalizedText);
+    if(selected.length>=resultLimit)break;
+  }
+  return selected.map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber),paragraphStart:chunk.paragraphStart==null?null:Number(chunk.paragraphStart),paragraphEnd:chunk.paragraphEnd==null?null:Number(chunk.paragraphEnd)}));
 }
 
 export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {

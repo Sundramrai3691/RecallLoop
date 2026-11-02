@@ -1,5 +1,13 @@
 # Project status
 
+## 2026-11-02 Grounded retrieval candidate correction
+
+- Fixed recency-before-relevance truncation: `retrieveChunks` no longer orders by source creation time/document position and returns a bounded stable-ID-ordered pool of up to 5,000 eligible owner-scoped chunks for relevance ranking. The service now ranks that pool before final selection, caps the context at five chunks, and suppresses near duplicates. Existing model/dimension, source, citation, fallback, persistence, and verification behavior is retained.
+- Added a controlled retrieval fixture including an older relevant passage beyond row 40, plus a real PostgreSQL integration regression for an older source behind more than 40 newer-source chunks and another learner's source. Retrieval unit and embedding suites passed (14 tests); the full unit suite passed (47 files, 219 passed, 4 opt-in provider tests skipped), and server/client production build passed.
+- PostgreSQL integration and browser E2E were not run: the existing integration setup replays migrations and seeds the canonical question bank, and no isolated database target was verified. No DB writes, provider requests, role changes, question-bank changes, or learner-history changes were made. Full unit/build results and bounded fixture timing are recorded in the current session log after validation.
+- On the same 5,005-row deterministic fixture, the old 40-candidate window returned no relevant passage and 0 context characters; the new 5,000-candidate window returned the older relevant passage and 107 context characters. Mocked in-memory selection/ranking measured 0.663/0.657 ms before and 20.252/27.613 ms after; pipeline total was 1.389/82.710 ms (updated total includes deterministic embedding). These are one-run harness measurements, not PostgreSQL latency; memory was not measured.
+- The candidate pool is bounded but approximate above 5,000 compatible chunks; stable hash-ID ordering removes recency/document-position bias but is not a semantic index. No production-scale database latency or provider-quality claim is made.
+
 ## 2026-11-02 Security and deployment-readiness review
 
 - Added a repository-specific threat model, security review, production configuration guide, deployment runbook, backup/restore procedure and incident-response guide. See the security/operations links in `docs/README.md`.
