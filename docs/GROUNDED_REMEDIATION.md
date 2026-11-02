@@ -54,6 +54,10 @@ A single deterministic 5,005-row fixture compared the old first-40 application w
 
 The isolated PostgreSQL integration regression then exercised 5,121 eligible chunks, including 5,005 unrelated low-ID rows and the relevant older source. The old first-40 query produced no relevant passage; indexed full-text candidate selection returned the older passage and 107 context characters. In the latest one-run diagnostic, the FTS query took 4.903 ms, application ranking 0.074 ms, end-to-end `retrieveForGap` 6.642 ms, and `EXPLAIN ANALYZE` reported 2.640 ms while using `idx_grounding_chunks_content_fts`. The fixture explicitly analyzed its test tables. These measurements apply only to this small isolated PostgreSQL fixture and are not production latency or capacity estimates.
 
+### Final regression closeout (2026-11-02)
+
+The full server unit suite passed (47 files; 221 passed, 4 opt-in provider tests skipped). The root server/client build passed; Vite's minified entry was 429.34 kB, unchanged from the previously measured baseline. The Edge Playwright journey passed against the configured loopback `recallloop` database with deterministic mock providers. It asserted that a PDF-backed weakness retrieved a page-1 citation, the verification used an unseen immutable revision, evidence/readiness persisted after reload, PDF page and DOCX section/paragraph provenance were retained, and another learner could not access the source or remediation. The harness removed all uniquely identified test users, and an immediate read-only check found no recent `e2e-core-*` learner rows. The app database was not migrated or seeded during closeout. The isolated migration-030 integration evidence was retained; its test container and volume were removed, while the app container and volume remained.
+
 ## Grounding and fallback rules
 
 - No relevant chunk means no explanation is generated. The learner sees that material was not found and gets up to three existing resource recommendations when any match.
