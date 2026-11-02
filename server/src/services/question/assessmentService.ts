@@ -4,7 +4,7 @@ import { AppError, notFound } from "../../utils/errors.js";
 import { assessmentBlueprint, buildQuestion, buildTargetedVerificationQuestion, upsertQuestion } from "./questionService.js";
 import { findBuiltinMcq } from "./mcqBank.js";
 import type { QuestionType } from "../../domain/recallTypes.js";
-import { chooseCanonicalQuestionSet,hasCanonicalQuestionBank,listEligibleCanonicalQuestions,materializeCanonicalQuestion } from "../questionBank/questionBankService.js";
+import { CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL, chooseCanonicalQuestionSet,hasCanonicalQuestionBank,listEligibleCanonicalQuestions,materializeCanonicalQuestion } from "../questionBank/questionBankService.js";
 
 export type AssessmentMode = "rapid_fire" | "deep_recall" | "mastery_check" | "practice";
 const DIMENSIONS = ["recognition","recall","explanation","application","depth","transfer"];
@@ -20,21 +20,7 @@ const ELIGIBLE_CANONICAL_QUESTIONS = `
   SELECT i.canonical_concept_id AS "conceptId", r.question_type AS "questionType", count(DISTINCT r.id)::int AS count
   FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
   WHERE r.revision=i.current_revision AND r.publication_status='published' AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
-    AND (
-      EXISTS (
-        SELECT 1 FROM canonical_question_reviews approved
-        JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
-        WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
-          AND approved.reviewed_at>=reviewer.granted_at
-          AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
-          AND NOT EXISTS (SELECT 1 FROM canonical_question_reviews later WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id))
-      )
-      OR EXISTS (
-        SELECT 1 FROM canonical_question_automated_reviews approved
-        WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
-          AND NOT EXISTS (SELECT 1 FROM canonical_question_automated_reviews later WHERE later.question_revision_id=r.id AND later.decision='approved' AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id))
-      )
-    )
+    AND ${CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL}
   GROUP BY i.canonical_concept_id,r.question_type`;
 
 function supportedModes(counts: Record<string, number>) {

@@ -30,6 +30,7 @@ This index separates current implementation references from domain explanations,
 - [Question engine](QUESTION_ENGINE.md): questions, assessment sessions, hints, and evaluation.
 - [Canonical question bank](CANONICAL_QUESTION_BANK.md): revisioned curated items, review gates, provenance, selection, and quality checks.
 - [Question bank review workflow](QUESTION_BANK_REVIEW.md): reviewer authorization, exact-revision review packets, current inventory, and human benchmark annotation.
+- [Question-bank quality audit](question-bank/quality-audit-2026-11-02.json): current read-only revision, eligibility, point-coverage, structural, and benchmark-risk inventory.
 - [AI evaluation benchmark](AI_EVALUATION_BENCHMARK.md): synthetic free-response evaluator benchmark, provisional-label review workflow, and bounded opt-in live runner.
 - [AI evaluation v2 annotation protocol](research/ai-evaluation-v2/ANNOTATION_PROTOCOL.md): blinded independent review, immutable annotations, adjudication, and scoring eligibility.
 - [Grounded remediation](GROUNDED_REMEDIATION.md): source ingestion, retrieval, remediation, and verification.

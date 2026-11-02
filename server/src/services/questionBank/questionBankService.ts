@@ -21,6 +21,28 @@ export interface CanonicalQuestionCandidate {
   hints: string[];
 }
 
+export const CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL = `(
+  EXISTS (
+    SELECT 1 FROM canonical_question_reviews approved
+    JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
+    WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
+      AND approved.reviewed_at>=reviewer.granted_at
+      AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
+      AND NOT EXISTS (
+        SELECT 1 FROM canonical_question_reviews later
+        WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
+      )
+  )
+  OR EXISTS (
+    SELECT 1 FROM canonical_question_automated_reviews approved
+    WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
+      AND NOT EXISTS (
+        SELECT 1 FROM canonical_question_automated_reviews later
+        WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
+      )
+  )
+)`;
+
 export async function hasCanonicalQuestionBank(client: PoolClient, canonicalConceptId: string): Promise<boolean> {
   const result = await client.query<{ exists: boolean }>(`SELECT EXISTS(
     SELECT 1 FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
@@ -37,27 +59,7 @@ export async function listEligibleCanonicalQuestions(client: PoolClient, canonic
     JOIN canonical_question_revision_points rp ON rp.question_revision_id=r.id
     JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id
     WHERE i.canonical_concept_id=$1 AND r.revision=i.current_revision AND r.publication_status='published' AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
-      AND (
-        EXISTS (
-          SELECT 1 FROM canonical_question_reviews approved
-          JOIN canonical_question_reviewers reviewer ON reviewer.reviewer_user_id=approved.reviewer_user_id
-          WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
-            AND approved.reviewed_at>=reviewer.granted_at
-            AND (reviewer.revoked_at IS NULL OR approved.reviewed_at<reviewer.revoked_at)
-            AND NOT EXISTS (
-              SELECT 1 FROM canonical_question_reviews later
-              WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
-            )
-        )
-        OR EXISTS (
-          SELECT 1 FROM canonical_question_automated_reviews approved
-          WHERE approved.question_revision_id=r.id AND approved.decision='approved' AND approved.content_hash=r.content_hash
-            AND NOT EXISTS (
-              SELECT 1 FROM canonical_question_automated_reviews later
-              WHERE later.question_revision_id=r.id AND later.decision='approved' AND (later.reviewed_at,later.id)>(approved.reviewed_at,approved.id)
-            )
-        )
-      )
+      AND ${CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL}
     GROUP BY r.id,i.slug ORDER BY r.question_type,r.difficulty,i.slug,r.revision DESC`, [canonicalConceptId]);
   return result.rows.map((row) => ({
     revisionId: row.revision_id, itemSlug: row.slug, questionType: row.question_type, assessmentLevel: row.assessment_level,

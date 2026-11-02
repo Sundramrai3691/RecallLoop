@@ -6,6 +6,7 @@ import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuest
 import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "../services/questionBank/coreSdeQuestionBank.js";
 import { questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
 import { listKnowledgeCheckCoverage } from "../services/question/assessmentService.js";
+import { CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL } from "../services/questionBank/questionBankService.js";
 
 const output=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"../../../docs/question-bank/core-sde-domain-coverage-report.json");
 const blueprints={rapid_fire:{mcq:2,rapid_recall:3},deep_recall:{descriptive:1},practice:{scenario:1},mastery_check:{mcq:1,rapid_recall:1,short_explanation:1,scenario:1,descriptive:1,transfer:1}} as const;
@@ -40,15 +41,7 @@ async function main(){
     postgres.query<any>(`SELECT r.canonical_concept_id concept_id,r.question_type,count(DISTINCT r.id)::int count FROM (
         SELECT i.canonical_concept_id,r.id,r.question_type,r.assessment_level,r.difficulty FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
           WHERE r.revision=i.current_revision AND r.publication_status='published' AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
-            AND (
-              EXISTS(SELECT 1 FROM canonical_question_reviews a JOIN canonical_question_reviewers g ON g.reviewer_user_id=a.reviewer_user_id
-                WHERE a.question_revision_id=r.id AND a.decision='approved' AND a.content_hash=r.content_hash AND a.reviewed_at>=g.granted_at
-                  AND (g.revoked_at IS NULL OR a.reviewed_at<g.revoked_at)
-                  AND NOT EXISTS(SELECT 1 FROM canonical_question_reviews later WHERE later.question_revision_id=r.id AND (later.reviewed_at,later.id)>(a.reviewed_at,a.id)))
-              OR EXISTS(SELECT 1 FROM canonical_question_automated_reviews a
-                WHERE a.question_revision_id=r.id AND a.decision='approved' AND a.content_hash=r.content_hash
-                  AND NOT EXISTS(SELECT 1 FROM canonical_question_automated_reviews later WHERE later.question_revision_id=r.id AND later.decision='approved' AND (later.reviewed_at,later.id)>(a.reviewed_at,a.id)))
-            )
+            AND ${CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL}
         ) r GROUP BY r.canonical_concept_id,r.question_type`),    postgres.query<any>(`SELECT d.name domain,count(DISTINCT q.id)::int learner_created_questions FROM knowledge_domains d JOIN canonical_skills s ON s.domain_id=d.id JOIN topics t ON t.skill_id=s.id JOIN canonical_concepts c ON c.topic_id=t.id JOIN personal_concepts pc ON pc.canonical_concept_id=c.id JOIN questions q ON q.concept_id=pc.id AND q.canonical_question_revision_id IS NULL GROUP BY d.name`),
     listKnowledgeCheckCoverage(),
   ]);

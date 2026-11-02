@@ -1,5 +1,13 @@
 # Canonical question bank v1
 
+## Current database-grounded inventory (2026-11-02)
+
+The repeatable read-only [question-bank quality audit](question-bank/quality-audit-2026-11-02.json) supersedes the older dated coverage snapshots below for current counts. The verified local `recallloop` database contains 227 revisions, 198 current revisions, 29 superseded revisions, and 41 retired revisions (12 retired current). There are 186 published and assessment-eligible current revisions, all with exact-hash automated approval; no current human approvals are recorded. Current authored structural validation passes for all 186 eligible revisions. All 198 current revisions have complete citation metadata; this audit independently verified the content of zero cited sources.
+
+Active taxonomy totals 34 concepts and 34 points. Eligible mode coverage is Computer Networks Rapid Fire 3/3 and deep-recall/mastery/practice 2/3; DBMS Rapid Fire 6/6; DSA 2/2; Operating Systems 2/2; System Design 5/5; Backend Engineering 0/16 across four modes, with no question revisions. The report lists each canonical point, candidate type/difficulty, distinct non-MCQ verification inventory, and mode deficits. Candidate counts do not guarantee unseen learner-specific verification availability.
+
+The benchmark-v2 risk screen still finds 35/35 exact current eligible revision/hash/mapping matches. Its 37 risk flags span 30 cases; flags remain review prompts, not confirmed defects. Existing automated-review records currently store source-verification state as `verified` on 186 revisions even though this audit did not inspect cited source content. The new automated-review policy will record `unverified`; no historical review record or approval was rewritten.
+
 ## Scope and observed starting point
 
 This first pilot uses the existing `HTTP` topic because it contains two distinct active canonical concepts and their canonical point IDs can be resolved directly. A read-only inventory on 2026-10-18 found 9 canonical knowledge points across the database, of which 2 belong to HTTP. Before this change, the checked-in `mcqBank.ts` had 10 matcher/build branches and 14 possible MCQ variants; those variants had no stable canonical question UUIDs or revision/provenance rows. The database had 25 question rows, all attached to learner-specific concepts (descriptive 4, MCQ 4, rapid recall 14, scenario 1, short explanation 1, transfer 1). None was stored as a curated question mapped to the current canonical HTTP concept/point rows. Those are different inventories and are not combined as if the learner artifacts were canonical bank content.

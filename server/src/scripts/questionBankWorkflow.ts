@@ -7,12 +7,31 @@ import { canonicalHttpPilotQuestions } from "../services/questionBank/pilotQuest
 import { canonicalCoreSdeQuestions, validateCoreSdeQuestionBank } from "../services/questionBank/coreSdeQuestionBank.js";
 import { pilotQuestionInventory, questionContentHash, validatePilotQuestionBank } from "../services/questionBank/questionBankQuality.js";
 import { benchmarkAnnotationStatus, buildHumanBenchmarkReport, reviewCriterionKeys, validateHumanBenchmark, validateReviewAssessment, type HumanBenchmarkDataset } from "../services/questionBank/questionBankGovernance.js";
-import { listEligibleCanonicalQuestions } from "../services/questionBank/questionBankService.js";
+import { CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL, listEligibleCanonicalQuestions } from "../services/questionBank/questionBankService.js";
+import { createAutomatedQuestionQualityChecker } from "../services/questionBank/automatedQuestionReviewQuality.js";
+import { auditQuestionStructure, benchmarkFlagDisposition, findNearDuplicatePromptCandidates, type QuestionAuditRevision } from "../services/questionBank/questionBankQualityAudit.js";
 
 const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
 const docsDirectory = path.resolve(moduleDirectory, "../../../docs/question-bank");
 const inventoryPath = path.join(docsDirectory, "http-pilot-review-inventory.json");
+const qualityAuditPath = path.join(docsDirectory, "quality-audit-2026-11-02.json");
 const benchmarkPath = path.resolve(moduleDirectory, "../services/questionBank/httpHumanBenchmark.json");
+const benchmarkV2Path = path.resolve(moduleDirectory, "../../../docs/research/ai-evaluation-v2/dataset.json");
+const benchmarkV2AuditPath = path.resolve(moduleDirectory, "../../../docs/research/ai-evaluation-v2/case-audit.json");
+const questionBankAuditDomains = [
+  "Backend Engineering",
+  "Computer Networks",
+  "Database Management Systems",
+  "Data Structures and Algorithms",
+  "Operating Systems",
+  "System Design",
+];
+const assessmentModeBlueprints: Record<string, Record<string, number>> = {
+  rapid_fire: { mcq: 2, rapid_recall: 3 },
+  deep_recall: { descriptive: 1 },
+  mastery_check: { mcq: 1, rapid_recall: 1, short_explanation: 1, scenario: 1, descriptive: 1, transfer: 1 },
+  practice: { scenario: 1 },
+};
 const suspectedIssues: Record<string, string[]> = {
   "http-cache-transfer-validator-limit": ["Human judgment requested: clarify which stale-serving policies count as acceptable when origin directives and product risk constraints differ."],
   "http-lifecycle-application-async-create": ["Human judgment requested: define which response fields or status-monitor conventions are required versus merely defensible."],
@@ -99,6 +118,281 @@ async function currentRows(scope: "http" | "all" | string = "http") {
     LEFT JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id
     WHERE ${filter} GROUP BY i.id,r.id ORDER BY i.slug`,scope === "http" || scope === "all" ? [] : [scope]);
   return result.rows;
+}
+
+function reportModeCoverage(counts: Record<string, number>) {
+  const deficits: Record<string, Record<string, { required: number; eligible: number }>> = {};
+  const supportedModes: string[] = [];
+  for (const [mode, blueprint] of Object.entries(assessmentModeBlueprints)) {
+    const missing = Object.fromEntries(Object.entries(blueprint)
+      .filter(([type, required]) => (counts[type] ?? 0) < required)
+      .map(([type, required]) => [type, { required, eligible: counts[type] ?? 0 }]));
+    deficits[mode] = missing;
+    if (!Object.keys(missing).length) supportedModes.push(mode);
+  }
+  return { supportedModes, deficits };
+}
+
+async function questionBankQualityAudit() {
+  const client = await postgres.connect();
+  try {
+    await client.query("BEGIN READ ONLY");
+    const identity = (await client.query<{ database: string; role: string; server_version: string }>(
+      "SELECT current_database() AS database, current_user AS role, version() AS server_version",
+    )).rows[0];
+    if (identity.database !== "recallloop") throw new Error("Quality audit is limited to the verified local recallloop database.");
+
+    const taxonomy = (await client.query<any>(`SELECT d.name AS domain,s.name AS skill,t.id AS topic_id,t.name AS topic,
+        c.id AS concept_id,c.name AS concept,c.status AS concept_status,
+        kp.id AS point_id,kp.statement AS point,kp.importance,kp.difficulty AS point_difficulty
+      FROM knowledge_domains d JOIN canonical_skills s ON s.domain_id=d.id JOIN topics t ON t.skill_id=s.id
+      LEFT JOIN canonical_concepts c ON c.topic_id=t.id
+      LEFT JOIN knowledge_points kp ON kp.concept_id=c.id
+      WHERE d.name=ANY($1::text[])
+      ORDER BY d.name,s.name,t.name,c.name,kp.importance DESC,kp.id`, [questionBankAuditDomains])).rows;
+    const revisions = (await client.query<any>(`SELECT d.name AS domain,cc.id AS concept_id,cc.name AS concept_name,cc.name AS canonical_concept_name,
+        i.id AS item_id,i.slug,i.current_revision,r.id AS revision_id,r.revision,r.question_type,r.assessment_level,r.difficulty,
+        r.content_hash,r.objective,r.title,r.prompt,r.expected_answer,r.rubric,r.options,r.correct_option_id,r.explanation,
+        r.distractor_rationales,r.question_origin,r.source_title,r.source_url,r.source_publisher,r.source_license,
+        r.source_accessed_on::text AS source_accessed_on,r.source_notes,r.quality_status,r.review_status,r.publication_status,
+        CASE WHEN r.revision=i.current_revision AND r.publication_status='published'
+          AND r.review_status IN ('subject_matter_reviewed','automated_reviewed') AND r.quality_status='valid'
+          AND ${CANONICAL_QUESTION_REVIEW_ELIGIBILITY_SQL} THEN TRUE ELSE FALSE END AS selector_eligible,
+        coalesce(jsonb_agg(DISTINCT jsonb_build_object('id',kp.id,'statement',kp.statement)) FILTER(WHERE kp.id IS NOT NULL),'[]'::jsonb) AS mapped_points,
+        (SELECT count(*)::int FROM canonical_question_reviews h WHERE h.question_revision_id=r.id) AS human_review_count,
+        human.decision AS latest_human_decision,human.content_hash AS latest_human_hash,
+        coalesce(human.authorized,FALSE) AS latest_human_authorized,
+        automated.decision AS latest_automated_decision,automated.content_hash AS latest_automated_hash,
+        automated.source_verification_status AS latest_automated_source_status,
+        (SELECT count(*)::int FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id) AS automated_review_count
+      FROM canonical_question_items i JOIN canonical_question_revisions r ON r.question_item_id=i.id
+      JOIN canonical_concepts cc ON cc.id=i.canonical_concept_id
+      JOIN topics t ON t.id=cc.topic_id JOIN canonical_skills s ON s.id=t.skill_id JOIN knowledge_domains d ON d.id=s.domain_id
+      LEFT JOIN canonical_question_revision_points rp ON rp.question_revision_id=r.id
+      LEFT JOIN knowledge_points kp ON kp.id=rp.canonical_knowledge_point_id
+      LEFT JOIN LATERAL (
+        SELECT h.decision,h.content_hash,
+          EXISTS(SELECT 1 FROM canonical_question_reviewers g WHERE g.reviewer_user_id=h.reviewer_user_id
+            AND h.reviewed_at>=g.granted_at AND (g.revoked_at IS NULL OR h.reviewed_at<g.revoked_at)) AS authorized
+        FROM canonical_question_reviews h WHERE h.question_revision_id=r.id
+        ORDER BY h.reviewed_at DESC,h.id DESC LIMIT 1
+      ) human ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT ar.decision,ar.content_hash,ar.source_verification_status
+        FROM canonical_question_automated_reviews ar WHERE ar.question_revision_id=r.id
+        ORDER BY ar.reviewed_at DESC,ar.id DESC LIMIT 1
+      ) automated ON TRUE
+      WHERE d.name=ANY($1::text[])
+      GROUP BY d.name,cc.id,cc.name,i.id,r.id,human.decision,human.content_hash,human.authorized,
+        automated.decision,automated.content_hash,automated.source_verification_status
+      ORDER BY d.name,cc.name,i.slug,r.revision`, [questionBankAuditDomains])).rows;
+
+    const benchmarkAudit = await readJson<any>(benchmarkV2AuditPath);
+    const benchmarkDataset = await readJson<any>(benchmarkV2Path);
+    await client.query("COMMIT");
+
+    const qualityIssuesForQuestion = createAutomatedQuestionQualityChecker();
+    const currentRevisions = revisions.filter((row) => Number(row.revision) === Number(row.current_revision));
+    const domainSummaries = questionBankAuditDomains.map((domain) => {
+      const domainTaxonomy = taxonomy.filter((row: any) => row.domain === domain);
+      const domainRevisions = revisions.filter((row) => row.domain === domain);
+      const current = domainRevisions.filter((row) => Number(row.revision) === Number(row.current_revision));
+      const currentByType = countBy(current, (row) => row.question_type);
+      const currentByDifficulty = countBy(current, (row) => String(row.difficulty));
+      return {
+        domain,
+        activeConcepts: new Set(domainTaxonomy.filter((row: any) => row.concept_status === "active" && row.concept_id).map((row: any) => row.concept_id)).size,
+        activeKnowledgePoints: new Set(domainTaxonomy.filter((row: any) => row.concept_status === "active" && row.point_id).map((row: any) => row.point_id)).size,
+        totalRevisions: domainRevisions.length,
+        currentRevisions: current.length,
+        supersededRevisions: domainRevisions.length - current.length,
+        retiredRevisions: domainRevisions.filter((row) => row.publication_status === "retired").length,
+        currentRetiredRevisions: current.filter((row) => row.publication_status === "retired").length,
+        publishedCurrentRevisions: current.filter((row) => row.publication_status === "published").length,
+        assessmentEligibleCurrentRevisions: current.filter((row) => row.selector_eligible).length,
+        currentByQuestionType: currentByType,
+        currentByDifficulty,
+        currentSourceMetadataComplete: current.filter((row) => auditQuestionStructure(row, []).sourceMetadataComplete).length,
+        currentAnswerContractComplete: current.filter((row) => auditQuestionStructure(row, []).answerContractComplete).length,
+        currentRubricComplete: current.filter((row) => auditQuestionStructure(row, []).rubricComplete).length,
+        currentAuthoredStructuralValidationPass: current.filter((row) => qualityIssuesForQuestion(row).length === 0).length,
+        currentExactHashAutomatedApproval: current.filter((row) => row.latest_automated_decision === "approved" && row.latest_automated_hash === row.content_hash).length,
+        currentLatestHumanApproval: current.filter((row) => row.latest_human_authorized && row.latest_human_decision === "approved" && row.latest_human_hash === row.content_hash).length,
+        latestAutomatedSourceVerificationStatuses: countBy(current.filter((row) => row.latest_automated_source_status), (row) => String(row.latest_automated_source_status)),
+      };
+    });
+
+    const pointStats = new Map<string, any>();
+    for (const row of taxonomy) {
+      if (row.concept_status !== "active" || !row.point_id) continue;
+      pointStats.set(row.point_id, {
+        domain: row.domain, topic: row.topic, conceptId: row.concept_id, concept: row.concept,
+        pointId: row.point_id, point: row.point, importance: row.importance,
+        currentRevisionIds: new Set<string>(), publishedCurrentIds: new Set<string>(), eligibleCurrentIds: new Set<string>(),
+        eligibleByType: {} as Record<string, number>, distinctVerificationRevisionIds: new Set<string>(),
+      });
+    }
+    for (const row of currentRevisions) {
+      for (const mapped of row.mapped_points ?? []) {
+        const point = pointStats.get(mapped.id);
+        if (!point) continue;
+        point.currentRevisionIds.add(row.revision_id);
+        if (row.publication_status === "published") point.publishedCurrentIds.add(row.revision_id);
+        if (row.selector_eligible) {
+          point.eligibleCurrentIds.add(row.revision_id);
+          point.eligibleByType[row.question_type] = (point.eligibleByType[row.question_type] ?? 0) + 1;
+          if (row.question_type !== "mcq") point.distinctVerificationRevisionIds.add(row.revision_id);
+        }
+      }
+    }
+    const pointCoverage = [...pointStats.values()].map((point) => ({
+      domain: point.domain, topic: point.topic, conceptId: point.conceptId, concept: point.concept,
+      pointId: point.pointId, point: point.point, importance: point.importance,
+      currentRevisions: point.currentRevisionIds.size, publishedCurrentRevisions: point.publishedCurrentIds.size,
+      eligibleCurrentRevisions: point.eligibleCurrentIds.size, eligibleByType: point.eligibleByType,
+      distinctNonMcqVerificationCandidates: point.distinctVerificationRevisionIds.size,
+    }));
+
+    const concepts = new Map<string, any>();
+    for (const row of taxonomy) {
+      if (row.concept_status !== "active" || !row.concept_id) continue;
+      if (!concepts.has(row.concept_id)) concepts.set(row.concept_id, {
+        domain: row.domain, topic: row.topic, conceptId: row.concept_id, concept: row.concept,
+        pointIds: new Set<string>(), eligibleRevisionIdsByType: {} as Record<string, Set<string>>,
+      });
+      if (row.point_id) concepts.get(row.concept_id).pointIds.add(row.point_id);
+    }
+    for (const row of currentRevisions.filter((item) => item.selector_eligible)) {
+      const concept = concepts.get(row.concept_id);
+      if (!concept) continue;
+      const ids = concept.eligibleRevisionIdsByType[row.question_type] ?? new Set<string>();
+      ids.add(row.revision_id);
+      concept.eligibleRevisionIdsByType[row.question_type] = ids;
+    }
+    const conceptCoverage = [...concepts.values()].map((concept) => {
+      const eligibleByType = Object.fromEntries(Object.entries(concept.eligibleRevisionIdsByType)
+        .map(([type, ids]) => [type, (ids as Set<string>).size]));
+      return {
+        domain: concept.domain, topic: concept.topic, conceptId: concept.conceptId, concept: concept.concept,
+        catalogKnowledgePoints: concept.pointIds.size,
+        currentRevisions: currentRevisions.filter((row) => row.concept_id === concept.conceptId).length,
+        eligibleByType,
+        ...reportModeCoverage(eligibleByType),
+      };
+    });
+
+    const currentInventory = currentRevisions.map((row) => {
+      const issues = qualityIssuesForQuestion(row);
+      return {
+        domain: row.domain, concept: row.concept_name, slug: row.slug, revisionId: row.revision_id,
+        revision: Number(row.revision), contentHash: row.content_hash, mappedPoints: row.mapped_points,
+        questionType: row.question_type, cognitiveLevel: row.assessment_level, difficulty: Number(row.difficulty),
+        qualityStatus: row.quality_status, reviewStatus: row.review_status, publicationStatus: row.publication_status,
+        assessmentEligible: row.selector_eligible,
+        humanReviewCount: Number(row.human_review_count), latestHumanDecision: row.latest_human_decision,
+        latestHumanApprovalAuthorized: row.latest_human_authorized && row.latest_human_decision === "approved" && row.latest_human_hash === row.content_hash,
+        automatedReviewCount: Number(row.automated_review_count), latestAutomatedDecision: row.latest_automated_decision,
+        latestAutomatedApprovalExactHash: row.latest_automated_decision === "approved" && row.latest_automated_hash === row.content_hash,
+        latestRecordedSourceVerificationStatus: row.latest_automated_source_status,
+        structuralChecks: auditQuestionStructure(row, issues),
+      };
+    });
+
+    const revisionById = new Map(revisions.map((row) => [row.revision_id, row]));
+    const benchmarkCaseMatches = (benchmarkAudit.auditRows ?? []).map((caseRow: any) => {
+      const row = revisionById.get(caseRow.revisionId);
+      const discrepancies: string[] = [];
+      if (!row) discrepancies.push("revision_not_found");
+      else {
+        if (row.content_hash !== caseRow.contentHash) discrepancies.push("content_hash_changed");
+        if (row.concept_id !== caseRow.canonicalConceptId) discrepancies.push("canonical_concept_changed");
+        if (Number(row.revision) !== Number(row.current_revision)) discrepancies.push("not_current_revision");
+        if (!row.selector_eligible) discrepancies.push("not_assessment_eligible");
+        const mappedIds = (row.mapped_points ?? []).map((point: { id: string }) => point.id).sort();
+        const expectedIds = [...(caseRow.knowledgePointIds ?? [])].sort();
+        if (JSON.stringify(mappedIds) !== JSON.stringify(expectedIds)) discrepancies.push("canonical_mapping_changed");
+      }
+      return { caseId: caseRow.caseId, revisionId: caseRow.revisionId, currentExactEligibleMatch: discrepancies.length === 0, discrepancies };
+    });
+    const riskFlags = (benchmarkAudit.flags ?? []).map((item: any) => ({
+      caseId: item.caseId, flag: item.flag, ...benchmarkFlagDisposition(item.flag),
+    }));
+    const duplicatePromptCandidates = findNearDuplicatePromptCandidates(currentRevisions.map((row) => ({ slug: row.slug, prompt: row.prompt })));
+    const duplicateContentHashGroups = [...groupBy(currentRevisions, (row) => row.content_hash).entries()]
+      .filter(([, group]) => group.length > 1)
+      .map(([contentHash, group]) => ({ contentHash, slugs: group.map((row) => row.slug) }));
+
+    return {
+      reportVersion: 1,
+      auditType: "read-only canonical question-bank quality and assessment-eligibility inventory",
+      generatedAt: new Date().toISOString(),
+      database: { name: identity.database, role: identity.role, serverVersion: identity.server_version.split(" ").slice(0, 2).join(" ") },
+      scope: { domains: questionBankAuditDomains, learnerTablesRead: false, writesPerformed: false, providersCalled: false },
+      selectorPolicy: "Current, published, quality-valid revisions need either an active-reviewer exact-hash human approval or an exact-hash automated approval that is the latest automated decision of any kind.",
+      summary: {
+        catalogActiveConcepts: new Set(taxonomy.filter((row: any) => row.concept_status === "active" && row.concept_id).map((row: any) => row.concept_id)).size,
+        catalogActiveKnowledgePoints: pointStats.size,
+        totalRevisions: revisions.length,
+        currentRevisions: currentRevisions.length,
+        supersededRevisions: revisions.length - currentRevisions.length,
+        retiredRevisions: revisions.filter((row) => row.publication_status === "retired").length,
+        publishedCurrentRevisions: currentRevisions.filter((row) => row.publication_status === "published").length,
+        assessmentEligibleCurrentRevisions: currentRevisions.filter((row) => row.selector_eligible).length,
+        exactHashHumanApprovalsCurrent: currentRevisions.filter((row) => row.latest_human_authorized && row.latest_human_decision === "approved" && row.latest_human_hash === row.content_hash).length,
+        exactHashAutomatedApprovalsCurrent: currentRevisions.filter((row) => row.latest_automated_decision === "approved" && row.latest_automated_hash === row.content_hash).length,
+        authoredStructuralValidationPassCurrent: currentRevisions.filter((row) => qualityIssuesForQuestion(row).length === 0).length,
+        sourceMetadataCompleteCurrent: currentRevisions.filter((row) => auditQuestionStructure(row, []).sourceMetadataComplete).length,
+        sourceContentIndependentlyVerifiedCurrent: 0,
+      },
+      domains: domainSummaries,
+      concepts: conceptCoverage,
+      knowledgePoints: pointCoverage,
+      currentQuestionInventory: currentInventory,
+      heuristicDuplicatePromptCandidates: { threshold: 0.84, method: "Jaccard over normalized prompt tokens longer than two characters", candidates: duplicatePromptCandidates },
+      duplicateContentHashGroups,
+      benchmarkV2: {
+        cases: benchmarkAudit.casesInspected,
+        distinctRevisions: benchmarkAudit.distinctRevisions,
+        caseAuditSnapshot: benchmarkAudit.auditType,
+        exactCurrentEligibleMatches: benchmarkCaseMatches.filter((item: any) => item.currentExactEligibleMatch).length,
+        discrepancies: benchmarkCaseMatches.filter((item: any) => !item.currentExactEligibleMatch).length,
+        humanAnnotations: Number(benchmarkDataset.humanReview?.actualAnnotations ?? 0),
+        adjudications: Number(benchmarkDataset.humanReview?.actualAdjudications ?? 0),
+        scoringEligibleCases: Number(benchmarkDataset.humanReview?.scoringEligibleCases ?? 0),
+        riskFlagCount: riskFlags.length,
+        distinctRiskFlagCases: new Set(riskFlags.map((item: any) => item.caseId)).size,
+        riskFlags,
+        caseMatches: benchmarkCaseMatches,
+        interpretation: "Risk flags are review prompts, not confirmed defects. No benchmark label, question content, approval, or learner evidence was changed.",
+      },
+      limitations: [
+        "Exact authored hashes and deterministic validators do not establish technical correctness or independent subject-matter approval.",
+        "Citation metadata completeness does not establish that cited source content was inspected; source content was not externally verified in this audit.",
+        "Non-MCQ candidate counts are inventory counts only; a candidate is usable for targeted verification only when distinct from that learner's prior attempts and mapped to the diagnosed point.",
+        "Prompt similarity is a heuristic candidate list, not proof of duplicate or unsuitable questions.",
+        "Eligible counts represent current selector state, not assessment outcomes, durable mastery, or learner readiness.",
+      ],
+    };
+  } catch (error) {
+    await client.query("ROLLBACK");
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+function countBy<T>(items: readonly T[], key: (item: T) => string) {
+  return items.reduce<Record<string, number>>((counts, item) => {
+    const value = key(item);
+    counts[value] = (counts[value] ?? 0) + 1;
+    return counts;
+  }, {});
+}
+
+function groupBy<T>(items: readonly T[], key: (item: T) => string) {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) grouped.set(key(item), [...(grouped.get(key(item)) ?? []), item]);
+  return grouped;
 }
 
 function groupIssues(issues: string[], slug: string): string[] {
@@ -429,6 +723,24 @@ async function main() {
     if (output) await writeJson(output, report);
     process.stdout.write(`${JSON.stringify(report,null,2)}\n`); return;
   }
+  if (command === "quality-audit") {
+    const report = await questionBankQualityAudit();
+    const output = readOption("--out") ?? qualityAuditPath;
+    await writeJson(output, report);
+    process.stdout.write(`${JSON.stringify({
+      report: path.resolve(output),
+      database: report.database,
+      summary: report.summary,
+      benchmarkV2: {
+        cases: report.benchmarkV2.cases,
+        distinctRevisions: report.benchmarkV2.distinctRevisions,
+        exactCurrentEligibleMatches: report.benchmarkV2.exactCurrentEligibleMatches,
+        discrepancies: report.benchmarkV2.discrepancies,
+        riskFlagCount: report.benchmarkV2.riskFlagCount,
+        distinctRiskFlagCases: report.benchmarkV2.distinctRiskFlagCases,
+      },
+    },null,2)}\n`); return;
+  }
   if (command === "benchmark-report") {
     const dataset = await readJson<HumanBenchmarkDataset>(benchmarkPath);
     process.stdout.write(`${JSON.stringify(buildHumanBenchmarkReport(dataset,canonicalHttpPilotQuestions),null,2)}\n`); return;
@@ -441,7 +753,7 @@ async function main() {
     const input = readOption("--in"); if (!input) throw new Error("Use benchmark-import --in <completed-packet.json>.");
     process.stdout.write(`${JSON.stringify(await importBenchmarkPacket(input),null,2)}\n`); return;
   }
-  throw new Error("Choose inventory, review-export, review-export-domain, review-validate, review-import, activation-report, benchmark-report, benchmark-export, or benchmark-import.");
+  throw new Error("Choose inventory, review-export, review-export-domain, review-validate, review-import, activation-report, quality-audit, benchmark-report, benchmark-export, or benchmark-import.");
 }
 
 main().catch((error) => {
