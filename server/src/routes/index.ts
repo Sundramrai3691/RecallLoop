@@ -1,5 +1,4 @@
 import { Router } from "express";
-import { isMockLlm } from "../config/env.js";
 import { authRouter } from "./auth.js";
 import { baselineRouter } from "./baseline.js";
 import { conceptRouter } from "./concepts.js";
@@ -15,16 +14,11 @@ import { assessmentRouter } from "./assessments.js";
 import { settingsRouter } from "./settings.js";
 import { groundingRouter } from "./grounding.js";
 import { remediationRouter } from "./remediations.js";
+import { healthRouter } from "./health.js";
 
 export const apiRouter = Router();
 
-apiRouter.get("/health", (_req, res) => {
-  res.json({
-    ok: true,
-    mockLlm: isMockLlm(),
-    service: "recallloop",
-  });
-});
+apiRouter.use(healthRouter);
 
 apiRouter.use("/auth", authRouter);
 apiRouter.use("/baseline", baselineRouter);

@@ -1,5 +1,14 @@
 # Project status
 
+## 2026-11-02 Security and deployment-readiness review
+
+- Added a repository-specific threat model, security review, production configuration guide, deployment runbook, backup/restore procedure and incident-response guide. See the security/operations links in `docs/README.md`.
+- Hardened production startup configuration (explicit DB/JWT/client/provider values), HS256 validation, unknown-account login work, auth/study/recall rate limits, concurrent ingestion admission, browser response headers, DB-backed readiness, sanitized database error classes and bounded graceful shutdown. Production startup now fails before DB access when required settings are unsafe.
+- Verification: focused security/auth/config/SSRF/file tests passed (12 files / 40 tests); final full server unit tests passed (46 files / 213 passed / 4 opt-in provider tests skipped); server/client build passed; final Edge core journey passed against configured local PostgreSQL and production client preview; production dependency audit passed offline with 0 reported advisories. Built-JS config preflight passed in development with warning and rejected the actual local config in production mode as expected.
+- Read-only privilege inspection confirmed the configured local `recallloop` DB role is a PostgreSQL superuser with CREATEDB, CREATEROLE and database CREATE. No role or database changes were made. Production must use a least-privilege runtime role and separate migration principal.
+- PostgreSQL integration was deliberately not run because its setup invokes migration replay and `seedCanonicalQuestionBank()`, prohibited by the current brief. Full dependency audit was blocked by the unavailable npm advisory endpoint; production-only offline audit did pass. `tsx` config command is blocked on this Windows host by Node 24 `uv_os_get_passwd ENOMEM`; the already-built script was used without changing repository/global runtime settings.
+- This is not production readiness certification. Current actual config is development-only. Production still requires a least-privilege DB role, intended-environment preflight, ingress-wide limits, tested frontend CSP/HSTS, encrypted automated backups plus isolated restore drill, reachable full dependency audit, and operational/incident ownership. No DB reset, seed, live provider call, commit or push was performed.
+
 ## 2026-11-02 Local performance and observability baseline
 
 - Added an opt-in bounded real-API benchmark restricted to the explicitly configured loopback `recallloop` database, disposable learners, and mock/deterministic providers. The comparable run exercised 1,076 requests at concurrency 1/5/10 with zero failures/timeouts; an extended ingestion run exercised 1,094 requests. Per-route structured request telemetry and opt-in bounded metrics omit request bodies, tokens, learner IDs, and source content.

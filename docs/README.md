@@ -13,6 +13,12 @@ This index separates current implementation references from domain explanations,
 - [Core learning roadmap](CORE_LEARNING_ROADMAP.md): prioritized learner-facing integrity and product phases with acceptance evidence.
 - [Session log](SESSION_LOG.md): append-only record of repository work sessions.
 - [Performance and observability baseline](performance/RECALLLOOP_PERFORMANCE_BASELINE.md): bounded local API, PostgreSQL query, ingestion, and initial-bundle measurements with explicit limits.
+- [Security review](security/SECURITY_REVIEW.md): source-grounded findings, severity, fixes, evidence, and launch blockers.
+- [Threat model](security/THREAT_MODEL.md): assets, boundaries, attack scenarios, controls, and residual risks.
+- [Security configuration](security/SECURITY_CONFIGURATION.md): safe runtime configuration and production preflight.
+- [Deployment runbook](operations/DEPLOYMENT_RUNBOOK.md): release, migrations, health, proxy, and recovery steps.
+- [Database backup and restore](operations/DATABASE_BACKUP_AND_RESTORE.md): protected dump, isolated restore, and recovery limits.
+- [Incident response](operations/INCIDENT_RESPONSE.md): containment, token/provider rotation, evidence preservation, and recovery.
 - [Frontend design](FRONTEND_DESIGN.md): UI system and interaction patterns.
 - [Product flow and UX journey audit](UX_JOURNEY.md): state-aware next actions, action-to-outcome inventory, learner journeys, and browser validation evidence.
 

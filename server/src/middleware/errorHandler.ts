@@ -42,7 +42,19 @@ export function errorHandler(
   }
 
   const databaseError = err as { code?: string };
-  const isDatabaseFailure = databaseError.code === "ECONNREFUSED" || ["22P02", "23503", "23505"].includes(databaseError.code ?? "");
+  if (databaseError.code === "22P02") {
+    if (process.env.REQUEST_LOGS !== "0") console.error(JSON.stringify({ event: "http.error", ...trace, status: 400, code: "INVALID_IDENTIFIER" }));
+    res.status(400).json({ error: "The requested identifier is invalid.", code: "INVALID_IDENTIFIER" });
+    return;
+  }
+  if (databaseError.code === "23505" || databaseError.code === "23503") {
+    const code = databaseError.code === "23505" ? "RESOURCE_CONFLICT" : "INVALID_REFERENCE";
+    if (process.env.REQUEST_LOGS !== "0") console.error(JSON.stringify({ event: "http.error", ...trace, status: 409, code }));
+    res.status(409).json({ error: databaseError.code === "23505" ? "This change conflicts with an existing record." : "The requested relationship is unavailable.", code });
+    return;
+  }
+  const rawCode = databaseError.code ?? "";
+  const isDatabaseFailure = ["ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "EHOSTUNREACH", "ENETUNREACH", "EAI_AGAIN", "EPIPE"].includes(rawCode) || rawCode.startsWith("08") || ["57P01", "57P02", "57P03", "53300"].includes(rawCode);
   if (process.env.REQUEST_LOGS !== "0") console.error(JSON.stringify({ event: "http.error", ...trace, status: isDatabaseFailure ? 503 : 500, code: isDatabaseFailure ? "DATABASE_FAILURE" : "INTERNAL_ERROR" }));
 
   res.status(isDatabaseFailure ? 503 : 500).json({

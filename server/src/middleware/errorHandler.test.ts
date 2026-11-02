@@ -50,4 +50,25 @@ describe("errorHandler", () => {
     expect(response.status).toHaveBeenCalledWith(415);
     expect(response.json).toHaveBeenCalledWith({error:"Send the DOCX as an uncompressed Word document body.",code:"DOCX_ENCODING_UNSUPPORTED"});
   });
+
+  it("returns safe client errors for malformed identifiers and integrity conflicts", () => {
+    const malformed = responseDouble();
+    errorHandler({ code: "22P02", detail: "sensitive database detail" }, { method: "GET" } as Request, malformed, vi.fn() as NextFunction);
+    expect(malformed.status).toHaveBeenCalledWith(400);
+    expect(malformed.json).toHaveBeenCalledWith({ error: "The requested identifier is invalid.", code: "INVALID_IDENTIFIER" });
+    const conflict = responseDouble();
+    errorHandler({ code: "23505", detail: "sensitive database detail" }, { method: "POST" } as Request, conflict, vi.fn() as NextFunction);
+    expect(conflict.status).toHaveBeenCalledWith(409);
+    expect(JSON.stringify(conflict.json.mock.calls)).not.toContain("sensitive");
+  });
+
+  it("maps common database transport failures to a safe retryable status without exposing addresses", () => {
+    for (const code of ["ECONNREFUSED", "EHOSTUNREACH", "EAI_AGAIN", "08006", "57P03"]) {
+      const response = responseDouble();
+      errorHandler({ code, address: "10.0.0.4", port: 5432, detail: "private database endpoint" }, { method: "GET" } as Request, response, vi.fn() as NextFunction);
+      expect(response.status).toHaveBeenCalledWith(503);
+      expect(response.json).toHaveBeenCalledWith({ error: "Database is unavailable. Start PostgreSQL and retry.", code: "DATABASE_FAILURE" });
+      expect(JSON.stringify(response.json.mock.calls)).not.toContain("private");
+    }
+  });
 });

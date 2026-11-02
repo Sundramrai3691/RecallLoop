@@ -23,13 +23,13 @@ export function signToken(user: AuthUser): string {
       name: user.name,
     },
     secret as string,
-    { expiresIn: env.jwtExpiresIn as any },
+    { expiresIn: env.jwtExpiresIn as any, algorithm: "HS256" },
   );
 }
 
 export function verifyToken(token: string): AuthUser {
   try {
-    const payload = jwt.verify(token, secret) as { sub?: string; email?: string; name?: string };
+    const payload = jwt.verify(token, secret, { algorithms: ["HS256"] }) as { sub?: string; email?: string; name?: string };
     if (!payload.sub || !payload.email) {
       throw new AppError("Invalid token payload", 401, "UNAUTHORIZED");
     }

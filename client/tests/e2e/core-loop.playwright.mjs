@@ -180,6 +180,16 @@ try {
   await page.goto(`${clientUrl}/register`, { waitUntil: "commit", timeout: 10_000 });
   try { await page.locator("#name").waitFor({ timeout: 10_000 }); }
   catch { throw new Error(`Register screen did not render (url=${page.url()}, title=${await page.title()}, body=${JSON.stringify((await page.locator("body").innerText()).slice(0,600))}, browserJavaScriptErrors=${JSON.stringify(browserJavaScriptErrors)}, unexpectedFailedRequests=${JSON.stringify(unexpectedFailedRequests)}, expectedCanceledRequests=${JSON.stringify(expectedCanceledRequests)})`); }
+  const apiSecurityHeaders = await page.evaluate(async () => {
+    const response = await fetch("/api/health/live");
+    return {
+      status: response.status,
+      contentTypeOptions: response.headers.get("x-content-type-options"),
+      frameOptions: response.headers.get("x-frame-options"),
+      referrerPolicy: response.headers.get("referrer-policy"),
+    };
+  });
+  assert.deepEqual(apiSecurityHeaders, { status: 200, contentTypeOptions: "nosniff", frameOptions: "DENY", referrerPolicy: "strict-origin-when-cross-origin" }, "The production preview's proxied API must return the configured browser security headers");
   await page.locator("#name").fill("RecallLoop Core Pilot");
   await page.locator("#email").fill(email);
   await page.locator("#password").fill(password);

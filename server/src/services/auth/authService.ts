@@ -4,6 +4,10 @@ import { AppError, conflict } from "../../utils/errors.js";
 import { userRepository } from "../../repositories/postgresRepositories.js";
 import type { UserRecord } from "../../repositories/types.js";
 
+// A fixed throwaway bcrypt hash keeps unknown-account login failures on the same
+// expensive password-check path without adding a stored account or secret.
+const DUMMY_PASSWORD_HASH = "$2b$12$2Zeo8F5BSLuzCAr4SVsWlO40iFGhA1fi0pSOJ5hX4jUfMahWXZDlm";
+
 export interface RegisterInput {
   name: string;
   email: string;
@@ -63,12 +67,8 @@ export async function loginUser(input: LoginInput) {
   }
 
   const user = await userRepository.findByEmail(email);
-  if (!user) {
-    throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
-  }
-
-  const matches = await bcrypt.compare(password, user.passwordHash);
-  if (!matches) {
+  const matches = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
+  if (!user || !matches) {
     throw new AppError("Invalid email or password", 401, "INVALID_CREDENTIALS");
   }
 
