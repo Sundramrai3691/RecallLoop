@@ -303,6 +303,16 @@ a { color: var(--accent); }
 }
 .sprint-completed div { color: var(--ink); }
 .sprint-actions { justify-content: flex-end; }
+.sprint-abandon-confirm {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+  width: 100%;
+  padding: 12px 0 0;
+}
+.sprint-abandon-confirm > .muted { flex: 1 1 280px; }
 
 @media (max-width:760px) {
   .sprint-today-card,

@@ -11,13 +11,14 @@
 - Verification:
   - `npm test`: 50 unit test files passed, 231 tests passed, 4 live-provider tests skipped.
   - `npm run build`: server and client production builds passed.
-  - Disposable PostgreSQL 16 integration: 2/2 Sprint lifecycle regressions passed on port 55432.
-  - Disposable Edge browser smoke: actual Today → Start Sprint → answer → submit → reload passed; desktop 1440x900, tablet 768x1024 and mobile 390x844 layouts had no detected horizontal overflow.
+  - Disposable PostgreSQL 16 integration: 3/3 Sprint integrity regressions passed on port 55434, covering due completion, idempotency-key mismatch, no-work behavior and owner isolation.
+  - Disposable Edge browser smoke: actual Today → Start Sprint → weak answer → cited repair → distinct verification → verification submission → reload passed.
+  - Desktop 1440x900, tablet 768x1024 and mobile 390x844 layouts had no detected horizontal overflow.
   - Mock providers were used. The browser smoke used a temporary PostgreSQL container and removed the test user.
   - The temporary container and volumes used for test runs were stopped/removed; the existing `recallai-postgres-1` application container and `recallai_recallloop_postgres` application volume were left intact.
 - Known limits:
   - Human question correctness and live provider quality remain unverified.
-  - Distinct verification browser coverage is implemented but needs an isolated end-to-end run across repair and result reload.
+  - The isolated browser success journey is complete for weak-answer → source-grounded repair → distinct verification → reload. No-source, no-distinct-verification, provider-failure, concurrent duplicate submission and abandonment browser branches remain unverified.
   - Sprint duration is not measured from real usage.
   - No D1/D7/D28 retention or first-session cohort telemetry exists.
 

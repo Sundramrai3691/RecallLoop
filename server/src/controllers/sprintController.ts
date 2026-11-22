@@ -1,4 +1,5 @@
 import type { NextFunction, Response } from "express";
+import { createHash } from "node:crypto";
 import type { AuthenticatedRequest } from "../lib/auth.js";
 import { serializeAttempt } from "../lib/serialize.js";
 import {
@@ -17,7 +18,10 @@ export async function getActiveSprintHandler(req: AuthenticatedRequest, res: Res
 
 export async function startSprintHandler(req: AuthenticatedRequest, res: Response, next: NextFunction): Promise<void> {
   try {
-    const sprint = await startSprint(req.user!.id, req.body?.idempotencyKey);
+    const requestBody=req.body ?? {};
+    const canonicalBody=Object.fromEntries(Object.keys(requestBody).sort().map((key)=>[key,requestBody[key]]));
+    const requestHash=createHash("sha256").update(JSON.stringify(canonicalBody)).digest("hex");
+    const sprint = await startSprint(req.user!.id, req.body?.idempotencyKey, requestHash);
     res.status(sprint.status === "in_progress" ? 201 : 200).json({ sprint });
   } catch (error) { next(error); }
 }

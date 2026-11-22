@@ -630,6 +630,27 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Verification: `npm.cmd test` passed (49 files; 228 passed, 4 skipped); `npm.cmd run build` passed for server and client. PostgreSQL integration, API benchmark, and browser E2E were not run because their local database prerequisite was unavailable. `git diff --check` passed; no runtime source or dependency files were changed.
 - Highest-value follow-up: benchmark multi-concept completion with transaction-statement instrumentation and repeat the bounded API profile on an explicitly verified disposable local database.
 
+## 2026-11-22 — Recall Sprint integrity and full-loop closeout
+
+- Reviewed the Sprint implementation against the Milestone 1A product and engineering brief. Preserved existing worktree changes and did not change learner history, question revisions, approvals, readiness, scheduler thresholds or security boundaries.
+- Confirmed migration `031_recall_sprints.sql` provides owner-scoped lifecycle, item identity, and one-active-Sprint uniqueness. Added and verified `idempotency_request_hash` so a reused key with a different start payload is rejected rather than silently returning a different-created Sprint.
+- Corrected repair selection: the Sprint now ranks exact submitted missing/partial knowledge-point evidence and passes the exact weak point to existing grounded remediation. Existing remediation still preserves the original attempt, evidence, source retrieval and verification relationship.
+- Preserved Sprint context in recall-result remediation navigation and Sprint return paths. Added explicit abandoned and submitted/unanswered summary labels so lifecycle and learner outcomes remain visually distinct.
+- Added integration coverage for mismatch key payload reuse and no-eligible-work behavior. Focused disposable PostgreSQL 16 integration passed 3/3 cases, in addition to the earlier 2/2 lifecycle suite.
+- Disposable PostgreSQL 16 full-browser success journey passed in Edge with mock providers:
+  - intentionally weak submitted recall;
+  - open grounded repair;
+  - inspect one cited source passage;
+  - start a distinct eligible existing HTTP verification revision;
+  - submit the verification answer;
+  - persist `verification_attempt_id` and verified remediation status;
+  - reload and confirm Sprint/remediation state.
+- The browser fixture used test-only automated eligibility for existing exact HTTP revisions and did not add question content or fabricate human approval. Screenshots were captured at 1440x900, 768x1024 and 390x844.
+- Screenshots: [repair 1440](/c:/Users/HP/RecallAI/test-results/sprint-repair-1440.png), [full loop 1440](/c:/Users/HP/RecallAI/test-results/sprint-full-loop-1440.png), [full loop 768](/c:/Users/HP/RecallAI/test-results/sprint-full-loop-768.png), [full loop 390](/c:/Users/HP/RecallAI/test-results/sprint-full-loop-390.png).
+- Database/resource cleanup: two Sprint integrity containers and the full-loop browser container were stopped; the existing `recallai-postgres-1` application container and `recallai_recallloop_postgres` application volume remained intact. Test users were deleted and no application database writes were made.
+- Browser branches not yet completed: no supporting source, no eligible distinct verification, live-provider failure, concurrent duplicate submission and abandonment. Live-provider and human-review evidence remain unverified.
+- No commit or push.
+
 ## 2026-11-22 — Recall Sprint Milestone 1 implementation
 
 - Implemented the first Sprint milestone: Today now exposes a primary Recall Sprint card and `/sprint`/`/sprint/:id` provide entry, resume, answer and summary states.

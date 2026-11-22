@@ -11,6 +11,7 @@ export function RecallSprintPage() {
   const [sprint, setSprint] = useState<RecallSprint | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [confirmAbandon, setConfirmAbandon] = useState(false);
 
   async function load() {
     try {
@@ -69,6 +70,7 @@ export function RecallSprintPage() {
     setError(null);
     try {
       setSprint((await api.abandonSprint(sprint.id)).sprint);
+      setConfirmAbandon(false);
     } catch (err) { setError(err instanceof ApiError ? err.message : "We couldn’t leave this Sprint."); }
     finally { setBusy(false); }
   }
@@ -81,7 +83,17 @@ export function RecallSprintPage() {
       const result = await api.openSprintRepair(sprint.id);
       setSprint(result.sprint);
       navigate(`/remediations/${result.remediation.id}?returnTo=${encodeURIComponent(`/sprint/${sprint.id}`)}&sprintId=${encodeURIComponent(sprint.id)}`);
-    } catch (err) { setError(err instanceof ApiError ? err.message : "We couldn’t open focused repair."); }
+    } catch (err) {
+      setError(err instanceof ApiError
+        ? err.code === "NO_REMEDIATION_GAP"
+          ? "This Sprint has no submitted knowledge gap to repair. You can complete the Sprint or choose another learning action."
+          : err.code === "SPRINT_NO_REPAIR_GAP"
+            ? "No submitted Sprint answer identified a repairable knowledge point."
+            : err.code === "SPRINT_REPAIR_UNAVAILABLE"
+              ? "Focused repair could not be prepared. The original recall evidence remains saved."
+              : err.message
+        : "We couldn’t open focused repair.");
+    }
     finally { setBusy(false); }
   }
 
@@ -93,7 +105,15 @@ export function RecallSprintPage() {
       const result = await api.startSprintVerification(sprint.id);
       setSprint(result.sprint);
       navigate(`/recall/${result.attempt.id}?returnTo=${encodeURIComponent(`/sprint/${sprint.id}`)}`);
-    } catch (err) { setError(err instanceof ApiError ? err.message : "We couldn’t start verification."); }
+    } catch (err) {
+      setError(err instanceof ApiError
+        ? err.code === "NO_FRESH_VERIFICATION"
+          ? "No distinct eligible verification question is available yet. Your repair remains available; you can use another supported practice action."
+          : err.code === "REMEDIATION_NOT_READY"
+            ? "This repair is not ready for verification yet. Review its source material and try again."
+            : err.message
+        : "We couldn’t start verification.");
+    }
     finally { setBusy(false); }
   }
 
@@ -119,7 +139,7 @@ export function RecallSprintPage() {
   return <div className="sprint-page">
     <PageHeader
       eyebrow={sprint.status === "completed" ? "SPRINT COMPLETE" : sprint.status === "abandoned" ? "SPRINT PAUSED" : "TODAY"}
-      title={sprint.status === "completed" ? "Your Sprint is complete" : sprint.status === "abandoned" ? "Sprint paused" : "Recall Sprint"}
+      title={sprint.status === "completed" ? "Your Sprint is complete" : sprint.status === "abandoned" ? "Sprint abandoned" : "Recall Sprint"}
       description={sprint.status === "in_progress"
         ? `${sprint.progress.submitted} of ${sprint.progress.total} questions submitted`
         : "Completing this session records activity; it does not mean every concept is mastered."}
@@ -166,7 +186,7 @@ export function RecallSprintPage() {
 
     {sprint.status === "completed" ? <section className="card sprint-completed">
       <CircleDashed size={22}/>
-      <div><p className="eyebrow">ACTIVITY COMPLETE</p><h2>{sprint.progress.submitted} submitted · {sprint.progress.total - sprint.progress.submitted} unanswered</h2><p className="muted">This Sprint is complete. It does not by itself establish durable mastery.</p></div>
+      <div><p className="eyebrow">ACTIVITY COMPLETE</p><h2>{sprint.progress.submitted} submitted{(() => { const unanswered=sprint.items.filter((item)=>item.recall.resultStatus==="unanswered").length; return unanswered?` · ${unanswered} unanswered`:""; })()}</h2><p className="muted">This Sprint is complete. It does not by itself establish durable mastery.</p></div>
     </section> : null}
 
     {sprint.status === "completed" && sprint.repairRemediationId
@@ -178,7 +198,11 @@ export function RecallSprintPage() {
 
     {sprint.status === "in_progress" ? <div className="actions sprint-actions">
       {allSubmitted ? <button className="btn" type="button" disabled={busy} onClick={() => void complete()}>{busy ? "Completing…" : "Complete Sprint"}</button> : null}
-      <button className="btn btn-quiet" type="button" disabled={busy} onClick={() => void abandon()}>{busy ? "Saving…" : "Leave for later"}</button>
+    {confirmAbandon ? <div className="sprint-abandon-confirm" role="group" aria-label="Confirm abandoning this Sprint">
+      <span className="muted">Abandon this session? Submitted evidence stays saved and pending questions remain available.</span>
+      <button className="btn" type="button" disabled={busy} onClick={() => void abandon()}>{busy ? "Abandoning…" : "Confirm abandon"}</button>
+      <button className="btn btn-quiet" type="button" disabled={busy} onClick={() => setConfirmAbandon(false)}>Keep this Sprint</button>
+    </div> : <button className="btn btn-quiet" type="button" disabled={busy} onClick={() => setConfirmAbandon(true)}>Abandon Sprint</button>}
     </div> : <div className="actions"><Link className="btn btn-primary" to="/today">Back to Today</Link></div>}
   </div>;
 }

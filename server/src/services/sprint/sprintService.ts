@@ -1,4 +1,5 @@
 import type { PoolClient } from "pg";
+import { createHash } from "node:crypto";
 import { withTransaction, query } from "../../db/postgres.js";
 import { AppError, conflict, notFound } from "../../utils/errors.js";
 import { getAttempt, getConcept } from "../../repositories/legacyPostgresRepositories.js";
@@ -186,13 +187,19 @@ export async function getSprint(userId: string, sprintId: string): Promise<Recal
   return getSprintRow(userId, sprintId);
 }
 
-export async function startSprint(userId: string, idempotencyKey: string): Promise<RecallSprint> {
+export async function startSprint(userId: string, idempotencyKey: string, requestHashInput?: string): Promise<RecallSprint> {
   if (!isUuid(idempotencyKey)) throw new AppError("A valid Sprint idempotency key is required.", 400, "VALIDATION_ERROR");
+  const requestHash=requestHashInput?.trim() || createHash("sha256").update(JSON.stringify({operation:"start-recall-sprint"})).digest("hex");
 
   return withTransaction(async (client) => {
     await client.query(`SELECT pg_advisory_xact_lock(hashtextextended($1,0))`, [`recall-sprint:${userId}`]);
-    const existingKey = await client.query<any>(`SELECT id FROM recall_sprints WHERE user_id=$1 AND idempotency_key=$2`, [userId, idempotencyKey]);
-    if (existingKey.rows[0]) return existingKey.rows[0].id;
+    const existingKey = await client.query<any>(`SELECT id,idempotency_request_hash FROM recall_sprints WHERE user_id=$1 AND idempotency_key=$2`, [userId, idempotencyKey]);
+    if (existingKey.rows[0]) {
+      const existingHash=existingKey.rows[0].idempotency_request_hash as string;
+      if(existingHash && existingHash!==requestHash)throw conflict("This Sprint idempotency key was already used for a different request.","SPRINT_IDEMPOTENCY_REUSED");
+      if(!existingHash)await client.query(`UPDATE recall_sprints SET idempotency_request_hash=$2,updated_at=now() WHERE id=$1`,[existingKey.rows[0].id,requestHash]);
+      return existingKey.rows[0].id;
+    }
 
     const active = await client.query<any>(`SELECT id FROM recall_sprints WHERE user_id=$1 AND status='in_progress' LIMIT 1`, [userId]);
     if (active.rows[0]) return active.rows[0].id;
@@ -283,8 +290,8 @@ export async function startSprint(userId: string, idempotencyKey: string): Promi
     if (!itemSpecs.length) throw conflict("No supported, eligible work is available for a Recall Sprint.", "SPRINT_NO_ELIGIBLE_WORK");
 
     const sprint = await client.query<any>(`INSERT INTO recall_sprints
-      (user_id,status,idempotency_key) VALUES($1,'in_progress',$2) RETURNING *`,
-      [userId, idempotencyKey]);
+      (user_id,status,idempotency_key,idempotency_request_hash) VALUES($1,'in_progress',$2,$3) RETURNING *`,
+      [userId, idempotencyKey, requestHash]);
     for (let index = 0; index < itemSpecs.length; index++) {
       const item = itemSpecs[index];
       await client.query(`INSERT INTO recall_sprint_items
@@ -335,6 +342,11 @@ export async function abandonSprint(userId: string, sprintId: string): Promise<R
 }
 
 export async function openSprintRepair(userId: string, sprintId: string): Promise<{ sprint: RecallSprint; remediation: Awaited<ReturnType<typeof createGroundedRemediation>> }> {
+  await withTransaction(async (client) => {
+    const sprintRow = await client.query<any>(`SELECT status FROM recall_sprints WHERE id=$1 AND user_id=$2 FOR UPDATE`, [sprintId,userId]);
+    if (!sprintRow.rows[0]) throw notFound("Recall Sprint not found", "SPRINT_NOT_FOUND");
+    if (sprintRow.rows[0].status==="abandoned") throw conflict("An abandoned Sprint cannot start repair.","SPRINT_ABANDONED");
+  });
   const sprint = await getSprintRow(userId, sprintId);
   if (sprint.repairRemediationId) {
     const { getGroundedRemediation } = await import("../grounding/groundedRemediationService.js");
@@ -342,20 +354,28 @@ export async function openSprintRepair(userId: string, sprintId: string): Promis
   }
   if (sprint.items.every((item) => !item.submitted)) throw conflict("Submit at least one Sprint answer before opening repair.", "SPRINT_REPAIR_UNAVAILABLE");
 
-  const ranked = await query<any>(`SELECT si.recall_attempt_id,e.overall_coverage,
-      COALESCE((SELECT jsonb_agg(jsonb_build_object('status',kpr.status,'point',kpr.point,'feedback',kpr.feedback) ORDER BY kpr.id)
-        FROM recall_evaluations e2 JOIN recall_knowledge_point_results kpr ON kpr.evaluation_id=e2.id
-        WHERE e2.recall_attempt_id=si.recall_attempt_id AND kpr.status IN ('partial','missing')),'[]'::jsonb) AS gaps
+  const ranked = await query<any>(`SELECT si.recall_attempt_id,r.concept_id,kpr.point,kpr.status,kpr.feedback,e.overall_coverage,
+      (SELECT count(*)::int
+       FROM recall_attempts ra
+       JOIN recall_evaluations rae ON rae.recall_attempt_id=ra.id
+       JOIN recall_knowledge_point_results rakpr ON rakpr.evaluation_id=rae.id
+       WHERE ra.user_id=$2
+         AND ra.concept_id=r.concept_id
+         AND ra.submitted_at IS NOT NULL
+         AND lower(regexp_replace(trim(rakpr.point),'[[:space:]]+',' ','g'))=lower(regexp_replace(trim(kpr.point),'[[:space:]]+',' ','g'))
+         AND rakpr.status IN ('partial','missing')) AS misses
     FROM recall_sprint_items si
     JOIN recall_attempts r ON r.id=si.recall_attempt_id AND r.user_id=$2
     JOIN recall_evaluations e ON e.recall_attempt_id=r.id
+    JOIN recall_knowledge_point_results kpr ON kpr.evaluation_id=e.id
     WHERE si.sprint_id=$1
-    ORDER BY e.overall_coverage ASC,si.position ASC`,
+      AND kpr.status IN ('partial','missing')
+    ORDER BY CASE kpr.status WHEN 'missing' THEN 0 ELSE 1 END,misses DESC,e.overall_coverage ASC,si.position ASC,kpr.point ASC`,
     [sprintId, userId]);
-  const target = ranked.rows.find((row) => Array.isArray(row.gaps) && row.gaps.length > 0);
+  const target = ranked.rows.find((row) => Boolean(row.point));
   if (!target) throw conflict("No submitted Sprint item identified a repairable knowledge gap.", "SPRINT_NO_REPAIR_GAP");
 
-  const remediation = await createGroundedRemediation(userId, target.recall_attempt_id);
+  const remediation = await createGroundedRemediation(userId, target.recall_attempt_id,{knowledgePoint:target.point});
   if (!remediation) throw conflict("Grounded repair could not be prepared.", "SPRINT_REPAIR_UNAVAILABLE");
   await query(`UPDATE recall_sprints SET repair_remediation_id=$2,updated_at=now() WHERE id=$1 AND user_id=$3`, [sprintId, remediation.id, userId]);
   await query(`INSERT INTO learning_events
@@ -366,6 +386,11 @@ export async function openSprintRepair(userId: string, sprintId: string): Promis
 }
 
 export async function startSprintVerification(userId: string, sprintId: string): Promise<{ sprint: RecallSprint; attempt: ReturnType<typeof serializeAttempt>; remediationId: string }> {
+  await withTransaction(async (client) => {
+    const sprintRow = await client.query<any>(`SELECT status FROM recall_sprints WHERE id=$1 AND user_id=$2 FOR UPDATE`, [sprintId,userId]);
+    if (!sprintRow.rows[0]) throw notFound("Recall Sprint not found", "SPRINT_NOT_FOUND");
+    if (sprintRow.rows[0].status==="abandoned") throw conflict("An abandoned Sprint cannot start verification.","SPRINT_ABANDONED");
+  });
   const sprint = await getSprintRow(userId, sprintId);
   if (!sprint.repairRemediationId) throw conflict("Open the Sprint repair before starting verification.", "SPRINT_VERIFICATION_UNAVAILABLE");
   if (sprint.verificationAttemptId) {

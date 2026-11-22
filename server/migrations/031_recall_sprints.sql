@@ -3,6 +3,7 @@ CREATE TABLE IF NOT EXISTS recall_sprints (
   user_id uuid NOT NULL REFERENCES app_users(id) ON DELETE CASCADE,
   status text NOT NULL CHECK (status IN ('in_progress','completed','abandoned')),
   idempotency_key uuid NOT NULL,
+  idempotency_request_hash text NOT NULL DEFAULT '',
   repair_remediation_id uuid REFERENCES grounded_remediations(id) ON DELETE SET NULL,
   verification_attempt_id uuid REFERENCES recall_attempts(id) ON DELETE SET NULL,
   created_at timestamptz NOT NULL DEFAULT now(),

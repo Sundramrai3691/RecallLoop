@@ -192,7 +192,7 @@ export function rankRetrievedChunks(searchText:string,embedding:number[],candida
   return selected.map(({embedding,...chunk})=>({...chunk,pageNumber:chunk.pageNumber==null?null:Number(chunk.pageNumber),paragraphStart:chunk.paragraphStart==null?null:Number(chunk.paragraphStart),paragraphEnd:chunk.paragraphEnd==null?null:Number(chunk.paragraphEnd)}));
 }
 
-export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator}={}) {
+export async function createGroundedRemediation(userId:string,attemptId:string,options:{remediator?:GroundedRemediator;knowledgePoint?:string}={}) {
   const attemptResult=await query<any>(`SELECT a.id,a.user_id AS "userId",a.concept_id AS "conceptId",a.confidence,a.evidence_weight AS "evidenceWeight",a.answer,a.submitted_at AS "submittedAt",c.name AS "conceptName",ss.grounding_source_id AS "groundingSourceId",e.mistakes,json_agg(json_build_object('point',kp.point,'status',kp.status,'feedback',kp.feedback) ORDER BY kp.id) FILTER(WHERE kp.id IS NOT NULL) AS "knowledgePointResults"
     FROM recall_attempts a JOIN personal_concepts c ON c.id=a.concept_id AND c.user_id=a.user_id JOIN study_sessions ss ON ss.id=a.study_session_id AND ss.user_id=a.user_id JOIN recall_evaluations e ON e.recall_attempt_id=a.id LEFT JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id
     WHERE a.id=$1 AND a.user_id=$2 GROUP BY a.id,c.name,e.id,ss.grounding_source_id`,[attemptId,userId]);
@@ -203,7 +203,11 @@ export async function createGroundedRemediation(userId:string,attemptId:string,o
   if(!gaps.length)throw conflict("This recall did not identify a knowledge point that needs remediation","NO_REMEDIATION_GAP");
   const recent=await query<any>(`WITH recent_attempts AS (SELECT id,confidence,evidence_weight FROM recall_attempts WHERE user_id=$1 AND concept_id=$2 AND submitted_at IS NOT NULL ORDER BY submitted_at DESC LIMIT 5)
     SELECT r.id AS attempt_id,r.confidence,r.evidence_weight AS "evidenceWeight",kp.point,kp.status,kp.feedback FROM recent_attempts r JOIN recall_evaluations e ON e.recall_attempt_id=r.id JOIN recall_knowledge_point_results kp ON kp.evaluation_id=e.id ORDER BY r.id=$3 DESC`,[userId,attempt.conceptId,attemptId]);
-  const ranked=gaps.map((gap:any)=>({gap,misses:recent.rows.filter((row:any)=>row.point.trim().toLowerCase()===gap.point.trim().toLowerCase()&&row.status!=="correct").length})).sort((a:any,b:any)=>b.misses-a.misses||scoreForStatus(a.gap.status)-scoreForStatus(b.gap.status)||a.gap.point.localeCompare(b.gap.point));
+  const requestedPoint=options.knowledgePoint?.trim().toLocaleLowerCase();
+  const requestedGap=requestedPoint?gaps.find((gap:any)=>gap.point.trim().toLocaleLowerCase()===requestedPoint):null;
+  const ranked=requestedGap
+    ? [{gap:requestedGap,misses:recent.rows.filter((row:any)=>row.point.trim().toLocaleLowerCase()===requestedPoint&&row.status!=="correct").length}]
+    : gaps.map((gap:any)=>({gap,misses:recent.rows.filter((row:any)=>row.point.trim().toLocaleLowerCase()===gap.point.trim().toLocaleLowerCase()&&row.status!=="correct").length})).sort((a:any,b:any)=>b.misses-a.misses||scoreForStatus(a.gap.status)-scoreForStatus(b.gap.status)||a.gap.point.localeCompare(b.gap.point));
   const chosen=ranked[0].gap;
   const evidenceRows=recent.rows.filter((row:any)=>row.point.trim().toLowerCase()===chosen.point.trim().toLowerCase());
   const latest=evidenceRows.find((row:any)=>row.attempt_id===attemptId)??{...chosen,confidence:attempt.confidence,evidenceWeight:attempt.evidenceWeight};

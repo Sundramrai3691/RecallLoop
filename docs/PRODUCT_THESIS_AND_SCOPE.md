@@ -646,7 +646,9 @@ Retention should be read alongside active question coverage and failure states. 
 - The Sprint composer uses up to two eligible due recalls, then a weak canonical concept, then a recent canonical concept, with a three-item ceiling and concept/deduplication checks.
 - Sprint lifecycle is separate from submitted recall outcomes. Completion requires every diagnostic item to be submitted or skipped; a weak/unanswered Sprint can complete without implying mastery.
 - Unit, disposable PostgreSQL integration and Edge browser smoke evidence passed for Sprint creation, idempotent resume, owner isolation, submission/reload and 1440/768/390 responsive layouts.
-- Browser repair/verification remains implemented in existing remediation services but requires broader browser coverage beyond this milestone closeout.
+- Repair selection now ranks submitted missing/partial knowledge-point evidence and passes the exact weak point into existing grounded remediation.
+- Disposable PostgreSQL and full Edge browser closeout passed the source-grounded repair and distinct eligible verification loop; test-only existing HTTP revisions and mock providers were used.
+- No-source and no-distinct-verification browser blocking states remain separately required; a full success claim is not extended to those branches.
 
 ### Milestone 2: Consolidate Library and simplify onboarding
 
