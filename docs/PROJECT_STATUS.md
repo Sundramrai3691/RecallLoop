@@ -1,5 +1,18 @@
 # Project status
 
+## 2026-11-22 — Sprint verification browser closure
+
+- Added the dedicated checked-in Playwright regression [sprint-verification.playwright.mjs](/c:/Users/HP/RecallAI/client/tests/e2e/sprint-verification.playwright.mjs).
+- Reproduction command: `npm run test:e2e:sprint-verification`.
+- The run creates one uniquely named learner and one disposable PostgreSQL 16 database, migrates/seeds test state, applies test-only automated eligibility to existing revisions, starts mock-provider API and Vite preview processes, then removes the database and learner.
+- It completed the real weak recall → Sprint return → source-grounded repair → distinct verification → verification submission → result → Sprint reload journey in Edge.
+- Observed distinct revision IDs: weak revision `de3accf5-e501-4e01-9e6b-a1aab95847a6`; verification revision `266381c9-fcb4-4b0f-8b22-ca45bb799506`.
+- Observed evidence: weak attempt `274f72e0-ed12-4f6c-bb5b-d19a704a9fe9`; verification attempt `39d4b37b-87e9-42c5-8405-bdb395928458`; remediation `f160d8c5-af47-42f4-8cff-18733817f41f`; Sprint `afce3f1f-31bd-453a-84e3-8276e6da51ca`.
+- Verified at 1440x900, 768x1024 and 390x844.
+- Artifacts: [1440 screenshot](/c:/Users/HP/RecallAI/test-results/sprint-verification-success-1440.png), [768 screenshot](/c:/Users/HP/RecallAI/test-results/sprint-verification-success-768.png), [390 screenshot](/c:/Users/HP/RecallAI/test-results/sprint-verification-success-390.png), [Playwright trace](/c:/Users/HP/RecallAI/test-results/sprint-verification.trace.zip).
+- Classification: the previous browser failures were harness timing/selector risk rather than a confirmed recall-submit application defect. The focused test proves the real POST and result navigation now; later runs that only reached a verification page without submission were not browser passes.
+- This evidence uses mock providers and test-only automated eligibility. It is not human question approval, live evaluator quality or learning-effectiveness evidence.
+
 ## 2026-11-22 — Recall Sprint Milestone 1B reliability closeout
 
 | Scenario | Existing coverage | New coverage | Test layer | Result |

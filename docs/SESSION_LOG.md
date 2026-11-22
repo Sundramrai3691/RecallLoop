@@ -345,6 +345,16 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Validation: focused five-suite command passed 5 files / 17 tests; npm.cmd test passed 27 files / 126 tests with 4 opt-in provider checks skipped; npm.cmd run test:integration -w server passed 17/17; npm.cmd run question-bank:coverage and npm.cmd run question-bank:activation-report -w server completed. The initial npm.cmd run build passed server/client production build with the existing 560.21 kB chunk advisory. After the review CLI shutdown fix, server TypeScript passed; npm.cmd run build -w client -- --configLoader runner passed. A second root build attempt hit the sandbox Vite config path error. A post-apply review preflight rerun could not start because Node reported uv_os_get_passwd ENOMEM; it did not reach the database. The successful apply had printed all 18 decisions but originally kept the process open until interrupted; the CLI now closes its PostgreSQL pool in finally. No browser or learner pilot was run; independent subject-matter validation and learner outcomes remain unclaimed.
 - No commit or push.
 
+## 2026-11-22 — Sprint verification browser regression closure
+
+- Diagnosed the earlier verification browser timeout: the weak recall POST and navigation were not the confirmed defect. The dedicated test repeatedly reached verification but needed meaningful result-state waits and direct response observation rather than repeated selector/navigation assumptions.
+- Added a permanent dedicated Playwright regression at [sprint-verification.playwright.mjs](/c:/Users/HP/RecallAI/client/tests/e2e/sprint-verification.playwright.mjs).
+- Reproduction command: `npm run test:e2e:sprint-verification`.
+- The dedicated disposable database/Edge run passed weak recall submission, result navigation, source-grounded repair, distinct verification submission, persisted remediation/Sprint state and reload.
+- It observed a weak revision and distinct verification revision, then confirmed the remediation and Sprint retained the verification attempt. It captured a trace and 1440/768/390 screenshots.
+- The run used mock providers and test-only automated eligibility for existing HTTP revisions. It does not claim human approval or live-provider quality.
+- Database cleanup removed the test learner and disposable database. The application container and volume remained intact.
+
 ## 2026-11-22 — Recall Sprint 1B reliability closeout
 
 - Inspected the existing core Playwright harness, Sprint unit/integration tests, recall transaction, grounded remediation and targeted verification implementations. Existing coverage already included duplicate baseline/study submission, recall submission rollback, concurrent scheduler transitions and provider-failure recall behavior.

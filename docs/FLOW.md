@@ -34,7 +34,7 @@ Endpoints use JSON except the authenticated raw `application/pdf` upload route. 
 | `GET/POST /api/grounding/sources`, `POST /api/grounding/sources/pdf`, `POST /api/grounding/sources/docx`, `GET /api/grounding/sources/:id` | Auth | User-owned text, Markdown, public article, page-aware PDF, and structured DOCX source ingestion and reads. |
 | `POST /api/remediations/from-attempt/:attemptId`, `GET /:id`, `POST /:id/verify` | Auth | Grounded remediation lifecycle. |
 
-Route definitions: `server/src/routes/*.ts`. Client calls are centralized in `client/src/api/client.ts`.
+Route definitions: `server/src/routes/*.ts`. Client calls are centralized in `client/src/api/client.ts`. The dedicated Sprint repair/verification browser regression is `client/tests/e2e/sprint-verification.playwright.mjs`; reproduce it with `npm run test:e2e:sprint-verification` using the explicitly configured loopback PostgreSQL target.
 
 ## Important workflows
 
