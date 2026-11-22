@@ -8,6 +8,12 @@ The bounded benchmark exercised the configured local PostgreSQL `recallloop` dat
 
 The measurements identified two backend costs worth addressing: the dashboard used five sequential queries, and session completion repeated pending-attempt loading, producing 41 pool queries per completion request in the baseline sample. Replacing the dashboard reads with one aggregate SQL statement and loading pending attempts once reduced the dashboard route to one pool query and completion to five. Under the 10-concurrency API workload, dashboard p95 fell from 52.41 ms to 21.52 ms (59%); the full study-create/retry/complete/recall workflow p95 fell from 620.23 ms to 350.14 ms (44%). These are local sample comparisons, not SLOs or capacity estimates.
 
+### Current-source benchmark caveat (2026-11-20)
+
+The current `completeStudySession` implementation still calls `listPending` inside a loop over generated recall attempts. The saved five-pool-query completion result is specific to the small synthetic profile and does not establish constant query growth for sessions with multiple concepts. In addition, request query telemetry observes `pool.query`; individual statements issued through a transaction client are represented only by the outer transaction duration. Treat the 41-to-5 observation as workload-specific until a multi-concept run instruments transaction statements and confirms the current implementation.
+
+No new database benchmark was run for this audit: the configured target was loopback database `recallloop`, but PostgreSQL was not reachable on port 5432 and the Docker daemon was unavailable.
+
 ## Method
 
 The runner uses the actual API, auth, assessment, study, recall, source-ingestion, and persistence paths. It performs dashboard, goal detail, readiness, due-recall, learner-summary reads, idempotent session create/retry and completion, a five-question eligible assessment, and text/Markdown/PDF/DOCX ingestion at concurrency 1, 5, and 10. Each phase has a 10-second request timeout; the run is capped at 1,200 requests and 120 seconds and refuses non-loopback or non-`recallloop` targets. Reports contain operation names, status/latency/counts/sizes, sanitized plans, and runtime metadata, never request bodies, tokens, learner IDs, or source text.

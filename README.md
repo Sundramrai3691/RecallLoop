@@ -19,17 +19,17 @@ RecallLoop is an active-recall learning app. Learners study material, answer que
 - Canonical role/skill/topic/concept roadmaps, baseline assessments, readiness evidence, daily plans, and resource recommendations.
 - Deterministic built-in assessment blueprints and curated question content. LLMs do not generate the canonical assessment bank.
 - A revisioned canonical question bank with exact point mappings and an authorized human-review/publication gate. The Core SDE authoring set currently contains 114 candidates over 19 knowledge points in Data Structures and Algorithms, Operating Systems, Database Management Systems, Computer Networks, and System Design. These new candidates are drafts; normal learners cannot use them until eligible exact revisions are independently reviewed and published. See [question-bank status](docs/CANONICAL_QUESTION_BANK.md).
-- Focused grounded remediation: learners can add text or Markdown they are allowed to use, and RecallLoop can retrieve relevant excerpts, show their source attribution, and offer targeted verification. RecallLoop does not fetch the supplied reference URL.
+- Focused grounded remediation: learners can add text, Markdown, supported public HTML articles, PDFs, or DOCX files; RecallLoop can retrieve relevant excerpts, show their source attribution, and offer targeted verification. Public-article import is separate from study-session source links, which are retained as provenance rather than fetched.
 
 ## Current RAG scope
 
-Retrieval-augmented generation is implemented for learner-provided text/Markdown and weak knowledge points. The current flow normalizes and chunks text, embeds chunks, retrieves relevant learner-owned excerpts, applies a relevance threshold, and passes retrieved evidence to a validated remediation generator. Local defaults are deterministic. An OpenAI-compatible embedding provider and optional LLM remediation generator are available by explicit configuration.
+Retrieval-augmented generation is implemented for learner-provided text, Markdown, supported public HTML articles, PDFs, and DOCX files when addressing weak knowledge points. The flow extracts and chunks text, embeds chunks, retrieves learner-owned excerpts, applies a relevance threshold, and passes retrieved evidence to a validated remediation generator. Local defaults are deterministic. An OpenAI-compatible embedding provider and optional LLM remediation generator are available by explicit configuration.
 
-Current limits: no URL fetching or PDF/document parsing; PostgreSQL `real[]` vectors are ranked in application code using cosine similarity plus token overlap; pgvector and indexed vector search are not in use. See [Grounded Remediation](docs/GROUNDED_REMEDIATION.md) for data flow, configuration, limits, and tests.
+Current limits: vectors are stored as PostgreSQL `real[]`; candidate selection uses lexical full-text search and application-side cosine/token-overlap ranking, not pgvector or indexed vector similarity. Retrieval is limited to 64 query terms, at most 5,000 lexical candidates, and five final passages; no human-labeled relevance benchmark is available. See [Grounded Remediation](docs/GROUNDED_REMEDIATION.md) for data flow, configuration, limits, and tests.
 
 ## Tech stack
 
-- **Workspace/runtime:** npm workspaces, Node.js 20+, TypeScript.
+- **Workspace/runtime:** npm workspaces, Node.js >=22.13.0, TypeScript.
 - **Client:** React 19, Vite 6, React Router 7, Motion, and Lucide.
 - **Server:** Express 4, Zod, JWT, bcryptjs, and `pg`.
 - **Persistence:** PostgreSQL 16 with SQL migrations; the server does not use an ORM.
@@ -37,7 +37,7 @@ Current limits: no URL fetching or PDF/document parsing; PostgreSQL `real[]` vec
 
 ## Setup
 
-Requires Node.js 20+, npm, and PostgreSQL 16. Docker Compose provides PostgreSQL locally.
+Requires Node.js >=22.13.0, npm, and PostgreSQL 16. Docker Compose provides PostgreSQL locally.
 
 ```bash
 cp .env.example .env
@@ -84,7 +84,7 @@ npm run question-bank:coverage
 ## Planned or not yet present
 
 - Genuine independent subject-matter review and publication of the new Core SDE questions.
-- PDF parsing, URL ingestion, pgvector, and indexed semantic search.
+- pgvector and indexed vector similarity search.
 - Within-concept selection of an individual knowledge point in the assessment UI.
 - Retrieval-quality benchmarks with human-labeled relevance and broader evaluation of learner outcomes.
 
