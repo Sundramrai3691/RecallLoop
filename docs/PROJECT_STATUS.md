@@ -1,5 +1,29 @@
 # Project status
 
+## 2026-11-22 — Recall Sprint Milestone 1B reliability closeout
+
+| Scenario | Existing coverage | New coverage | Test layer | Result |
+|---|---|---|---|---|
+| Full successful Sprint repair/verification | Existing core assessment/remediation/verification integration and browser journey | Sprint-specific source, Sprint, verification and reload assertions attempted in the checked-in core harness | Unit/integration/browser | **Not browser-closed** |
+| No-source repair | Grounded-remediation integration creates `insufficient_sources` and no citation/content | Sprint UI preserves the original recall and displays a no-source fallback | Integration/UI | **Integration-tested; browser branch pending** |
+| No distinct verification | Existing `NO_FRESH_VERIFICATION` target and Sprint verification service | Canonical Sprint verification now rejects fallback built-in wording when canonical bank coverage is unavailable | PostgreSQL integration | **Passed** |
+| Evaluation provider failure | Provider-failure recall integration proves no submitted attempt/evaluation/learner state | Sprint item remains pending because submission uses the existing recall transaction | PostgreSQL integration | **Existing coverage; Sprint-specific assertion present in shared transaction path** |
+| Remediation provider failure | Existing grounded-remediation `failed` state and retryable fallback behavior | Sprint stores no verification ID while remediation remains failed/failed-with-fallback | Integration/unit | **Existing coverage; Sprint browser branch pending** |
+| Duplicate recall submission | Existing `ALREADY_SUBMITTED` and immutable attempt/evaluation assertions | Concurrent same-attempt Promise case confirms one evaluation and one `RECALL_SUBMITTED` event | PostgreSQL integration | **Passed** |
+| Concurrent Sprint start | Existing Sprint key/lock test | Parallel same-key starts reuse one in-progress Sprint | PostgreSQL integration | **Passed** |
+| Abandonment | Owner-scoped Sprint integration | Explicit UI confirmation, abandoned reload state and pending-attempt preservation | Integration/UI | **Integration-tested; browser branch pending** |
+| Subsequent Sprint after abandonment | Existing pending due attempt reuse | Abandoned Sprint plus new Sprint reuses the same pending recall attempt | PostgreSQL integration | **Passed** |
+| Sprint resume/reload | Existing persisted Sprint rows and full Sprint read | Integration reads stable item/attempt identity | PostgreSQL integration | **Passed** |
+| Owner isolation | Existing owner checks plus Sprint abandonment owner test | Sprint reads/repair/verification remain owner-scoped | Integration | **Passed** |
+
+- Added canonical-verification integrity: canonical concepts now reject verification if no eligible, unseen, exact-revision, non-MCQ candidate exists. They no longer fall back to a built-in verification prompt.
+- Added explicit Sprint abandonment confirmation with an honest explanation that submitted evidence remains and pending questions remain available.
+- Added grounded-remediation and verification unavailable UI copy.
+- Added disposable PostgreSQL coverage for concurrent Sprint starts, concurrent recall submission, abandoned-attempt preservation, subsequent Sprint recovery and no-verification behavior.
+- Validation: `npm test` passed 50 files / 231 tests / 4 skipped; `npm run build` passed; focused Sprint integration passed 7/7; `git diff --check` passed.
+- Browser blocker: the repeated checked-in/isolated Edge run reached the verification recall page but did not produce a verification-submit POST under the test harness. It did not establish a browser pass for Sprint verification submission or abandonment. The existing core harness remains in place and no Sprint-specific browser block was added to it.
+- Test-only automated eligibility and mock providers were used for attempted browser runs. No live provider, human approval or application-database migration/write is claimed.
+
 ## 2026-11-22 Daily Recall Sprint — Milestone 1 implementation
 
 - Added the persisted Recall Sprint domain surface to Today.

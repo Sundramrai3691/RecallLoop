@@ -180,6 +180,7 @@ export async function createTargetedVerification(userId:string,remediationId:str
       const candidates=await listEligibleCanonicalQuestions(client,remediation.canonical_concept_id);
       bankCandidate=candidates.filter((candidate)=>!recentRevisionIds.has(candidate.revisionId)&&candidate.questionType!=="mcq"&&candidate.knowledgePoints.some((point)=>point.trim().toLowerCase()===String(remediation.knowledge_point).trim().toLowerCase()))
         .sort((left,right)=>left.difficulty-right.difficulty||left.itemSlug.localeCompare(right.itemSlug))[0]??null;
+      if(!bankCandidate)throw new AppError("No eligible distinct verification revision is available for this knowledge point.",409,"NO_FRESH_VERIFICATION");
     }
     let draft=buildTargetedVerificationQuestion(remediation.name,remediation.knowledge_point,0);
     let questionId="";

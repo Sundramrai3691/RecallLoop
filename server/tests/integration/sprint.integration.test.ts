@@ -2,7 +2,7 @@ import { afterAll,beforeAll,describe,expect,it } from "vitest";
 import { randomUUID } from "node:crypto";
 import { postgres,runPostgresMigration } from "../../src/db/postgres.js";
 import { seedCanonicalQuestionBank } from "../../src/db/seedCanonicalQuestionBank.js";
-import { abandonSprint,completeSprint,getActiveSprint,startSprint } from "../../src/services/sprint/sprintService.js";
+import { abandonSprint,completeSprint,getActiveSprint,startSprint,startSprintVerification } from "../../src/services/sprint/sprintService.js";
 import { submitRecall } from "../../src/services/recall/recallService.js";
 
 describe("Recall Sprint persistence integration",()=>{
@@ -197,5 +197,80 @@ describe("Recall Sprint persistence integration",()=>{
       [userId,attemptId],
     );
     expect(learningEvents.rows[0].count).toBe("1");
+  });
+
+  it("keeps abandoned attempt history and reuses it in a subsequent Sprint",async()=>{
+    const userId=(await postgres.query<{id:string}>(
+      `INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration','Abandon recovery user') RETURNING id`,
+      [`abandon-recovery-${randomUUID()}@test.local`],
+    )).rows[0].id;
+    const sessionId=(await postgres.query<{id:string}>(
+      `INSERT INTO study_sessions(user_id,title,raw_material,source_type,status,completed_at)
+       VALUES($1,'Abandon recovery fixture','Fixture.','notes','completed',now()) RETURNING id`,
+      [userId],
+    )).rows[0].id;
+    const conceptId=(await postgres.query<{id:string}>(
+      `INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,difficulty)
+       VALUES($1,$2,'Abandon recovery','Fixture',ARRAY['Abandon recovery behavior.'],2) RETURNING id`,
+      [userId,sessionId],
+    )).rows[0].id;
+    const attemptId=(await postgres.query<{id:string}>(
+      `INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question)
+       VALUES($1,$2,$3,'rapid_recall','Explain abandon recovery behavior.') RETURNING id`,
+      [userId,conceptId,sessionId],
+    )).rows[0].id;
+    await postgres.query(
+      `INSERT INTO review_states(user_id,concept_id,state,due_at,difficulty)
+       VALUES($1,$2,'review',now()-interval '1 hour',0.4)`,
+      [userId,conceptId],
+    );
+
+    const first=await startSprint(userId,randomUUID());
+    const abandoned=await abandonSprint(userId,first.id);
+    expect(abandoned.status).toBe("abandoned");
+    expect((await postgres.query<{count:string}>(`SELECT count(*)::text AS count FROM recall_attempts WHERE id=$1 AND submitted_at IS NULL`,[attemptId])).rows[0].count).toBe("1");
+    expect((await postgres.query<{count:string}>(`SELECT count(*)::text AS count FROM recall_sprint_items WHERE sprint_id=$1 AND recall_attempt_id=$2`,[first.id,attemptId])).rows[0].count).toBe("1");
+
+    const subsequent=await startSprint(userId,randomUUID());
+    expect(subsequent.id).not.toBe(first.id);
+    expect(subsequent.items.some((item)=>item.recallAttemptId===attemptId)).toBe(true);
+  });
+
+  it("blocks canonical verification when no eligible distinct revision exists",async()=>{
+    const userId=(await postgres.query<{id:string}>(
+      `INSERT INTO app_users(email,password_hash,name) VALUES($1,'integration','No verification user') RETURNING id`,
+      [`no-verification-${randomUUID()}@test.local`],
+    )).rows[0].id;
+    const canonical=(await postgres.query<{id:string}>(`SELECT id FROM canonical_concepts WHERE status='active' ORDER BY id LIMIT 1`)).rows[0];
+    expect(canonical).toBeDefined();
+    const sessionId=(await postgres.query<{id:string}>(
+      `INSERT INTO study_sessions(user_id,title,raw_material,source_type,status,completed_at,canonical_concept_id)
+       VALUES($1,'No verification fixture','Fixture.','notes','completed',now(),$2) RETURNING id`,
+      [userId,canonical.id],
+    )).rows[0].id;
+    const conceptId=(await postgres.query<{id:string}>(
+      `INSERT INTO personal_concepts(user_id,study_session_id,name,description,required_knowledge_points,difficulty,canonical_concept_id)
+       VALUES($1,$2,'No verification','Fixture',ARRAY['No verification behavior.'],2,$3) RETURNING id`,
+      [userId,sessionId,canonical.id],
+    )).rows[0].id;
+    const attemptId=(await postgres.query<{id:string}>(
+      `INSERT INTO recall_attempts(user_id,concept_id,study_session_id,question_type,question,submitted_at,result_status)
+       VALUES($1,$2,$3,'rapid_recall','Explain no verification behavior.',now(),'incorrect') RETURNING id`,
+      [userId,conceptId,sessionId],
+    )).rows[0].id;
+    const remediationId=(await postgres.query<{id:string}>(
+      `INSERT INTO grounded_remediations(user_id,triggering_attempt_id,concept_id,knowledge_point,reason,status,trigger_score)
+       VALUES($1,$2,$3,'No verification behavior.','Test fixture','ready',0) RETURNING id`,
+      [userId,attemptId,conceptId],
+    )).rows[0].id;
+    const sprintId=(await postgres.query<{id:string}>(
+      `INSERT INTO recall_sprints(user_id,status,idempotency_key,repair_remediation_id)
+       VALUES($1,'in_progress',$2,$3) RETURNING id`,
+      [userId,randomUUID(),remediationId],
+    )).rows[0].id;
+
+    await expect(startSprintVerification(userId,sprintId)).rejects.toMatchObject({code:"NO_FRESH_VERIFICATION",status:409});
+    const stored=await postgres.query<any>(`SELECT verification_attempt_id FROM grounded_remediations WHERE id=$1`,[remediationId]);
+    expect(stored.rows[0].verification_attempt_id).toBeNull();
   });
 });
