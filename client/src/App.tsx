@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ComponentType } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
 import { Layout } from "./components/Layout";
 
 const DashboardPage = lazy(() => import("./pages/DashboardPage").then((module) => ({ default: module.DashboardPage })));
@@ -27,6 +27,7 @@ const OnboardingPage = lazy(() => import("./pages/OnboardingPage").then((module)
 const ReadinessPage = lazy(() => import("./pages/ReadinessPage").then((module) => ({ default: module.ReadinessPage })));
 const KnowledgeCheckPage = lazy(() => import("./pages/KnowledgeCheckPage").then((module) => ({ default: module.KnowledgeCheckPage })));
 const ReviewImprovePage = lazy(() => import("./pages/ReviewImprovePage").then((module) => ({ default: module.ReviewImprovePage })));
+const RecallSprintPage = lazy(() => import("./pages/RecallSprintPage").then((module) => ({ default: module.RecallSprintPage })));
 
 function PageView({ page: Page }: { page: ComponentType }) {
   return <Suspense fallback={<div role="status" aria-live="polite" style={{ minHeight: "100vh", display: "grid", placeItems: "center", color: "var(--muted)", background: "var(--canvas)" }}>Loading page…</div>}><Page /></Suspense>;
@@ -40,6 +41,9 @@ export function App() {
       <Route path="/" element={<PageView page={LandingPage} />} />
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<PageView page={DashboardPage} />} />
+        <Route path="/today" element={<Navigate replace to="/dashboard" />} />
+        <Route path="/sprint" element={<PageView page={RecallSprintPage} />} />
+        <Route path="/sprint/:id" element={<PageView page={RecallSprintPage} />} />
         <Route path="/knowledge-check" element={<PageView page={KnowledgeCheckPage} />} />
         <Route path="/review" element={<PageView page={ReviewImprovePage} />} />
         <Route path="/readiness" element={<PageView page={ReadinessPage} />} />

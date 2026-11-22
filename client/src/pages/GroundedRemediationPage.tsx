@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { ArrowRight, BookOpen } from "lucide-react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { api } from "../api/client";
 import { EmptyState, PageHeader } from "../components/Ui";
 import { ApiError, type GroundedRemediation } from "../types";
 
 export function GroundedRemediationPage() {
-  const {id}=useParams();const navigate=useNavigate();const [remediation,setRemediation]=useState<GroundedRemediation|null>(null);const [error,setError]=useState<string|null>(null);const [busy,setBusy]=useState(false);
+  const {id}=useParams();const navigate=useNavigate();const [searchParams]=useSearchParams();const returnTo=searchParams.get("returnTo")??"";const sprintId=searchParams.get("sprintId")??(/^\/sprint\/([0-9a-f-]+)$/i.exec(returnTo)?.[1]??"");const [remediation,setRemediation]=useState<GroundedRemediation|null>(null);const [error,setError]=useState<string|null>(null);const [busy,setBusy]=useState(false);
   useEffect(()=>{if(id)void api.getRemediation(id).then((result)=>setRemediation(result.remediation)).catch((err)=>setError(err instanceof ApiError&&err.status===404?"This focused review could not be found.":"We couldn’t load this focused review."));},[id]);
-  async function verify(){if(!id)return;setBusy(true);setError(null);try{const result=await api.verifyRemediation(id);navigate(`/recall/${result.attempt.id}`);}catch{setError("We couldn’t start the recall check. Please try again.");}finally{setBusy(false);}}
+  async function verify(){if(!id)return;setBusy(true);setError(null);try{if(sprintId){const result=await api.startSprintVerification(sprintId);navigate(`/recall/${result.attempt.id}?returnTo=${encodeURIComponent(`/sprint/${sprintId}`)}`);}else{const result=await api.verifyRemediation(id);navigate(`/recall/${result.attempt.id}`);}}catch{setError("We couldn’t start the recall check. Please try again.");}finally{setBusy(false);}}
   if(error&&!remediation)return <p className="error" role="alert">{error} <Link to="/dashboard">Return to dashboard</Link></p>;if(!remediation)return <div className="card grid"><div className="skeleton"/><div className="skeleton"/></div>;
   const content=remediation.content;const status=remediation.status;const stateLabel=status==="ready"?"Ready to review":status==="verified"?"Review complete":status==="verification_created"?"Recall in progress":status==="insufficient_sources"?"No supporting material found":"Preparing your review";
   return <div className="grid"><PageHeader eyebrow="Focused review" title={content?.title??remediation.conceptName} description={remediation.reason}/><section className="remediation-focus card"><span className="status-chip">{stateLabel}</span><div><p className="eyebrow">FOCUS ON</p><h2>{remediation.knowledgePoint}</h2></div></section>

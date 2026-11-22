@@ -6,6 +6,23 @@
 
 ## Current learner intent journey
 
+### Recall Sprint on Today
+
+The current `/dashboard` surface is now the Today destination and shows a primary Recall Sprint card. `/sprint` opens the Sprint entry or active resume state; `/sprint/:id` shows the persisted bounded item list and submitted/pending state.
+
+The implemented MVP composition is:
+
+- up to two genuinely due recall attempts;
+- then one lowest-mastered eligible weak canonical concept;
+- then one recent eligible canonical concept;
+- no more than three items.
+
+The composer checks the existing canonical question review/quality/publication gate for weak and recent items. Existing due recall attempts remain eligible when they are not canonical-bank revisions or pass the exact current canonical revision eligibility predicate. The same concept and underlying recall attempt are deduplicated.
+
+Sprint lifecycle is server-persisted in `recall_sprints` and `recall_sprint_items`. It has `in_progress`, `completed`, and `abandoned` states. Completion is allowed only after every diagnostic item has been submitted or explicitly skipped. It does not set mastery or verification status. The first repair opportunity uses the weakest submitted Sprint gap and reuses grounded remediation; verification uses the existing targeted-verification service and stores the attempt on the Sprint.
+
+Current evidence: unit selection tests, disposable PostgreSQL 16 integration tests for idempotent resume, one-active-Sprint behavior, completion guard and owner-scoped abandonment, and an Edge browser smoke for start, answer, result, reload and 1440/768/390 layouts passed. The browser smoke used mock providers and a disposable database and cleaned its test user. Distinct-remediation browser verification remains a follow-up path, not a claimed result of this smoke.
+
 Home at `/dashboard` always presents three options: Test my knowledge, Learn something new, and Review and improve. Test is visually primary; Learn and Review remain equally reachable as secondary entry points. A separate continuation strip uses available due review, unfinished session, planned task, evidence-backed weakness, or active goal context. First-time learners see none of the empty metric warnings.
 
 ### Test my knowledge

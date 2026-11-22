@@ -629,3 +629,17 @@ Append new entries at the end. Do not edit or reorder previous entries. Reposito
 - Recorded a current-source caveat in the performance baseline: study completion still loads pending attempts inside a per-attempt loop, and the existing synthetic profile plus pool-only query instrumentation do not establish multi-concept query scaling. No application behavior or learner data was changed.
 - Verification: `npm.cmd test` passed (49 files; 228 passed, 4 skipped); `npm.cmd run build` passed for server and client. PostgreSQL integration, API benchmark, and browser E2E were not run because their local database prerequisite was unavailable. `git diff --check` passed; no runtime source or dependency files were changed.
 - Highest-value follow-up: benchmark multi-concept completion with transaction-statement instrumentation and repeat the bounded API profile on an explicitly verified disposable local database.
+
+## 2026-11-22 — Recall Sprint Milestone 1 implementation
+
+- Implemented the first Sprint milestone: Today now exposes a primary Recall Sprint card and `/sprint`/`/sprint/:id` provide entry, resume, answer and summary states.
+- Added migration `031_recall_sprints.sql` with owner-scoped Sprint and item tables, idempotency-key uniqueness, and one-active-Sprint partial uniqueness. No existing learner history, readiness, scheduler threshold or question-bank revision was changed.
+- Added authenticated Sprint API routes for active/start/read/complete/abandon/repair/verification. Sprint composition reuses due recall attempts and existing canonical weak/recent evidence, materializes only eligible canonical questions for weak/recent positions, deduplicates concepts and attempts, and caps the session at three items.
+- Completion requires every item to be submitted or explicitly skipped. Abandonment is explicit. Sprint lifecycle remains separate from demonstrated, partial, incorrect, unanswered, not-assessed and verification outcomes.
+- Added repair/verification linkage by reusing the existing grounded remediation and targeted verification services and storing their IDs on the Sprint.
+- Updated Dashboard, Layout, recall/recall-result/remediation routes, Sprint UI, and Aurora Ink styles for Today and the focused Sprint flow.
+- Validation: `npm test` passed 50 test files / 231 tests / 4 skipped; `npm run build` passed server and client. A focused PostgreSQL 16 integration file passed 2/2 against a temporary container on port 55432, covering due composition, duplicate active-key behavior, completion guard, reloadable status and owner-scoped abandonment.
+- Browser validation: a disposable Edge/Playwright smoke passed actual Today → Start Sprint → answer → submit recall → reload against a temporary PostgreSQL 16 database on port 55433 with mock providers. Screenshots were captured at 1440x900, 768x1024 and 390x844; the mobile page had no detected horizontal overflow. The test user was deleted in `finally`.
+- Database/resource safety: both temporary containers were stopped and removed after validation. The existing `recallai-postgres-1` container and `recallai_recallloop_postgres` application volume remained running/intact; no application-database writes were used for the browser smoke.
+- Known limits: live-provider semantic quality, independent question correctness, real D1/D7/D28 retention, measured 5–8 minute duration, Firefox CI and the complete browser repair/distinct-verification path remain unverified.
+- No commit or push.

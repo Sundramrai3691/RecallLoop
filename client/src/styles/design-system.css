@@ -204,6 +204,117 @@ a { color: var(--accent); }
 .learner-concept .actions { grid-column: 1 / -1; margin-top: 2px; }
 .learner-concept .actions .btn { min-height: 36px; }
 
+/* Recall Sprint */
+.sprint-today-card {
+  display: grid;
+  grid-template-columns: 52px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 18px;
+  border-color: color-mix(in srgb,var(--violet) 38%,var(--border));
+  background:
+    radial-gradient(circle at 92% 20%, color-mix(in srgb,var(--citron) 10%,transparent), transparent 28%),
+    linear-gradient(135deg,var(--surface),var(--surface-tint));
+}
+.sprint-today-mark,
+.sprint-entry-mark,
+.sprint-repair-icon {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border: 1px solid color-mix(in srgb,var(--violet) 38%,var(--border));
+  border-radius: 17px;
+  background: var(--surface);
+  color: var(--accent);
+}
+.sprint-today-copy h2,
+.sprint-today-copy p,
+.sprint-progress-copy h2,
+.sprint-progress-copy p,
+.sprint-repair h2,
+.sprint-repair p,
+.sprint-completed h2,
+.sprint-completed p { margin-bottom: 0; }
+.sprint-today-copy .eyebrow { margin-bottom: 6px; }
+.sprint-page { display: grid; gap: 16px; }
+.sprint-entry {
+  max-width: 720px;
+  display: grid;
+  justify-items: start;
+  gap: 12px;
+  padding: clamp(28px,5vw,48px);
+  background:
+    radial-gradient(circle at 82% 18%,color-mix(in srgb,var(--violet) 16%,transparent),transparent 34%),
+    linear-gradient(135deg,var(--surface),var(--surface-tint));
+}
+.sprint-entry h2 { font-size: clamp(28px,4vw,42px); }
+.sprint-entry .btn { margin-top: 4px; }
+.sprint-progress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  min-height: 128px;
+  background: linear-gradient(135deg,var(--surface),var(--surface-tint));
+}
+.sprint-progress-count {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--accent);
+  font-size: 20px;
+}
+.sprint-items { display: grid; gap: 10px; }
+.sprint-item {
+  display: grid;
+  grid-template-columns: 44px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 16px;
+}
+.sprint-item.submitted { background: color-mix(in srgb,var(--success-surface) 55%,var(--surface)); }
+.sprint-item-index {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+.sprint-item.submitted .sprint-item-index { background: var(--success-surface); color: var(--success); }
+.sprint-item-copy h2 { margin: 4px 0 5px; }
+.sprint-item-copy p { margin-bottom: 4px; }
+.sprint-repair {
+  display: grid;
+  grid-template-columns: 52px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 16px;
+  border-color: color-mix(in srgb,var(--violet) 34%,var(--border));
+}
+.sprint-completed {
+  display: grid;
+  grid-template-columns: 22px minmax(0,1fr);
+  align-items: start;
+  gap: 12px;
+  color: var(--success);
+}
+.sprint-completed div { color: var(--ink); }
+.sprint-actions { justify-content: flex-end; }
+
+@media (max-width:760px) {
+  .sprint-today-card,
+  .sprint-repair { grid-template-columns: 44px minmax(0,1fr); }
+  .sprint-today-card > .btn,
+  .sprint-repair > .btn { grid-column: 1/-1; width: 100%; justify-content: center; }
+  .sprint-today-mark,
+  .sprint-repair-icon { width: 44px; height: 44px; border-radius: 14px; }
+  .sprint-item { grid-template-columns: 40px minmax(0,1fr); }
+  .sprint-item > .btn { grid-column: 1/-1; justify-content: center; width: 100%; }
+}
+
 /* Learner intent and guided knowledge-check journey */
 .home-intent-page,.intent-page { display: grid; gap: 18px; min-width: 0; }
 .intent-entry-grid { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(0,.95fr); gap: 13px; align-items: stretch; }

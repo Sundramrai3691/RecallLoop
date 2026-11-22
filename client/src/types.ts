@@ -323,6 +323,32 @@ export interface DashboardData {
   pendingRecallCount: number;
 }
 
+export interface RecallSprintItem {
+  id: string;
+  position: number;
+  source: "due" | "weak" | "recent";
+  reason: string;
+  conceptId: string;
+  conceptName: string;
+  recallAttemptId: string;
+  submitted: boolean;
+  recall: RecallAttempt;
+  concept: Concept;
+}
+
+export interface RecallSprint {
+  id: string;
+  status: "in_progress" | "completed" | "abandoned";
+  createdAt: string;
+  updatedAt: string;
+  completedAt: string | null;
+  abandonedAt: string | null;
+  repairRemediationId: string | null;
+  verificationAttemptId: string | null;
+  items: RecallSprintItem[];
+  progress: { submitted: number; total: number };
+}
+
 export class ApiError extends Error {
   status: number;
   code: string;

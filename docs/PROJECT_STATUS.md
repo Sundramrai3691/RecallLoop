@@ -1,5 +1,26 @@
 # Project status
 
+## 2026-11-22 Daily Recall Sprint — Milestone 1 implementation
+
+- Added the persisted Recall Sprint domain surface to Today.
+- Added migration `031_recall_sprints.sql`, owner-scoped Sprint/item tables, one-active-Sprint partial uniqueness and Sprint idempotency key uniqueness.
+- Added `/api/sprints` active/start/read/complete/abandon/repair/verification routes and a `RecallSprintPage` client surface.
+- Sprint composition is deterministic for the created entity: up to two eligible due recalls, then one weak canonical concept, then one recent canonical concept, with a three-item ceiling and concept/attempt deduplication.
+- Completion requires every diagnostic item to be submitted or skipped. Completion does not imply mastery or verification improvement.
+- Existing grounded remediation and targeted-verification services are reused; no question-bank revision, approval, readiness, scheduler threshold or historical learner evidence was changed.
+- Verification:
+  - `npm test`: 50 unit test files passed, 231 tests passed, 4 live-provider tests skipped.
+  - `npm run build`: server and client production builds passed.
+  - Disposable PostgreSQL 16 integration: 2/2 Sprint lifecycle regressions passed on port 55432.
+  - Disposable Edge browser smoke: actual Today → Start Sprint → answer → submit → reload passed; desktop 1440x900, tablet 768x1024 and mobile 390x844 layouts had no detected horizontal overflow.
+  - Mock providers were used. The browser smoke used a temporary PostgreSQL container and removed the test user.
+  - The temporary container and volumes used for test runs were stopped/removed; the existing `recallai-postgres-1` application container and `recallai_recallloop_postgres` application volume were left intact.
+- Known limits:
+  - Human question correctness and live provider quality remain unverified.
+  - Distinct verification browser coverage is implemented but needs an isolated end-to-end run across repair and result reload.
+  - Sprint duration is not measured from real usage.
+  - No D1/D7/D28 retention or first-session cohort telemetry exists.
+
 ## 2026-11-03 Learner model, readiness and scheduler integrity closeout
 
 - Corrected `docs/ADAPTIVE_LEARNING.md` to match the implemented readiness projection: each canonical point reflects its latest submitted mapped recall or assessed-baseline result, not blended point mastery. Correct, partial, incorrect, unanswered, and unassessed remain distinct; no aggregate readiness score or confidence is invented.

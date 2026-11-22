@@ -7,7 +7,7 @@ import { ThemeToggle } from "./theme/ThemeToggle";
 
 const groups = [
   { label: "Workspace", items: [
-    { to: "/dashboard", label: "Dashboard", mobileLabel: "Home", Icon: LayoutDashboard, end: true },
+    { to: "/dashboard", label: "Today", mobileLabel: "Today", Icon: LayoutDashboard, end: true },
     { to: "/study/new", label: "Learn", mobileLabel: "Learn", Icon: BookOpen },
     { to: "/plan/today", label: "Today's plan", mobileLabel: "Plan", Icon: CalendarDays },
     { to: "/goals", label: "Goals", mobileLabel: "Goals", Icon: Target },

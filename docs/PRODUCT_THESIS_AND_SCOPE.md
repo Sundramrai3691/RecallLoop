@@ -638,6 +638,16 @@ Retention should be read alongside active question coverage and failure states. 
 - unit/integration tests verify owner scope and duplicate submissions;
 - Edge browser flow proves Sprint start, answer submission, repair/verification entry and reload.
 
+**Implementation status — 2026-11-22**
+
+- Implemented source-level.
+- Added persisted, owner-scoped `recall_sprints` and `recall_sprint_items` records in migration `031_recall_sprints.sql`.
+- Added authenticated `/api/sprints` create, active, read, complete, abandon, repair and verification routes.
+- The Sprint composer uses up to two eligible due recalls, then a weak canonical concept, then a recent canonical concept, with a three-item ceiling and concept/deduplication checks.
+- Sprint lifecycle is separate from submitted recall outcomes. Completion requires every diagnostic item to be submitted or skipped; a weak/unanswered Sprint can complete without implying mastery.
+- Unit, disposable PostgreSQL integration and Edge browser smoke evidence passed for Sprint creation, idempotent resume, owner isolation, submission/reload and 1440/768/390 responsive layouts.
+- Browser repair/verification remains implemented in existing remediation services but requires broader browser coverage beyond this milestone closeout.
+
 ### Milestone 2: Consolidate Library and simplify onboarding
 
 **Scope:**

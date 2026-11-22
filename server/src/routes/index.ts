@@ -15,6 +15,7 @@ import { settingsRouter } from "./settings.js";
 import { groundingRouter } from "./grounding.js";
 import { remediationRouter } from "./remediations.js";
 import { healthRouter } from "./health.js";
+import { sprintRouter } from "./sprints.js";
 
 export const apiRouter = Router();
 
@@ -35,3 +36,4 @@ apiRouter.use("/grounding", groundingRouter);
 apiRouter.use("/remediations", remediationRouter);
 apiRouter.use("/concepts", conceptRouter);
 apiRouter.use("/dashboard", dashboardRouter);
+apiRouter.use("/sprints", sprintRouter);

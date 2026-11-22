@@ -18,6 +18,7 @@ import {
   type User,
   type ResourceRecommendation,
   type KnowledgePointResult,
+  type RecallSprint,
 } from "../types";
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
@@ -162,6 +163,37 @@ export const api = {
 
   dashboard() {
     return request<DashboardData>("/api/dashboard");
+  },
+
+  getActiveSprint() {
+    return request<{ sprint: RecallSprint | null }>("/api/sprints/active");
+  },
+
+  startSprint(idempotencyKey: string) {
+    return request<{ sprint: RecallSprint }>("/api/sprints", {
+      method: "POST",
+      body: JSON.stringify({ idempotencyKey }),
+    });
+  },
+
+  getSprint(id: string) {
+    return request<{ sprint: RecallSprint }>(`/api/sprints/${id}`);
+  },
+
+  completeSprint(id: string) {
+    return request<{ sprint: RecallSprint }>(`/api/sprints/${id}/complete`, { method: "POST" });
+  },
+
+  abandonSprint(id: string) {
+    return request<{ sprint: RecallSprint }>(`/api/sprints/${id}/abandon`, { method: "POST" });
+  },
+
+  openSprintRepair(id: string) {
+    return request<{ sprint: RecallSprint; remediation: GroundedRemediation }>(`/api/sprints/${id}/repair`, { method: "POST" });
+  },
+
+  startSprintVerification(id: string) {
+    return request<{ sprint: RecallSprint; remediationId: string; attempt: RecallAttempt }>(`/api/sprints/${id}/verify`, { method: "POST" });
   },
 
   createStudySession(input: { title: string; rawMaterial?: string; sourceType?: string; sourceUrl?: string; canonicalTopicId?: string; canonicalConceptId?: string; idempotencyKey: string }) {

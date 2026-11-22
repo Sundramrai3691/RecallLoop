@@ -5,7 +5,7 @@ import { api } from "../api/client";
 import { EmptyState, PageHeader } from "../components/Ui";
 import { WhyThis } from "../components/WhyThis";
 import { useDashboard } from "../hooks/useDashboard";
-import type { Goal, LearnerSummary, PlanTask } from "../types";
+import type { Goal, LearnerSummary, PlanTask, RecallSprint } from "../types";
 import { readableTitle } from "../utils/presentation";
 
 export function DashboardPage() {
@@ -13,13 +13,15 @@ export function DashboardPage() {
   const [goal, setGoal] = useState<Goal | null>(null);
   const [tasks, setTasks] = useState<PlanTask[]>([]);
   const [learner, setLearner] = useState<LearnerSummary | null>(null);
+  const [activeSprint, setActiveSprint] = useState<RecallSprint | null>(null);
   const [workspaceLoaded, setWorkspaceLoaded] = useState(false);
 
   useEffect(() => {
-    void Promise.allSettled([api.listGoals(), api.todayPlan(), api.learnerSummary()]).then(([goals, plan, summary]) => {
+    void Promise.allSettled([api.listGoals(), api.todayPlan(), api.learnerSummary(), api.getActiveSprint()]).then(([goals, plan, summary, sprint]) => {
       if (goals.status === "fulfilled") setGoal(goals.value.goals.find((item) => item.status === "active") ?? null);
       if (plan.status === "fulfilled") setTasks(plan.value.tasks);
       if (summary.status === "fulfilled") setLearner(summary.value);
+      if (sprint.status === "fulfilled") setActiveSprint(sprint.value.sprint);
       setWorkspaceLoaded(true);
     });
   }, []);
@@ -41,6 +43,15 @@ export function DashboardPage() {
 
   return <div className="home-intent-page">
     <PageHeader eyebrow="Your learning workspace" title={firstVisit ? "What would you like to do?" : "Choose your next learning step"} description={firstVisit ? "Start with what matters to you. You can check what you know, learn a topic, or strengthen past learning." : "Your schedule and submitted evidence can guide you, and you can always choose a different path."} />
+    <section className="card sprint-today-card">
+      <div className="sprint-today-mark" aria-hidden="true"><BrainCircuit size={21}/></div>
+      <div className="sprint-today-copy">
+        <p className="eyebrow">TODAY · RECALL SPRINT</p>
+        <h2>{activeSprint ? "Continue your Recall Sprint" : "Start a focused Recall Sprint"}</h2>
+        <p className="muted">{activeSprint ? `${activeSprint.progress.submitted} of ${activeSprint.progress.total} questions submitted · resume where you stopped.` : "A bounded set of due, weak and recently studied work."}</p>
+      </div>
+      <Link className="btn btn-primary" to={activeSprint ? `/sprint/${activeSprint.id}` : "/sprint"}>{activeSprint ? "Resume Sprint" : "Start Sprint"} <ArrowRight size={15}/></Link>
+    </section>
     <section className="intent-entry-grid" aria-label="Choose a learning intention">
       <article className="intent-choice intent-choice-primary"><div className="intent-choice-icon"><BrainCircuit size={22}/></div><p className="eyebrow">CHECK WHAT YOU KNOW</p><h2>Test my knowledge</h2><p>Choose a subject and see which checks have enough approved questions.</p><Link className="btn btn-primary" to="/knowledge-check">Choose a knowledge check <ArrowRight size={15}/></Link></article>
       <div className="intent-choice-secondary">

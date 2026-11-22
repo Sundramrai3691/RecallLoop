@@ -8,7 +8,7 @@ export function RecallPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const rawReturnTo=searchParams.get("returnTo") ?? "";
-  const returnTo=rawReturnTo==="/plan/today"||rawReturnTo==="/review"||rawReturnTo==="/knowledge-check"||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
+  const returnTo=rawReturnTo==="/plan/today"||rawReturnTo==="/review"||rawReturnTo==="/knowledge-check"||/^\/sprint\/[0-9a-f-]+$/i.test(rawReturnTo)||/^\/knowledge\/roles\/[0-9a-f-]+(?:#topic-[0-9a-f-]+)?$/i.test(rawReturnTo)?rawReturnTo:"";
   const [recall, setRecall] = useState<RecallAttempt | null>(null);
   const [conceptName, setConceptName] = useState("");
   const [answer, setAnswer] = useState("");
